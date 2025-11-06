@@ -207,13 +207,15 @@
 
     <main class="flex-grow container mx-auto px-4 py-12 flex items-center">
         <div class="bg-black bg-opacity-60 p-8 rounded-lg shadow-2xl max-w-6xl mx-auto">
-            <h1 class="text-3xl font-bold text-center mb-4 text-yellow-400">Choisissez un projet</h1>
+            <h1 class="text-3xl font-bold text-center mb-4 text-yellow-400">
+                Projets de la catégorie : <span class="text-white">{{ $categorie->nom }}</span>
+            </h1>
             <p class="text-center text-gray-300 mb-8">Recherchez un projet, une équipe ou un secteur, puis votez pour votre préféré.</p>
 
             <!-- Barre de recherche -->
             <div class="mb-8">
-            <div class="mb-8">
-                <form action="{{ route('vote.secteurs') }}" method="GET">
+            <div class="mb-8"> 
+                <form action="{{ route('vote.secteurs', ['profile_type' => $categorie->slug]) }}" method="GET">
                     <div class="relative">
                         <input type="text" id="search-input" name="search" placeholder="Rechercher un projet, une équipe ou un secteur..."
                                class="w-full bg-gray-900/50 border border-gray-700 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
@@ -246,7 +248,7 @@
                 {{-- Message "aucun résultat" géré par JS --}}
                 <div id="no-results-message" class="text-center py-12" style="display: none;">
                     <p class="text-xl text-gray-400">Aucun secteur ou projet trouvé.</p>
-                    <a href="{{ route('vote.secteurs') }}" class="mt-4 inline-block text-yellow-400 hover:text-yellow-300">
+                    <a href="{{ route('vote.secteurs', ['profile_type' => $categorie->slug]) }}" class="mt-4 inline-block text-yellow-400 hover:text-yellow-300">
                         &larr; Revenir à la liste complète
                     </a>
                 </div>

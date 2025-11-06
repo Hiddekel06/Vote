@@ -13,44 +13,75 @@ use Illuminate\View\View;
 use App\Models\Commentaire;
 use App\Models\Vote;
 use App\Models\Configuration;
+use App\Models\Categorie;
 use App\Models\Secteur;
+use Illuminate\Support\Facades\DB ;
 
 class VoteController extends Controller
 {
+    /**
+     * Affiche la page de sélection des catégories de vote.
+     *
+     * @return View
+     */
+    public function choixCategorie(): View
+    {
+        // Les catégories sont fixes, pas besoin de les récupérer de la base de données.
+        // On les crée statiquement pour les passer à la vue.
+        $categories = collect([
+            (object) ['nom' => 'Étudiant', 'slug' => 'student'],
+            (object) ['nom' => 'Startup', 'slug' => 'startup'],
+            (object) ['nom' => 'Citoyens', 'slug' => 'other'], // Renommé "Autre" en "Citoyens" pour la vue
+        ]);
+
+        return view('vote', compact('categories')); 
+    }
+
     /**
      * Affiche la page de vote avec les secteurs et projets filtrés.
      *
      * @param Request $request
      * @return View
      */
-    public function index(Request $request): View
+    public function index(Request $request, string $profileType): View
     {
+        // On déduit le nom de la catégorie à partir du profile_type pour l'affichage
+        $categorieNom = match ($profileType) {
+            'student' => 'Étudiant',
+            'startup' => 'Startup',
+            'other' => 'Citoyens', // Maintenu pour la cohérence
+            default => 'Inconnue', // Fallback, mais la route protège déjà
+        } ;
+        $categorie = (object)['nom' => $categorieNom, 'slug' => $profileType];
+
         $search = $request->input('search', '');
 
-        // On ne veut que les secteurs qui ont au moins un projet validé.
-        $query = Secteur::whereHas('projets', function ($query) {
-            $query->where('validation_admin', 1);
+        // On ne veut que les secteurs qui ont au moins un projet validé ET de la bonne catégorie.
+        $query = Secteur::whereHas('projets', function ($projetQuery) use ($profileType) {
+            $projetQuery->where('validation_admin', 1)
+                        ->whereHas('submission', function ($submissionQuery) use ($profileType) {
+                            $submissionQuery->where('profile_type', $profileType);
+                        });
         });
 
         // Si un terme de recherche est présent, on applique les filtres
         if ($search) {
-            // On veut les secteurs qui correspondent OU qui ont des projets qui correspondent
             $query->where(function ($q) use ($search) {
-                // Recherche par nom de secteur
                 $q->where('nom', 'like', '%' . $search . '%')
                   ->orWhereHas('projets', function ($subQuery) use ($search) {
-                    $subQuery->where('validation_admin', 1)
-                             ->where(function ($subSubQuery) use ($search) {
-                                 $subSubQuery->where('nom_projet', 'like', '%' . $search . '%')
-                                             ->orWhere('nom_equipe', 'like', '%' . $search . '%');
-                             });
+                      $subQuery->where('validation_admin', 1)
+                               ->where(function ($subSubQuery) use ($search) {
+                                   $subSubQuery->where('nom_projet', 'like', '%' . $search . '%')
+                                               ->orWhere('nom_equipe', 'like', '%' . $search . '%');
+                               });
                   });
             });
         }
 
-        // On charge les projets validés associés (Eager Loading), en filtrant par la recherche si besoin.
-        $query->with(['projets' => function ($projetQuery) use ($search) {
+        // On charge les projets validés de la bonne catégorie (Eager Loading), en filtrant par la recherche si besoin.
+        $query->with(['projets' => function ($projetQuery) use ($search, $profileType) {
             $projetQuery->where('validation_admin', 1)
+                        ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
                         ->when($search, function ($q) use ($search) {
                             $q->where('nom_projet', 'like', "%{$search}%")
                               ->orWhere('nom_equipe', 'like', "%{$search}%");
@@ -73,7 +104,7 @@ class VoteController extends Controller
         $voteStatusDetails = $this->getVoteStatusDetails();
 
 
-        return view('vote_secteurs', compact('secteurs', 'countries', 'voteStatusDetails'));
+        return view('vote_secteurs', compact('secteurs', 'countries', 'voteStatusDetails', 'categorie'));
     }
 
     /**

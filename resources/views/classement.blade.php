@@ -33,8 +33,8 @@
     <main class="flex-grow container mx-auto px-4 py-12 flex items-center">
         <div class="bg-black/70 backdrop-blur-sm border border-white/10 p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-4xl mx-auto">
             <div class="text-center mb-10">
-                <h1 class="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-500 mb-2">
-                    Classement des Projets
+                <h1 class="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-500 mb-2" >
+                    Classement : <span class="text-white">{{ $categorie->nom }}</span>
                 </h1>
                 <p class="text-gray-400 text-lg">Tendances des votes en temps réel</p>
             </div>

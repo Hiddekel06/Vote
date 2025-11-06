@@ -11,15 +11,13 @@ use App\Helpers\FileChecker;
 use App\Http\Controllers\OrangeSmsController;
 
 // 🔹 Page d’accueil (simple page de présentation)
-Route::get('/', function () {
-    return view('vote');
-})->name('vote.index');
+Route::get('/', [VoteController::class, 'choixCategorie'])->name('vote.index');
 
 // 🔹 Page de vote et de recherche (avec paramètre projet_id optionnel pour le partage)
 Route::get('/vote/projet/{id}', [VoteController::class, 'afficherProjet'])->name('vote.afficherProjet');
 
-// Route::get('/vote/{projet_id?}', [VoteController::class, 'index'])->name('vote.secteurs');
-Route::get('/vote', [VoteController::class, 'index'])->name('vote.secteurs');
+Route::get('/vote/categorie/{profile_type}', [VoteController::class, 'index'])->name('vote.secteurs')
+    ->whereIn('profile_type', ['student', 'startup', 'other']);
 
 // Route pour la recherche dynamique (AJAX)
 Route::get('/vote/recherche-ajax', [VoteController::class, 'rechercheAjax'])->name('vote.rechercheAjax');
@@ -36,7 +34,8 @@ Route::post('/vote/verifier-otp', [VoteController::class, 'verifierOtp'])
     ->name('vote.verifierOtp');
 
 // 🔹 Page de classement des projets
-Route::get('/classement', [ProjetController::class, 'index'])->name('projets.classement');
+Route::get('/classement/{profile_type}', [ProjetController::class, 'index'])->name('projets.classement')
+    ->whereIn('profile_type', ['student', 'startup', 'other']);
 
 // Route pour le partage d'un projet
 // --- Section Administrateur ---
