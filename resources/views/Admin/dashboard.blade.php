@@ -18,6 +18,221 @@
 
 <div class="content">
        <h2 class="mb-4 text-body-emphasis"> Dashboard</h2>
+
+       {{-- NOUVEAU : Cartes de statistiques --}}
+       <div class="row g-3 mb-4">
+           <!-- Carte Total Projets -->
+           <div class="col-12 col-md-6 col-lg-3">
+               <div class="card h-100">
+                   <div class="card-body">
+                       <div class="d-flex flex-between-center">
+                           <div class="flex-1">
+                               <h5 class="mb-1 text-body-tertiary text-nowrap">Projets Validés</h5>
+                               <h4 class="mb-0">{{ $totalProjets }}</h4>
+                           </div>
+                           <div class="fs-4 text-body-tertiary"><span class="fas fa-folder-open"></span></div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+           <!-- Carte Total Votes -->
+           <div class="col-12 col-md-6 col-lg-3">
+               <div class="card h-100">
+                   <div class="card-body">
+                       <div class="d-flex flex-between-center">
+                           <div class="flex-1">
+                               <h5 class="mb-1 text-body-tertiary text-nowrap">Total des Votes</h5>
+                               <h4 class="mb-0">{{ $totalVotes }}</h4>
+                           </div>
+                           <div class="fs-4 text-body-tertiary"><span class="fas fa-vote-yea"></span></div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+           <!-- Carte Votants Uniques -->
+           <div class="col-12 col-md-6 col-lg-3">
+               <div class="card h-100">
+                   <div class="card-body">
+                       <div class="d-flex flex-between-center">
+                           <div class="flex-1">
+                               <h5 class="mb-1 text-body-tertiary text-nowrap">Votants Uniques</h5>
+                               <h4 class="mb-0">{{ $totalVotants }}</h4>
+                           </div>
+                           <div class="fs-4 text-body-tertiary"><span class="fas fa-users"></span></div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+           <!-- Carte Projet en Tête -->
+           <div class="col-12 col-md-6 col-lg-3">
+               <div class="card h-100">
+                   <div class="card-body">
+                       <div class="d-flex flex-between-center">
+                           <div class="flex-1">
+                               <h5 class="mb-1 text-body-tertiary text-nowrap">Projet en Tête</h5>
+                               <h6 class="mb-0 text-truncate" title="{{ $projetEnTete?->nom_projet }}">{{ $projetEnTete?->nom_projet ?? 'N/A' }}</h6>
+                               <small class="text-success fw-bold">{{ $projetEnTete?->votes_count ?? 0 }} votes</small>
+                           </div>
+                           <div class="fs-4 text-body-tertiary"><span class="fas fa-trophy"></span></div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+       </div>
+
+       <div class="row g-3 mb-4">
+           <div class="col-12">
+               <div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Répartition des votes par catégorie</h5>
+    </div>
+    <div class="card-body">
+        <div id="chartVotesCategorie" style="min-height: 300px;"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var chartDom = document.getElementById('chartVotesCategorie');
+        var myChart = echarts.init(chartDom);
+
+        // ✅ Données passées depuis Laravel
+        var categorieLabels = @json($categorieLabels);
+        var categorieData = @json($categorieData);
+
+        var option = {
+            tooltip: { trigger: 'axis' },
+            xAxis: {
+                type: 'category',
+                data: categorieLabels,
+                axisLabel: { color: '#ccc' }
+            },
+            yAxis: {
+                type: 'value',
+                axisLabel: { color: '#ccc' }
+            },
+            series: [{
+                data: categorieData,
+                type: 'bar',
+                itemStyle: {
+                    color: '#34d399', // vert émeraude
+                    shadowBlur: 10,
+                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                }
+            }]
+        };
+
+        myChart.setOption(option);
+        window.addEventListener('resize', myChart.resize);
+    });
+</script>
+
+           </div>
+       </div>
+
+       {{-- NOUVEAU : Évolution des votes par jour --}}
+       <div class="row g-3 mb-4">
+           <div class="col-12">
+               <div class="card">
+                   <div class="card-header">
+                       <h5 class="mb-0">Évolution des votes par jour</h5>
+                   </div>
+                   <div class="card-body">
+                       <div id="chartDailyVoteEvolution" style="min-height: 300px;"></div>
+                   </div>
+               </div>
+           </div>
+       </div>
+
+       <script>
+           document.addEventListener("DOMContentLoaded", function () {
+               var chartDom = document.getElementById('chartDailyVoteEvolution');
+               var myChart = echarts.init(chartDom);
+
+               var dailyVoteLabels = @json($dailyVoteLabels);
+               var allSeriesData = @json($allSeriesData);
+               var allLegendNames = @json($allLegendNames);
+
+               var option = {
+                   tooltip: {
+                       trigger: 'axis',
+                       axisPointer: {
+                           type: 'cross',
+                           label: {
+                               backgroundColor: '#6a7985'
+                           }
+                       }
+                   },
+                   legend: {
+                       data: allLegendNames,
+                       textStyle: {
+                           color: '#ccc' // Adjust legend text color for dark theme
+                       }
+                   },
+                   grid: {
+                       left: '3%',
+                       right: '4%',
+                       bottom: '3%',
+                       containLabel: true
+                   },
+                   xAxis: [
+                       {
+                           type: 'category',
+                           boundaryGap: false,
+                           data: dailyVoteLabels,
+                           axisLabel: { color: '#ccc' }
+                       }
+                   ],
+                   yAxis: [
+                       {
+                           type: 'value',
+                           axisLabel: { color: '#ccc' }
+                       }
+                   ],
+                   series: allSeriesData
+               };
+
+               myChart.setOption(option);
+               window.addEventListener('resize', myChart.resize);
+           });
+       </script>
+
+       {{-- NOUVEAU : Top 3 Projets --}}
+       <div class="row g-3 mb-4">
+           <div class="col-12">
+               <div class="card">
+                   <div class="card-header">
+                       <h5 class="mb-0">Top 3 Projets</h5>
+                   </div>
+                   <div class="card-body">
+                       @if($top3Projects->isNotEmpty())
+                           <ul class="list-group">
+                               @foreach($top3Projects as $index => $project)
+                                   <li class="list-group-item d-flex justify-content-between align-items-center">
+                                       <span class="badge bg-primary rounded-pill me-2">{{ $index + 1 }}</span>
+                                       {{ $project->nom_projet }} ({{ $project->votes_count }} votes)
+                                       <span class="badge bg-success rounded-pill">{{ $project->secteur->nom ?? 'N/A' }}</span>
+                                   </li>
+                               @endforeach
+                           </ul>
+                       @else
+                           <p class="text-muted">Aucun projet dans le top 3 pour le moment.</p>
+                       @endif
+                   </div>
+               </div>
+           </div>
+       </div>
+
+       <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="d-flex align-items-center">
+                <h3 class="mb-0">Aperçu général</h3>
+                <div class="ms-auto"></div>
+            </div>
+        </div>
+    </div>
        <div class="swiper-theme-container w-100">
          <div class="swiper theme-slider" data-swiper='{"spaceBetween":24,"loop":true,"centeredSlides":true,"slidesPerView":"auto","autoplay":{"delay":0},"freeMode":true,"speed":6500,"grabCursor":true}'>
            <div class="swiper-wrapper swiper-continuous-autoplay">
@@ -319,7 +534,56 @@ pointBackgroundColor: "#10b981",
 @push('scripts')
  {{-- Chargez ici vos scripts ECharts/Chart.js ou autre --}}
  <script defer src="{{ asset('js/charts/stock-dashboard.js') }}"></script>
+ <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const {
+            phoenix: {
+                echarts: {
+                    echartSetOption
+                },
+                colors
+            }
+        } = window;
+
+        const chartEl = document.querySelector('.echart-basic-bar-chart-example');
+
+        if (chartEl) {
+            const userOptions = {
+                // Remplacez ces données par les vôtres
+                xAxis: {
+                    data: ['Catégorie 1', 'Catégorie 2', 'Catégorie 3', 'Catégorie 4', 'Catégorie 5']
+                },
+                series: [{
+                    name: 'Nombre de votes',
+                    data: [120, 200, 150, 80, 70], // Données de vote pour chaque catégorie
+                    itemStyle: {
+                        color: colors.primary
+                    }
+                }],
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
+                    },
+                    formatter: '{b}: {c} votes'
+                }
+            };
+
+            echartSetOption(chartEl, userOptions, () => ({
+                // Options de base d'ECharts ici si nécessaire
+            }));
+        }
+    });
+ </script>
+     <script src="{{ asset('public/vendors/popper/popper.min.js') }}"></script>
+    <script src="{{ asset('public/vendors/bootstrap/bootstrap.min.js') }}"></script>
+    <script src="{{ asset('public/vendors/anchorjs/anchor.min.js') }}"></script>
+    <script src="{{ asset('public/vendors/is/is.min.js') }}"></script>
+    <script src="{{ asset('public/vendors/fontawesome/all.min.js') }}"></script>
+    <script src="{{ asset('public/vendors/lodash/lodash.min.js') }}"></script>
+    <script src="{{ asset('public/vendors/list.js/list.min.js') }}"></script>
+    <script src="{{ asset('public/vendors/feather-icons/feather.min.js') }}"></script>
+    <script src="{{ asset('public/vendors/dayjs/dayjs.min.js') }}"></script>
+    <script src="{{ asset('public/assets/js/phoenix.js') }}"></script>
+    
 @endpush
-
-
-
