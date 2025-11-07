@@ -7,11 +7,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Configuration;
 use App\Models\Secteur;
 use App\Models\Projet;
+use App\Models\Submission;
 use App\Models\Vote;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon; // Import Carbon for date manipulation
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -19,32 +21,156 @@ class DashboardController extends Controller
     /**
      * Affiche le tableau de bord principal de l'administration.
      */
-    public function index(): View
-    {
-        // On récupère tous les projets qui ont été validés pour le vote.
-        // On utilise withCount('votes') pour que Laravel compte automatiquement
-        // le nombre de votes associés à chaque projet.
-        $projets = Projet::where('validation_admin', 1)
-            ->with('secteur') // On charge aussi le secteur pour l'afficher
-            ->withCount('votes') // Crée une colonne 'votes_count'
-            ->orderBy('votes_count', 'desc') // On trie par nombre de votes
-            ->get();
+public function index(): View
+{
+    $projets = Projet::where('validation_admin', 1)
+        ->with('secteur')
+        ->withCount('votes')
+        ->orderBy('votes_count', 'desc')
+        ->get();
 
-        // On récupère le statut actuel du vote
-        $voteStatus = Configuration::where('cle', 'vote_status')->first();
+    // Statut du vote
+    $voteStatus = Configuration::where('cle', 'vote_status')->first();
+    $currentStatus = $voteStatus ? $voteStatus->valeur : 'inactive';
 
-        // Récupérer les heures de début et de fin du vote
-        $voteStartTimeConfig = Configuration::where('cle', 'vote_start_time')->first();
-        $voteEndTimeConfig = Configuration::where('cle', 'vote_end_time')->first();
+    // Statistiques générales
+    $totalProjets = Projet::where('validation_admin', 1)->count();
+    $totalVotes = Vote::count();
+    $totalVotants = Vote::distinct('telephone')->count('telephone');
+    $projetEnTete = $projets->first();
 
-        // Si la configuration n'existe pas, on la crée avec la valeur 'inactive' par défaut
-        $currentStatus = $voteStatus ? $voteStatus->valeur : 'inactive';
-        $voteStartTime = $voteStartTimeConfig ? $voteStartTimeConfig->valeur : null;
-        $voteEndTime = $voteEndTimeConfig ? $voteEndTimeConfig->valeur : null;
+    // ✅ Votes par Projet (Top 20)
+    $projetsLesPlusVotes = Projet::where('validation_admin', 1)
+        ->withCount('votes')
+        ->orderBy('votes_count', 'desc')
+        ->take(20)
+        ->get();
 
-        
-    return view('admin.dashboard', compact('projets', 'currentStatus', 'voteStartTime', 'voteEndTime'));
+    $projetLabels = $projetsLesPlusVotes->pluck('nom_projet');
+    $projetData = $projetsLesPlusVotes->pluck('votes_count');
+
+    // ✅ Votes par type de profil (Étudiant, Startup, Citoyens)
+    $votesParProfileType = Projet::where('validation_admin', 1)
+        ->with('submission')
+        ->withCount('votes')
+        ->get()
+        ->groupBy(function ($projet) {
+            return $projet->submission->profile_type ?? 'unknown';
+        })
+        ->map(function ($projectsGroup) {
+            return $projectsGroup->sum('votes_count');
+        });
+
+    $profileTypeLabels = $votesParProfileType->keys()->map(function ($type) {
+        return [
+            'student' => 'Étudiant',
+            'startup' => 'Startup',
+            'other' => 'Citoyens',
+        ][$type] ?? 'Inconnu';
+    });
+    $profileTypeData = $votesParProfileType->values();
+
+    // ✅ Votes par Catégorie (ou Secteur)
+    $votesParCategorie = Secteur::with(['projets' => function ($query) {
+        $query->where('validation_admin', 1)->withCount('votes');
+    }])
+    ->get()
+    ->map(function ($secteur) {
+        $secteur->total_votes = $secteur->projets->sum('votes_count');
+        return $secteur;
+    });
+
+    $categorieLabels = $votesParCategorie->pluck('nom');
+    $categorieData = $votesParCategorie->pluck('total_votes');
+
+    // --- NOUVEAU : Données pour l'évolution des votes par jour ---
+    // Récupérer toutes les dates où il y a eu des votes
+    $allVoteDates = Vote::select(DB::raw('DATE(created_at) as vote_date'))
+        ->distinct()
+        ->orderBy('vote_date', 'asc')
+        ->pluck('vote_date');
+
+    $dailyVoteLabels = $allVoteDates->map(fn($date) => Carbon::parse($date)->format('d/m'))->toArray();
+
+    // Calculer le total des votes par jour
+    $totalDailyVotesCollection = Vote::select(DB::raw('DATE(created_at) as vote_date'), DB::raw('count(*) as total_votes_count'))
+        ->groupBy('vote_date')
+        ->orderBy('vote_date', 'asc')
+        ->get()
+        ->keyBy('vote_date');
+
+    $dailyVoteData = [];
+    foreach ($allVoteDates as $date) {
+        $dailyVoteData[] = $totalDailyVotesCollection->has($date) ? $totalDailyVotesCollection[$date]->total_votes_count : 0;
     }
+
+    // Récupérer les 3 projets les plus votés
+    $top3Projects = Projet::where('validation_admin', 1)
+        ->withCount('votes')
+        ->orderBy('votes_count', 'desc')
+        ->take(3)
+        ->get();
+
+    $top3ProjectsDailyData = [];
+    $top3ProjectNames = [];
+    $colors = ['#5470C6', '#91CC75', '#EE6666']; // Couleurs pour les séries
+
+    foreach ($top3Projects as $index => $project) {
+        $projectDailyVotes = Vote::where('projet_id', $project->id)
+            ->select(DB::raw('DATE(created_at) as vote_date'), DB::raw('count(*) as project_daily_votes'))
+            ->groupBy('vote_date')
+            ->orderBy('vote_date', 'asc')
+            ->get()
+            ->keyBy('vote_date');
+
+        $dailyDataForProject = [];
+        foreach ($allVoteDates as $date) {
+            $dailyDataForProject[] = $projectDailyVotes->has($date) ? $projectDailyVotes[$date]->project_daily_votes : 0;
+        }
+        $top3ProjectsDailyData[] = [
+            'name' => $project->nom_projet,
+            'type' => 'line',
+            'stack' => 'Total', // Pour un graphique en aires empilées
+            'areaStyle' => [],
+            'emphasis' => ['focus' => 'series'],
+            'data' => $dailyDataForProject,
+            'color' => $colors[$index] ?? '#ccc' // Assigner une couleur
+        ];
+        $top3ProjectNames[] = $project->nom_projet;
+    }
+
+    // Préparer les données pour ECharts
+    $allSeriesData = [
+        [
+            'name' => 'Total Votes',
+            'type' => 'line',
+            'stack' => 'Total',
+            'areaStyle' => [],
+            'emphasis' => ['focus' => 'series'],
+            'data' => $dailyVoteData,
+            'color' => '#FAC858' // Couleur distincte pour le total
+        ]
+    ];
+
+    // Fusionner les données des 3 meilleurs projets
+    $allSeriesData = array_merge($allSeriesData, $top3ProjectsDailyData);
+
+    // Fusionner tous les noms pour la légende
+    $allLegendNames = array_merge(['Total Votes'], $top3ProjectNames);
+    // --- FIN NOUVEAU ---
+
+    // ✅ Envoi à la vue
+    return view('admin.dashboard', compact(
+        'projets', 'currentStatus',
+        'totalProjets', 'totalVotes', 'totalVotants', 'projetEnTete',
+        'projetLabels', 'projetData',
+        'profileTypeLabels', 'profileTypeData',
+        'categorieLabels', 'categorieData',
+        'dailyVoteLabels', 'allSeriesData', 'allLegendNames', 'top3Projects' // Ajout des nouvelles données
+    ));
+}
+
+
 
     /**
      * Affiche la page des statistiques de vote.
