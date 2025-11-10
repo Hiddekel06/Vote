@@ -80,6 +80,71 @@
            </div>
        </div>
 
+       {{-- NOUVEAU : Contrôle du système de vote --}}
+       <div class="row g-3 mb-4">
+           <div class="col-12">
+               <div class="card">
+                   <div class="card-header">
+                       <h5 class="mb-0">Contrôle du système de vote</h5>
+                   </div>
+                   <div class="card-body">
+                       <div class="form-check form-switch">
+                           <input class="form-check-input" type="checkbox" id="voteStatusToggle"
+                               data-url="{{ route('admin.vote.status.update') }}"
+                               {{ $currentStatus === 'active' ? 'checked' : '' }}>
+                           <label class="form-check-label" for="voteStatusToggle">
+                               <span id="voteStatusLabel">{{ $currentStatus === 'active' ? 'Vote Actif' : 'Vote Inactif' }}</span>
+                           </label>
+                       </div>
+                       <p class="text-muted mt-2" id="voteStatusMessage">
+                           Le système de vote est actuellement {{ $currentStatus === 'active' ? 'ouvert' : 'fermé' }}.
+                       </p>
+                   </div>
+               </div>
+           </div>
+       </div>
+
+       <script>
+           document.addEventListener('DOMContentLoaded', function() {
+               const voteStatusToggle = document.getElementById('voteStatusToggle');
+               const voteStatusLabel = document.getElementById('voteStatusLabel');
+               const voteStatusMessage = document.getElementById('voteStatusMessage');
+
+               voteStatusToggle.addEventListener('change', function() {
+                   const newStatus = this.checked ? 'active' : 'inactive';
+                   const url = this.dataset.url;
+
+                   fetch(url, {
+                       method: 'PATCH',
+                       headers: {
+                           'Content-Type': 'application/json',
+                           'X-CSRF-TOKEN': '{{ csrf_token() }}', // Laravel CSRF token
+                           'Accept': 'application/json'
+                       },
+                       body: JSON.stringify({ vote_status: newStatus })
+                   })
+                   .then(response => response.json())
+                   .then(data => {
+                       if (data.success) {
+                           voteStatusMessage.textContent = `Le système de vote est actuellement ${newStatus === 'active' ? 'ouvert' : 'fermé'}.`;
+                           voteStatusLabel.textContent = newStatus === 'active' ? 'Vote Actif' : 'Vote Inactif';
+                           // Optionally, display a success toast/alert
+                           // alert(data.message); // Uncomment for a simple alert
+                       } else {
+                           // Revert toggle state if update failed
+                           this.checked = !this.checked;
+                           alert('Erreur lors de la mise à jour du statut du vote: ' + (data.message || ''));
+                       }
+                   })
+                   .catch(error => {
+                       console.error('Error:', error);
+                       this.checked = !this.checked; // Revert on network error
+                       alert('Une erreur est survenue lors de la communication avec le serveur.');
+                   });
+               });
+           });
+       </script>
+
        <div class="row g-3 mb-4">
            <div class="col-12">
                <div class="card">

@@ -37,7 +37,8 @@
     <link href="{{ asset('public/assets/css/theme-rtl.min.css') }}" type="text/css" rel="stylesheet" id="style-rtl">
     <link href="{{ asset('public/assets/css/theme.min.css') }}" type="text/css" rel="stylesheet" id="style-default">
     <link href="{{ asset('public/assets/css/user-rtl.min.css') }}" type="text/css" rel="stylesheet" id="user-style-rtl">
-    <link href="{{ asset('public/assets/css/user.min.css') }}" type="text/css" rel="stylesheet" id="user-style-default">
+    <link href="{{ asset('public/assets/css/user.min.css') }}" type="text/css" rel="stylesheet" id="user-style-default"> 
+    <script src="{{ asset('public/vendors/echarts/echarts.min.js') }}"></script>
     <script>
       var phoenixIsRTL = window.config.config.phoenixIsRTL;
       if (phoenixIsRTL) {
@@ -185,19 +186,93 @@
         </div>
       </nav>
       <div class="content">
-        
-        @yield('content')
+        {{-- Le contenu de votre tableau de bord ira ici --}}
+        <div class="pb-5">
+            <div class="row g-4">
+                <div class="col-12">
+                    <h2 class="mb-2">Tableau de bord GovAthon</h2>
+                    <h5 class="text-body-tertiary fw-semibold">Vue d'ensemble des statistiques de vote</h5>
+                </div>
 
-        <footer class="footer position-absolute">
-          <div class="row g-0 justify-content-between align-items-center h-100">
-            <div class="col-12 col-sm-auto text-center">
-              <p class="mb-0 mt-2 mt-sm-0 text-body">Thank you for creating with Phoenix<span class="d-none d-sm-inline-block"></span><span class="d-none d-sm-inline-block mx-1">|</span><br class="d-sm-none" />2025 &copy;<a class="mx-1" href="https://themewagon.com">Themewagon</a></p>
+                {{-- Carte pour le graphique des votes par secteur --}}
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="mb-0">Votes par Secteur</h5>
+                        </div>
+                        <div class="card-body d-flex flex-column justify-content-between">
+                            <div id="votes-by-sector-chart" style="height: 300px; width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Vous pouvez ajouter d'autres cartes ou contenus ici --}}
+
             </div>
-            <div class="col-12 col-sm-auto text-center">
-              <p class="mb-0 text-body-tertiary text-opacity-85">v1.22.0</p>
-            </div>
-          </div>
-        </footer>
+        </div>
+
+        {{-- Le footer est déjà présent dans votre layout --}}
+        <script>
+            // Données de remplacement pour le graphique.
+            // En production, ces données devraient être passées dynamiquement depuis votre contrôleur Laravel.
+            // Par exemple, si votre contrôleur passe $secteurLabels et $secteurData:
+            // var secteurLabels = @json($secteurLabels ?? ['Secteur A', 'Secteur B', 'Secteur C', 'Secteur D']);
+            // var secteurData = @json($secteurData ?? [120, 200, 150, 80]);
+
+            // Données statiques pour la démonstration
+            var secteurLabels = ['Éducation', 'Santé', 'Environnement', 'Transport', 'Économie Numérique', 'Gouvernance'];
+            var secteurData = [250, 180, 300, 120, 400, 150];
+
+            var chartDom = document.getElementById('votes-by-sector-chart');
+            var myChart = echarts.init(chartDom);
+            var option;
+
+            option = {
+                title: {
+                    text: 'Répartition des votes par secteur',
+                    left: 'center',
+                    textStyle: {
+                        color: '#fff' // Couleur du texte du titre pour le thème sombre
+                    }
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
+                    }
+                },
+                xAxis: {
+                    type: 'category',
+                    data: secteurLabels,
+                    axisLabel: {
+                        color: '#A0AEC0' // Couleur des labels de l'axe X
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        color: '#A0AEC0' // Couleur des labels de l'axe Y
+                    }
+                },
+                series: [{
+                    name: 'Nombre de Votes',
+                    type: 'bar',
+                    data: secteurData,
+                    itemStyle: {
+                        color: '#34D399' // Couleur des barres (vert émeraude)
+                    }
+                }]
+            };
+
+            if (option && typeof option === 'object') {
+                myChart.setOption(option);
+            }
+
+            // Gérer le redimensionnement du graphique
+            window.addEventListener('resize', function() {
+                myChart.resize();
+            });
+        </script>
       </div>
       
     </main>

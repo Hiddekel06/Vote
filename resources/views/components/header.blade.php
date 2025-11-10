@@ -14,13 +14,16 @@
                 Accueil
             </a>
             
-            <a href="{{ route('vote.index') }}" 
+            <a href="{{ route('projets.classement') }}" 
                class="font-semibold hover:text-emerald-300 transition-colors duration-300 [text-shadow:_0_1px_10px_rgb(255_255_255_/_30%)]
                       {{ request()->routeIs('projets.classement') ? 'text-white' : 'text-gray-300' }}">
                 Classement
             </a>
 
-            <a href="#" class="font-semibold text-gray-300 hover:text-emerald-300 transition-colors duration-300 [text-shadow:_0_1px_10px_rgb(255_255_255_/_30%)]">À Propos</a>
+            <a href="{{ route('apropos') }}"
+               class="font-semibold hover:text-emerald-300 transition-colors duration-300 [text-shadow:_0_1px_10px_rgb(255_255_255_/_30%)]
+                      {{ request()->routeIs('apropos') ? 'text-white' : 'text-gray-300' }}">
+                À Propos</a>
         </nav>
     </div>
     {{-- Ligne de séparation fine et lumineuse --}}

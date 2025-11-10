@@ -100,11 +100,18 @@ class VoteController extends Controller
         // On trie les pays par nom pour un affichage plus convivial
         usort($countries, fn($a, $b) => $a['name'] <=> $b['name']);
 
+        // On charge la liste de toutes les catégories pour le menu de navigation
+        $allCategories = collect([
+            (object) ['nom' => 'Étudiant', 'slug' => 'student'],
+            (object) ['nom' => 'Startup', 'slug' => 'startup'],
+            (object) ['nom' => 'Citoyens', 'slug' => 'other'],
+        ]);
+
         // 🚀 On récupère le statut du vote pour le passer à la vue
         $voteStatusDetails = $this->getVoteStatusDetails();
 
 
-        return view('vote_secteurs', compact('secteurs', 'countries', 'voteStatusDetails', 'categorie'));
+        return view('vote_secteurs', compact('secteurs', 'countries', 'voteStatusDetails', 'categorie', 'allCategories'));
     }
 
     /**

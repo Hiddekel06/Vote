@@ -2,11 +2,12 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\VoteController;
-use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\VoteController; 
+use App\Http\Controllers\Admin\DashboardController; 
 use App\Http\Controllers\Admin\VoteStatusController;
 use App\Http\Controllers\ProjetController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\ClassementController;
 use App\Helpers\FileChecker;
 use App\Http\Controllers\OrangeSmsController;
 
@@ -33,9 +34,8 @@ Route::post('/vote/verifier-otp', [VoteController::class, 'verifierOtp'])
     ->middleware('throttle:5,10') // Limite à 5 tentatives de vérification toutes les 10 minutes par IP
     ->name('vote.verifierOtp');
 
-// 🔹 Page de classement des projets
-Route::get('/classement/{profile_type}', [ProjetController::class, 'index'])->name('projets.classement')
-    ->whereIn('profile_type', ['student', 'startup', 'other']);
+// 🔹 Page de classement des projets (Général et par catégorie)
+Route::get('/classement', [ClassementController::class, 'index'])->name('projets.classement');
 
 // Route pour le partage d'un projet
 // --- Section Administrateur ---
@@ -88,5 +88,7 @@ Route::get('/check-assets', function() {
     }
 });
 Route::post('/send-otp', [OrangeSmsController::class, 'sendOtp']);
+
+Route::get('/apropos', [App\Http\Controllers\PageController::class, 'apropos'])->name('apropos');
 
 require __DIR__.'/auth.php';

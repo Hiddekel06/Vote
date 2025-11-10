@@ -207,9 +207,35 @@
 
     <main class="flex-grow container mx-auto px-4 py-12 flex items-center">
         <div class="bg-black bg-opacity-60 p-8 rounded-lg shadow-2xl max-w-6xl mx-auto">
-            <h1 class="text-3xl font-bold text-center mb-4 text-yellow-400">
-                Projets de la catégorie : <span class="text-white">{{ $categorie->nom }}</span>
-            </h1>
+            <div class="text-center mb-4">
+                <div x-data="{ open: false }" class="relative inline-block text-left">
+                    <div>
+                        <button @click="open = !open" type="button" class="inline-flex justify-center items-center w-full rounded-md px-4 py-2 text-3xl font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none" id="menu-button" aria-expanded="true" aria-haspopup="true">
+                            Projets : <span class="text-white ml-2">{{ $categorie->nom }}</span>
+                            <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div x-show="open"
+                         @click.away="open = false"
+                         x-transition:enter="transition ease-out duration-100"
+                         x-transition:enter-start="transform opacity-0 scale-95"
+                         x-transition:enter-end="transform opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="transform opacity-100 scale-100"
+                         x-transition:leave-end="transform opacity-0 scale-95"
+                         class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+                         role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1">
+                        <div class="py-1" role="none">
+                            @foreach($allCategories->where('slug', '!=', $categorie->slug) as $cat)
+                                <a href="{{ route('vote.secteurs', ['profile_type' => $cat->slug]) }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm" role="menuitem" tabindex="-1">{{ $cat->nom }}</a>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
             <p class="text-center text-gray-300 mb-8">Recherchez un projet, une équipe ou un secteur, puis votez pour votre préféré.</p>
 
             <!-- Barre de recherche -->
@@ -238,11 +264,21 @@
                     modalProjet: null,
                     showVoteModal: false,
                     voteProjet: null,
+                    // 🚀 Ajout des variables pour le statut du vote
+                    isVoteActive: {{ json_encode($voteStatusDetails['isVoteActive']) }},
+                    inactiveMessage: {{ json_encode($voteStatusDetails['inactiveMessage']) }},
                     voteStep: 1,
                     isLoading: false,
                     errorMessage: '',
                     successMessage: '',
                     descriptionExpanded: false 
+                 }"
+                 x-init="
+                    // Si le vote est inactif, on initialise la modale pour afficher directement le message
+                    if (!isVoteActive) {
+                        voteStep = 3;
+                        errorMessage = inactiveMessage;
+                    }
                  }" @keydown.escape.window="showModal = false; showVoteModal = false">
 
                 {{-- Message "aucun résultat" géré par JS --}}
@@ -273,24 +309,38 @@
                                         <td class="block md:table-cell p-4 text-center align-middle">
                                             <div class="flex flex-col md:flex-row items-center justify-center gap-2">
 
-                                                <!-- Bouton Détails -->
+                                                <!-- Bouton Détails  -->
                                                 <button 
                                                     type="button"
-                                                    class="skew-btn w-full md:w-auto bg-gray-600 text-white hover:text-white"
+                                                    class="group flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 text-sm font-semibold text-gray-300 bg-transparent border border-gray-600 rounded-lg hover:border-yellow-400 hover:text-white transition-all duration-300 transform hover:scale-105"
                                                     @click="modalProjet = @js($projet); showModal = true; descriptionExpanded = false">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
                                                     Détails
                                                 </button>
 
-                                                <!-- Bouton Voter -->
+                                                <!-- Bouton Voter  -->
                                                 <button
                                                     type="button"
-                                                    class="skew-btn w-full md:w-auto bg-blue-800 text-white hover:text-white"
+                                                    class="group flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
+                                                    :class="{
+                                                        'bg-yellow-400 text-gray-900 hover:bg-yellow-300': isVoteActive,
+                                                        'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive
+                                                    }"
                                                     {{-- Réinitialise l'état de la modale à chaque ouverture --}}
+                                                    :disabled="!isVoteActive"
                                                     @click="
-                                                        voteProjet = @js($projet);
-                                                        showVoteModal = true;
-                                                        voteStep = 1; errorMessage = ''; successMessage = '';
+                                                        voteProjet = @js($projet); // Toujours définir le projet pour le contexte
+                                                        showVoteModal = true; // Toujours ouvrir la modale
+                                                        voteStep = isVoteActive ? 1 : 3; // Étape 1 si actif, Étape 3 (message) si inactif
+                                                        errorMessage = isVoteActive ? '' : inactiveMessage; // Message d'erreur si inactif
+                                                        successMessage = ''; // Réinitialiser le message de succès
                                                     ">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
                                                     Voter
                                                 </button>
                                                 <!-- Bouton Partager -->
@@ -340,7 +390,7 @@
                             <!-- En-tête -->
                             <div class="p-6 border-b border-gray-700 flex-shrink-0">
                                 <button @click="showModal = false" class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
-                                <h2 class="text-2xl sm:text-3xl font-bold text-yellow-400 mb-2" x-text="modalProjet?.nom_projet"></h2>
+                                <h2 class="text-2xl sm:text-3xl font-bold text-gray-400 mb-2" x-text="modalProjet?.nom_projet"></h2>
                                 <p class="text-md sm:text-lg text-gray-300">
                                     par <span class="font-semibold" x-text="modalProjet?.nom_equipe"></span>
                                 </p>
@@ -348,11 +398,11 @@
 
                             <!-- Contenu -->
                             <div class="p-6 space-y-4 text-gray-200 overflow-y-auto scrollbar-thin">
-                                <p><strong class="text-yellow-300">Résumé :</strong> 
+                                <p><strong class="text-gray-300">Résumé :</strong> 
                                     <span class="whitespace-pre-wrap" x-text="modalProjet?.resume"></span>
                                 </p>
                                 <div>
-                                    <strong class="text-yellow-300">Description :</strong>
+                                    <strong class="text-gray-300">Description :</strong>
                                     <div class="whitespace-pre-wrap" :class="{'max-h-24 overflow-hidden': !descriptionExpanded && modalProjet?.description.length > 250}">
                                         <span x-text="modalProjet?.description"></span>
                                     </div>
