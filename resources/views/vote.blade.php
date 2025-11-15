@@ -4,40 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Votez pour votre projet préféré - GovAthon</title>
-
-    <!-- Alpine.js et Tailwind -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+ 
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <!-- Police Google "Poppins" -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        poppins: ['Poppins', 'sans-serif'],
-                    },
-                },
-            },
-        }
-    </script>
-
-    <style>
-        html, body {
-            background-color: #000000; /* Noir pur */
-            scroll-behavior: smooth;
-        }
-        .bg-image-custom {
-            background-image: url('{{ asset('images/logoBG.jpg') }}');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }
-    </style>
 </head>
 <body class="bg-black text-white bg-image-custom font-poppins flex flex-col min-h-screen">
 
@@ -47,8 +20,11 @@
     <!-- Main content -->
     <main class="flex-grow px-4 py-16 text-center max-w-5xl mx-auto flex items-center justify-center">
         {{-- On ajoute un conteneur Alpine.js pour gérer l'état de l'animation --}}
-        <div class="w-full" x-data="{ cardsVisible: false }" x-init="setTimeout(() => { cardsVisible = true }, 100)">
-            <h1 class="text-3xl sm:text-4xl font-bold text-yellow-400 mb-4">Choisissez une catégorie</h1>
+        <div class="w-full" x-data="{ visible: false }" x-init="setTimeout(() => { visible = true }, 100)">
+
+            <h1 class="text-3xl sm:text-4xl font-bold text-yellow-400 mb-4 transition-all duration-700"
+                :class="visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-5'">Choisissez une catégorie</h1>
+            
             <p class="text-gray-300 mb-10">Sélectionnez une catégorie pour découvrir les projets en compétition.</p>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -56,7 +32,7 @@
                     {{-- Ajout des classes de transition et de l'attribut de style pour le délai --}}
                     <a href="{{ route('vote.secteurs', ['profile_type' => $categorie->slug]) }}"
                        class="group block bg-black/50 backdrop-blur-sm border border-yellow-400/50 rounded-xl p-6 transform hover:scale-105 hover:shadow-xl hover:shadow-yellow-400/10 transition-all duration-500"
-                       :class="cardsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
+                       :class="visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
                        style="transition-delay: {{ $index * 150 }}ms;">  
                         <div class="flex flex-col justify-between h-full text-left">
                             <div class="flex-grow">
@@ -80,7 +56,7 @@
                                         </svg>
                                     @endif
                                 </div>
-                                <h2 class="text-2xl font-bold text-white group-hover:text-yellow-400 transition-colors duration-300">
+                                <h2 class="text-2xl font-bold text-white group-hover:text-yellow-200 transition-colors duration-300">
                                     {{ $categorie->nom }}
                                 </h2>
                                 <p class="mt-3 text-gray-400 text-sm leading-relaxed">

@@ -1,3 +1,89 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* c:\xampp\htdocs\Laravel\GovAthon\public\css\app.css */
+html, body {
+    background-color: #000000; /* Noir pur */
+}
+.bg-image-custom {
+    /* Le chemin est relatif au fichier CSS */
+    background-image: url('../../../public/images/LogoBG.jpg');
+}
+
+/* Style personnalisé pour les boutons avec effet skew */
+.skew-btn {
+    position: relative;
+    display: inline-block;
+    border: none;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.5s;
+    z-index: 1;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.skew-btn::before {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 100%;
+    left: 0;
+    background: rgb(20, 20, 20);
+    opacity: 0;
+    z-index: -1;
+    content: '';
+    transition: all 0.5s;
+}
+
+.skew-btn:hover::before {
+    left: 0;
+    right: 0;
+    opacity: 1;
+}
+/* Pour Firefox */
+.scrollbar-thin {
+    scrollbar-width: thin;          /* rend la barre plus fine */
+    scrollbar-color: #facc15 #1f2937; /* couleur : thumb / track */
+}
+
+/* Pour Chrome, Edge, Safari */
+.scrollbar-thin::-webkit-scrollbar {
+    width: 6px;   /* largeur de la scrollbar */
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: #1f2937;  /* couleur de la piste */
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #facc15; /* couleur du “thumb” */
+    border-radius: 10px;
+    border: 2px solid #1f2937; /* espace autour */
+}
+
+@keyframes rotate {
+    100% {
+        transform: rotate(1turn);
+    }
+}
+
+.rainbow::before {
+    content: '';
+    position: absolute;
+    z-index: -2;
+    left: -50%;
+    top: -50%;
+    width: 200%;
+    height: 200%;
+    background-position: 100% 50%;
+    background-repeat: no-repeat;
+    background-size: 50% 30%;
+    filter: blur(6px);
+    background-image: linear-gradient(#FF0A7F,#780EFF);
+    animation: rotate 4s linear infinite;
+}

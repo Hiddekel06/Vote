@@ -5,201 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Votez pour votre projet - GovAthon</title>
 
-    <!-- Alpine.js et Tailwind -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    {{-- 1. Alpine se  charge en premier --}}
-    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     {{-- 2. On place le script qui utilise Alpine APRÈS, et on le "defer" aussi pour qu'il attende --}}
-   
-   <script>
-        console.log('Le bloc <script> de la page vote_secteurs est en cours de lecture.');
-
-        document.addEventListener('alpine:init', () => {
-            const alpineScope = Alpine.$data(document.querySelector('[x-data]'));
-            console.log('✅ Alpine prêt', alpineScope);
-
-            const otpRequestForm = document.getElementById('otp-request-form');
-            const submitVoteBtn = document.getElementById('submit-vote-btn');
-            console.log('Bouton "Recevoir le code" trouvé:', submitVoteBtn); // <-- PREMIER CONSOLE.LOG
-            const otpVerifyForm = document.getElementById('otp-verify-form');
-            const submitOtpBtn = document.getElementById('submit-otp-btn');
-
-            // Envoi OTP
-            submitVoteBtn.addEventListener('click', async () => {
-                console.log('Clic détecté sur le bouton "Recevoir le code"'); // <-- DEUXIÈME CONSOLE.LOG
-
-                alpineScope.isLoading = true;
-                alpineScope.errorMessage = '';
-
-                const countryCode = document.getElementById('country_code').value;
-                const phoneDisplay = document.getElementById('telephone_display').value;
-                document.getElementById('telephone_full').value = countryCode + phoneDisplay;
-
-                grecaptcha.ready(function() {
-                    grecaptcha.execute(otpRequestForm.dataset.recaptchaKey, { action: 'vote' })
-                        .then(async function(token) {
-                            document.getElementById('recaptcha-token').value = token;
-
-                            const formData = new FormData(otpRequestForm);
-                            const url = otpRequestForm.dataset.sendOtpUrl;
-                            console.log('Numéro complet:', document.getElementById('telephone_full').value);
-
-
-                            try {
-                                const response = await fetch(url, {
-                                    method: 'POST',
-                                    headers: {
-                                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                                        'Accept': 'application/json',
-                                    },
-                                    body: formData
-                                });
-
-                                const data = await response.json();
-                                if (!response.ok) throw new Error(data.message || 'Erreur serveur.');
-
-                                if (data.success) {
-                                    alpineScope.voteStep = 2;
-                                }
-                            } catch (error) {
-                                alpineScope.errorMessage = error.message;
-                            } finally {
-                                alpineScope.isLoading = false;
-                            }
-                        });
-                });
-            });
-
-            // Validation OTP
-            submitOtpBtn.addEventListener('click', async () => {
-                alpineScope.isLoading = true;
-                alpineScope.errorMessage = '';
-
-                const formData = new FormData(otpVerifyForm);
-                const url = otpVerifyForm.dataset.verifyOtpUrl;
-                console.log('Numéro complet:', document.getElementById('telephone_full').value);
-
-
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                            'Accept': 'application/json',
-                        },
-                        body: formData
-                    });
-
-                    const data = await response.json();
-                    if (!response.ok) throw new Error(data.message || 'Erreur lors de la vérification.');
-
-                    if (data.success) {
-                        alpineScope.successMessage = data.message;
-                        alpineScope.voteStep = 3;
-                    }
-                } catch (error) {
-                    alpineScope.errorMessage = error.message;
-                    if (error.message.includes('expiré') || error.message.includes('invalide')) {
-                        alpineScope.voteStep = 3;
-                    }
-                } finally {
-                    alpineScope.isLoading = false;
-                }
-            });
-
-        });
-    </script>
 
     <!-- Police -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <script>
-    tailwind.config = {
-        theme: {
-            extend: {
-                fontFamily: { 
-                    poppins: [
-                        'Poppins', 
-                        'Segoe UI Emoji', 
-                        'Apple Color Emoji', 
-                        'Noto Color Emoji', 
-                        'sans-serif'
-                    ] 
-                },
-            },
-        },
-    }
-</script>
-
-
-    <style>
-        html, body {
-            background-color: #000000; /* Noir pur */
-        }
-        .bg-image-custom {
-            background-image: url('{{ asset('images/LogoBG.jpg') }}');
-        }
-    </style>
-    <style>
-        /* Style personnalisé pour les boutons avec effet skew */
-        .skew-btn {
-            position: relative;
-            display: inline-block;
-            border: none;
-            padding: 10px 20px;
-            font-size: 14px;
-            font-weight: 600;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.5s;
-            z-index: 1;
-            border-radius: 6px;
-            overflow: hidden;
-        }
-
-        .skew-btn::before {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            right: 100%;
-            left: 0;
-            background: rgb(20, 20, 20);
-            opacity: 0;
-            z-index: -1;
-            content: '';
-            transition: all 0.5s;
-        }
-
-        .skew-btn:hover::before {
-            left: 0;
-            right: 0;
-            opacity: 1;
-        }
-        /* Pour Firefox */
-.scrollbar-thin {
-    scrollbar-width: thin;          /* rend la barre plus fine */
-    scrollbar-color: #facc15 #1f2937; /* couleur : thumb / track */
-}
-
-/* Pour Chrome, Edge, Safari */
-.scrollbar-thin::-webkit-scrollbar {
-    width: 6px;   /* largeur de la scrollbar */
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-    background: #1f2937;  /* couleur de la piste */
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: #facc15; /* couleur du “thumb” */
-    border-radius: 10px;
-    border: 2px solid #1f2937; /* espace autour */
-}
-
-    </style>
 </head>
 <body class="bg-black text-white flex flex-col min-h-screen bg-cover bg-center bg-fixed bg-image-custom font-poppins">
 
@@ -210,7 +23,7 @@
             <div class="text-center mb-4">
                 <div x-data="{ open: false }" class="relative inline-block text-left">
                     <div>
-                        <button @click="open = !open" type="button" class="inline-flex justify-center items-center w-full rounded-md px-4 py-2 text-3xl font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none" id="menu-button" aria-expanded="true" aria-haspopup="true">
+                        <button @click="open = !open" type="button" class="inline-flex justify-center items-center w-full rounded-md px-4 py-2 text-2xl sm:text-3xl font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none" id="menu-button" aria-expanded="true" aria-haspopup="true">
                             Projets : <span class="text-white ml-2">{{ $categorie->nom }}</span>
                             <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -368,7 +181,7 @@
                 <div 
                         x-show="showModal"
                         style="display: none;"
-                        class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+                        class="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-50 p-4"
                         x-transition:enter="transition ease-out duration-300"
                         x-transition:enter-start="opacity-0"
                         x-transition:enter-end="opacity-100"
@@ -378,7 +191,7 @@
 
                         <div 
                             @click.away="showModal = false"
-                            class="bg-gray-900/95 border border-yellow-400/30 rounded-lg shadow-2xl max-w-2xl w-full text-white relative flex flex-col"
+                            class="bg-gray-900/95  border-yellow-400/30 rounded-lg shadow-2xl max-w-2xl w-full text-white relative flex flex-col"
                             style="max-height: 90vh;"
                             x-transition:enter="transition ease-out duration-300"
                             x-transition:enter-start="opacity-0 transform scale-90"
@@ -426,7 +239,7 @@
                 <div
                     x-show="showVoteModal"
                     style="display: none;"
-                    class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+                    class="fixed inset-0 bg-black/5  backdrop-blur-sm flex items-center justify-center z-50 p-4"
                     x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="opacity-0"
                     x-transition:enter-end="opacity-100"
@@ -436,23 +249,29 @@
 
                     <div
                         @click.away="if (!isLoading) showVoteModal = false"
-                        class="bg-gray-900/95 border border-yellow-400/30 rounded-lg shadow-2xl max-w-lg w-full text-white relative flex flex-col"
+                        class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-2xl max-w-lg w-full text-white relative flex flex-col"
                         x-transition:enter="transition ease-out duration-300"
                         x-transition:enter-start="opacity-0 transform scale-90"
                         x-transition:enter-end="opacity-100 transform scale-100"
                         x-transition:leave="transition ease-in duration-200"
                         x-transition:leave-start="opacity-100 transform scale-100"
                         x-transition:leave-end="opacity-0 transform scale-90">
-
-                        <!-- En-tête -->
-                        <div class="p-6 border-b border-gray-700 flex-shrink-0">
-                            <button @click="if (!isLoading) showVoteModal = false" class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+                        <div class="p-6 border-b border-gray-700 flex-shrink-0 relative">
+                            <button @click="if (!isLoading) showVoteModal = false" class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                             <h2 class="text-2xl font-bold text-yellow-400 mb-2">
                                 Voter pour : <span x-text="voteProjet?.nom_projet"></span>
                             </h2>
                             <p class="text-gray-300">
                                 Équipe : <span class="font-semibold" x-text="voteProjet?.nom_equipe"></span>
                             </p>
+                            <!-- Indicateur de progression -->
+                            <div x-show="voteStep === 1 || voteStep === 2" class="absolute bottom-0 left-6 translate-y-1/2 bg-gray-800 px-3 py-1 rounded-full text-xs text-yellow-300 border border-gray-700">
+                                <span x-text="`Étape ${voteStep} sur 2`"></span>
+                            </div>
                         </div>
 
                         <!-- Contenu (Formulaire) -->
@@ -485,14 +304,14 @@
                                     <div>
                                         <label for="nom_votant" class="block mb-2 text-sm font-medium text-gray-300">Votre nom (Optionnel)</label>
                                         <input type="tel" id="nom_votant" name="nom_votant"
-                                               class="w-full bg-gray-800 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                                               class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
                                                placeholder="Ex: Paul David Mbaye">
                                     </div>
 
                                     <div>
                                         <label for="telephone_display" class="block mb-2 text-sm font-medium text-gray-300">Votre numéro de téléphone</label>
                                         <div class="flex">
-                                            <select id="country_code" name="country_code" class="flex-shrink-0 z-10 inline-flex items-center py-2.5 px-4 text-sm font-medium text-center text-gray-200 bg-gray-700 border border-gray-600 rounded-l-lg hover:bg-gray-600 focus:ring-2 focus:outline-none focus:ring-yellow-400">
+                                            <select id="country_code" name="country_code" class="flex-shrink-0 z-10 inline-flex items-center py-2.5 px-4 text-sm font-medium text-center text-gray-200 bg-gray-800 border border-gray-600 rounded-l-lg hover:bg-gray-700 focus:ring-2 focus:outline-none focus:ring-yellow-400">
                                                 @foreach($countries as $country)
                                                     <option value="{{ $country['dial_code'] }}" @if($country['code'] === 'SN') selected @endif>
                                                         {!! $country['flag'] !!} {{ $country['dial_code'] }}
@@ -501,19 +320,22 @@
                                             </select>
                                             <div class="relative w-full">
                                                 <input type="tel" id="telephone_display" name="telephone_display"
-                                                       class="block p-2.5 w-full z-20 text-sm text-white bg-gray-800 rounded-r-lg border-l-0 border border-gray-600 focus:ring-2 focus:outline-none focus:ring-yellow-400"
+                                                       class="block p-2.5 w-full z-20 text-sm text-white bg-gray-700/50 rounded-r-lg border-l-0 border border-gray-600 focus:ring-2 focus:outline-none focus:ring-yellow-400"
                                                        placeholder="" required>
                                             </div>
                                         </div>
+                                        <p class="mt-2 text-xs text-gray-400">Vous recevrez un code unique par SMS pour valider votre vote.</p>
                                     </div>
 
-                                    <div class="pt-4">
-                                        <button type="button" id="submit-vote-btn"
-                                                class="w-full skew-btn bg-blue-800 text-white hover:text-white flex items-center justify-center"
-                                                :disabled="isLoading">
-                                            <span x-show="!isLoading">Recevoir le code de vote</span>
-                                            <span x-show="isLoading">Envoi en cours...</span>
-                                        </button>
+                                    <div class="pt-4 flex justify-center">
+                                        <div class="rainbow relative z-0 overflow-hidden p-0.5 flex items-center justify-center rounded-full hover:scale-105 transition duration-300 active:scale-100 w-full">
+                                            <button type="button" id="submit-vote-btn"
+                                                    class="w-full px-8 text-sm py-3 text-white rounded-full font-medium bg-gray-900 flex items-center justify-center"
+                                                    :disabled="isLoading">
+                                                <span x-show="!isLoading">Recevoir le code de vote</span>
+                                                <span x-show="isLoading">Envoi en cours...</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                             </div>
@@ -528,7 +350,7 @@
                                     <div>
                                         <label for="otp" class="block mb-2 text-sm font-medium text-gray-300">Code de vérification (OTP)</label>
                                         <input type="text" id="otp" name="otp"
-                                               class="w-full bg-gray-800 border border-gray-600 rounded-lg py-2 px-3 text-white text-center text-2xl tracking-[1em]"
+                                               class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white text-center text-2xl tracking-[1em]"
                                                placeholder="------" required maxlength="6" pattern="\d{6}">
                                     </div>
                                     <div class="pt-4">
@@ -574,5 +396,4 @@
     <script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}"></script>
 
 </body> 
-    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </html>

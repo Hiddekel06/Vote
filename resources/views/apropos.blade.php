@@ -4,28 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>À Propos - GovAthon</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { poppins: ['Poppins', 'sans-serif'] },
-                },
-            },
-        }
-    </script>
-    <style>
-        html, body {
-            background-color: #000000; /* Noir pur */
-        }
-        .bg-image-custom {
-           
-        }
-    </style>
 </head>
 <body class="bg-black text-white bg-image-custom font-poppins flex flex-col min-h-screen antialiased">
 
@@ -65,7 +49,7 @@
                     </div>
                     <!-- Stat 2 -->
                     <div x-animate class="bg-gray-900/50 p-6 rounded-lg border border-gray-800 opacity-0 translate-y-4 transition-all duration-700 ease-out delay-700">
-                        <p class="text-4xl font-bold text-sky-400">50,000+</p>
+                        <p class="text-4xl font-bold text-sky-400">30,000+</p>
                         <p class="text-gray-400 mt-2">Votes Enregistrés</p>
                     </div>
                     <!-- Stat 3 -->
