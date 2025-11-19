@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use libphonenumber\PhoneNumberUtil;
+use libphonenumber\PhoneNumberFormat;
+use libphonenumber\NumberParseException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\OrangeSmsController;
 use Illuminate\Support\Str;
+use Illuminate\Database\QueryException;
 use Illuminate\View\View;
 use App\Models\Commentaire;
 use App\Models\Vote;
@@ -174,10 +178,12 @@ class VoteController extends Controller
      */
     public function envoyerOtp(Request $request): \Illuminate\Http\JsonResponse
     {
+        // Valider les champs reçus (on attend country_code + telephone_display pour pouvoir normaliser)
         $validated = $request->validate([
             'projet_id' => 'required|exists:projets,id',
-            'telephone' => 'required|string|min:9|max:20', // Format international E.164, ex: +221771234567
-            'nom_votant' => 'nullable|string|max:255', // 🚀 Ajout de la validation pour le token reCAPTCHA
+            'country_code' => 'required|string',
+            'telephone_display' => 'required|string',
+            'nom_votant' => 'nullable|string|max:255',
             // On rend le token reCAPTCHA requis uniquement si la fonctionnalité est activée
             'recaptcha_token' => config('services.recaptcha.enabled', false) ? 'required|string' : 'nullable|string',
         ]);
@@ -185,14 +191,52 @@ class VoteController extends Controller
         $this->checkVoteStatus();
 
         $projetId = $validated['projet_id'];
-        $telephone = $validated['telephone'];
-        $nomVotant = $validated['nom_votant'];
+        $nomVotant = $validated['nom_votant'] ?? null;
+
+        // Normalisation du numéro en E.164
+        $countryCode = $validated['country_code'];
+        $telephoneDisplay = $validated['telephone_display'];
+
+        $e164 = null;
+        // Essayer d'utiliser libphonenumber si présent
+        if (class_exists(PhoneNumberUtil::class)) {
+            try {
+                $phoneUtil = PhoneNumberUtil::getInstance();
+                // Construire une chaîne brute: si countryCode contient le +, on conserve
+                $digitsCountry = preg_replace('/\D+/', '', $countryCode);
+                $digitsLocal = preg_replace('/\D+/', '', $telephoneDisplay);
+                $raw = '+' . $digitsCountry . $digitsLocal;
+
+                $proto = $phoneUtil->parse($raw, null);
+                if (!$phoneUtil->isValidNumber($proto)) {
+                    return response()->json(['success' => false, 'message' => 'Numéro de téléphone invalide.'], 422);
+                }
+                $e164 = $phoneUtil->format($proto, PhoneNumberFormat::E164);
+            } catch (NumberParseException $e) {
+                return response()->json(['success' => false, 'message' => 'Impossible d’analyser le numéro. Vérifiez le format.'], 422);
+            } catch (\Throwable $e) {
+                // En cas d'erreur inattendue, fallback ci-dessous
+                $e164 = null;
+            }
+        }
+
+        // Fallback simple si libphonenumber non installé ou parsing échoue
+        if (!$e164) {
+            $digitsCountry = preg_replace('/\D+/', '', $countryCode);
+            $digitsLocal = preg_replace('/\D+/', '', $telephoneDisplay);
+            if (empty($digitsCountry) || empty($digitsLocal)) {
+                return response()->json(['success' => false, 'message' => 'Numéro de téléphone invalide.'], 422);
+            }
+            $e164 = '+' . $digitsCountry . $digitsLocal;
+        }
+
+        $telephone = $e164;
 
         // --- Vérification d'un vote existant ---
         $existingVote = Vote::where('telephone', $telephone)
-                              ->where('projet_id', $projetId)
-                              ->where('est_verifie', true) // On ne compte que les votes déjà vérifiés
-                              ->first();
+                      ->where('projet_id', $projetId)
+                      ->where('est_verifie', true) // On ne compte que les votes déjà vérifiés
+                      ->first();
 
         if ($existingVote) {
             return response()->json(['success' => false, 'message' => 'Ce numéro de téléphone a déjà été utilisé pour voter pour ce projet.'], 409); // 409 Conflict
@@ -325,6 +369,17 @@ class VoteController extends Controller
             $request->session()->forget('otp_data');
 
             return response()->json(['success' => true, 'message' => 'Votre vote a été enregistré avec succès ! Merci de votre participation.']);
+
+        } catch (QueryException $e) {
+            // Gestion spécifique des erreurs de contrainte (duplicate key)
+            $sqlState = $e->getCode();
+            // MySQL duplicate key généralement SQLSTATE '23000' and error code 1062
+            Log::warning('QueryException lors de la création du vote', ['code' => $sqlState, 'message' => $e->getMessage()]);
+
+            // Nettoyer la session OTP pour forcer le flux à redemarrer
+            $request->session()->forget('otp_data');
+
+            return response()->json(['success' => false, 'message' => 'Ce numéro a déjà été utilisé pour voter pour ce projet.'], 409);
 
         } catch (\Exception $e) {
             Log::error('Erreur lors de l\'enregistrement du vote: ' . $e->getMessage());

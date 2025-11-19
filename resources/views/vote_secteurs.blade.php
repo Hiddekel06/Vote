@@ -72,27 +72,43 @@
 
             <!-- Conteneur Alpine.js global -->
             {{-- 🚀 Étape 1.1: Ajout des états pour la modale de vote (voteStep, messages, etc.) --}}
-            <div x-data="{
-                    showModal: false,
-                    modalProjet: null,
-                    showVoteModal: false,
-                    voteProjet: null,
-                    // 🚀 Ajout des variables pour le statut du vote
-                    isVoteActive: {{ json_encode($voteStatusDetails['isVoteActive']) }},
-                    inactiveMessage: {{ json_encode($voteStatusDetails['inactiveMessage']) }},
-                    voteStep: 1,
-                    isLoading: false,
-                    errorMessage: '',
-                    successMessage: '',
-                    descriptionExpanded: false 
-                 }"
-                 x-init="
-                    // Si le vote est inactif, on initialise la modale pour afficher directement le message
-                    if (!isVoteActive) {
-                        voteStep = 3;
-                        errorMessage = inactiveMessage;
-                    }
-                 }" @keydown.escape.window="showModal = false; showVoteModal = false">
+                <div 
+    x-data="{
+        showModal: false,
+        modalProjet: null,
+        showVoteModal: false,
+        voteProjet: null,
+
+        // 🚀 Variables pour le statut du vote
+        isVoteActive: {{ json_encode($voteStatusDetails['isVoteActive']) }},
+        inactiveMessage: {{ json_encode($voteStatusDetails['inactiveMessage']) }},
+
+        voteStep: 1,
+        isLoading: false,
+        errorMessage: '',
+        successMessage: '',
+        descriptionExpanded: false,
+
+        // Notification temporaire lorsque le vote est inactif
+        inactiveNoticeVisible: false,
+        showInactiveNotice() {
+            this.inactiveNoticeVisible = true;
+            setTimeout(() => { this.inactiveNoticeVisible = false }, 1000);
+        }
+    }"
+
+    x-init="
+        // Si le vote est inactif, on initialise la modale
+        if (!isVoteActive) {
+            voteStep = 3;
+            errorMessage = inactiveMessage;
+        }
+    "
+
+    @keydown.escape.window="showModal = false; showVoteModal = false"
+>
+
+
 
                 {{-- Message "aucun résultat" géré par JS --}}
                 <div id="no-results-message" class="text-center py-12" style="display: none;">
@@ -100,6 +116,20 @@
                     <a href="{{ route('vote.secteurs', ['profile_type' => $categorie->slug]) }}" class="mt-4 inline-block text-yellow-400 hover:text-yellow-300">
                         &larr; Revenir à la liste complète
                     </a>
+                </div>
+
+                <!-- Notice temporaire en haut à droite pour informer que le vote est désactivé -->
+                <div x-show="inactiveNoticeVisible"
+                     x-transition
+                     class="fixed top-24 right-6 z-50 bg-red-800/90 text-red-100 px-4 py-3 rounded-lg shadow-lg flex items-center gap-3"
+                     style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-200" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3a1 1 0 102 0V7zm-1 7a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5z" clip-rule="evenodd" />
+                    </svg>
+                    <div class="text-sm">
+                        <div class="font-semibold">Vote désactivé</div>
+                        <div class="text-xs text-red-200">{{ $voteStatusDetails['inactiveMessage'] }}</div>
+                    </div>
                 </div>
                 <!-- Tableau des projets -->
                 <div class="overflow-x-auto">
@@ -120,7 +150,7 @@
                                         <td class="block md:table-cell p-4" data-label="Équipe : ">{{ $projet->nom_equipe }}</td>
                                         <td class="block md:table-cell p-4 font-semibold" data-label="Projet : ">{{ $projet->nom_projet }}</td>
                                         <td class="block md:table-cell p-4 text-center align-middle">
-                                            <div class="flex flex-col md:flex-row items-center justify-center gap-2">
+                                                   <div class="relative flex flex-col md:flex-row items-center justify-center gap-2">
 
                                                 <!-- Bouton Détails  -->
                                                 <button 
@@ -136,6 +166,7 @@
 
                                                 <!-- Bouton Voter  -->
                                                 <button
+                                                    data-role="vote-btn"
                                                     type="button"
                                                     class="group flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
                                                     :class="{
@@ -156,6 +187,9 @@
                                                     </svg>
                                                     Voter
                                                 </button>
+                                                <!-- Overlay pour capter le clic quand le vote est INactif -->
+                                                <button x-show="!isVoteActive" @click.prevent="showInactiveNotice()" class="absolute inset-0 w-full h-full z-20 bg-transparent" aria-hidden="true"></button>
+
                                                 <!-- Bouton Partager -->
                                                 <button 
                                                     type="button"

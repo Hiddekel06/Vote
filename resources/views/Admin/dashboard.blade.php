@@ -109,13 +109,19 @@
                const voteStatusToggle = document.getElementById('voteStatusToggle');
                const voteStatusLabel = document.getElementById('voteStatusLabel');
                const voteStatusMessage = document.getElementById('voteStatusMessage');
+                   console.log("Toggle trouvé :", voteStatusToggle);
+    console.log("URL initiale :", voteStatusToggle.dataset.url);
+
 
                voteStatusToggle.addEventListener('change', function() {
                    const newStatus = this.checked ? 'active' : 'inactive';
                    const url = this.dataset.url;
+                   console.log("Nouvel état choisi :", newStatus);
+                       console.log('URL utilisée pour le PATCH :', url); 
 
                    fetch(url, {
                        method: 'PATCH',
+                       credentials: 'same-origin', // include session cookie
                        headers: {
                            'Content-Type': 'application/json',
                            'X-CSRF-TOKEN': '{{ csrf_token() }}', // Laravel CSRF token
@@ -123,21 +129,37 @@
                        },
                        body: JSON.stringify({ vote_status: newStatus })
                    })
-                   .then(response => response.json())
-                   .then(data => {
-                       if (data.success) {
+                   .then(async response => {
+                       // If server returned non-2xx, try to parse JSON error, else text
+                       let payload;
+                       const text = await response.text();
+                       try {
+                           payload = JSON.parse(text || '{}');
+                       } catch (e) {
+                           payload = { message: text };
+                       }
+
+                       if (!response.ok) {
+                           // Revert toggle and show error
+                           this.checked = !this.checked;
+                           console.error('Server error:', response.status, payload);
+                           alert('Erreur lors de la mise à jour du statut du vote: ' + (payload.message || 'Erreur serveur'));
+                           return;
+                       }
+
+                       // Success path
+                       if (payload.success || response.status === 204) {
                            voteStatusMessage.textContent = `Le système de vote est actuellement ${newStatus === 'active' ? 'ouvert' : 'fermé'}.`;
                            voteStatusLabel.textContent = newStatus === 'active' ? 'Vote Actif' : 'Vote Inactif';
-                           // Optionally, display a success toast/alert
-                           // alert(data.message); // Uncomment for a simple alert
                        } else {
-                           // Revert toggle state if update failed
+                           // Unexpected payload, revert toggle
                            this.checked = !this.checked;
-                           alert('Erreur lors de la mise à jour du statut du vote: ' + (data.message || ''));
+                           console.warn('Unexpected response payload:', payload);
+                           alert('La mise à jour a échoué: ' + (payload.message || 'Réponse inattendue'));
                        }
                    })
                    .catch(error => {
-                       console.error('Error:', error);
+                       console.error('Network or parsing error:', error);
                        this.checked = !this.checked; // Revert on network error
                        alert('Une erreur est survenue lors de la communication avec le serveur.');
                    });
@@ -163,9 +185,18 @@
         var chartDom = document.getElementById('chartVotesCategorie');
         var myChart = echarts.init(chartDom);
 
-        // ✅ Données passées depuis Laravel
-        var categorieLabels = @json($categorieLabels);
-        var categorieData = @json($categorieData);
+        // ✅ Données passées depuis Laravel (remplacées par Projets: 'Equipe — Projet')
+        @php
+            $topProjectsForChart = $projets->take(20);
+            $projectLabels = $topProjectsForChart->map(function($p) {
+                $team = $p->nom_equipe ?? 'Équipe inconnue';
+                $proj = $p->nom_projet ?? 'Projet inconnu';
+                return $team . ' — ' . $proj;
+            })->toArray();
+            $projectData = $topProjectsForChart->pluck('votes_count')->toArray();
+        @endphp
+        var categorieLabels = @json($projectLabels);
+        var categorieData = @json($projectData);
 
         var option = {
             tooltip: { trigger: 'axis' },
