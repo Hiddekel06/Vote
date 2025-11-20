@@ -20,6 +20,9 @@ Route::get('/vote/projet/{id}', [VoteController::class, 'afficherProjet'])->name
 Route::get('/vote/categorie/{profile_type}', [VoteController::class, 'index'])->name('vote.secteurs')
     ->whereIn('profile_type', ['student', 'startup', 'other']);
 
+// Endpoint léger pour récupérer les détails d'un projet (JSON limité)
+Route::get('/vote/project/{id}/data', [VoteController::class, 'projectData'])->name('vote.project.data');
+
 // Route pour la recherche dynamique (AJAX)
 Route::get('/vote/recherche-ajax', [VoteController::class, 'rechercheAjax'])->name('vote.rechercheAjax');
 

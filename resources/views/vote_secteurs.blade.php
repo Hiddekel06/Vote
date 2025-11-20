@@ -103,6 +103,19 @@
             voteStep = 3;
             errorMessage = inactiveMessage;
         }
+        // Écouteurs pour charger les projets depuis le client sans embarquer l'objet complet dans la page
+        window.addEventListener('project-data', function(e) {
+            modalProjet = e.detail;
+            showModal = true;
+            descriptionExpanded = false;
+        });
+        window.addEventListener('project-for-vote', function(e) {
+            voteProjet = e.detail;
+            showVoteModal = true;
+            voteStep = isVoteActive ? 1 : 3;
+            errorMessage = isVoteActive ? '' : inactiveMessage;
+            successMessage = '';
+        });
     "
 
     @keydown.escape.window="showModal = false; showVoteModal = false"
@@ -110,13 +123,29 @@
 
 
 
-                {{-- Message "aucun résultat" géré par JS --}}
-                <div id="no-results-message" class="text-center py-12" style="display: none;">
-                    <p class="text-xl text-gray-400">Aucun secteur ou projet trouvé.</p>
-                    <a href="{{ route('vote.secteurs', ['profile_type' => $categorie->slug]) }}" class="mt-4 inline-block text-yellow-400 hover:text-yellow-300">
-                        &larr; Revenir à la liste complète
-                    </a>
-                </div>
+                {{-- Message "aucun résultat" : s'affiche si une recherche est effectuée et qu'aucun projet n'a été rendu --}}
+                @php
+                    $__projectsCount = 0;
+                    foreach ($secteurs as $__s) {
+                        $__projectsCount += $__s->projets->count();
+                    }
+                @endphp
+
+                @if(request('search') && $__projectsCount === 0)
+                    <div id="no-results-message" class="text-center py-12">
+                        <p class="text-xl text-gray-400">Aucun secteur ou projet trouvé.</p>
+                        <a href="{{ route('vote.secteurs', ['profile_type' => $categorie->slug]) }}" class="mt-4 inline-block text-yellow-400 hover:text-yellow-300">
+                            &larr; Revenir à la liste complète
+                        </a>
+                    </div>
+                @else
+                    <div id="no-results-message" class="text-center py-12" style="display: none;">
+                        <p class="text-xl text-gray-400">Aucun secteur ou projet trouvé.</p>
+                        <a href="{{ route('vote.secteurs', ['profile_type' => $categorie->slug]) }}" class="mt-4 inline-block text-yellow-400 hover:text-yellow-300">
+                            &larr; Revenir à la liste complète
+                        </a>
+                    </div>
+                @endif
 
                 <!-- Notice temporaire en haut à droite pour informer que le vote est désactivé -->
                 <div x-show="inactiveNoticeVisible"
@@ -175,13 +204,7 @@
                                                     }"
                                                     {{-- Réinitialise l'état de la modale à chaque ouverture --}}
                                                     :disabled="!isVoteActive"
-                                                    @click="
-                                                        voteProjet = @js($projet); // Toujours définir le projet pour le contexte
-                                                        showVoteModal = true; // Toujours ouvrir la modale
-                                                        voteStep = isVoteActive ? 1 : 3; // Étape 1 si actif, Étape 3 (message) si inactif
-                                                        errorMessage = isVoteActive ? '' : inactiveMessage; // Message d'erreur si inactif
-                                                        successMessage = ''; // Réinitialiser le message de succès
-                                                    ">
+                                                    @click="voteProjet = @js($projet); showVoteModal = true; voteStep = isVoteActive ? 1 : 3; errorMessage = isVoteActive ? '' : inactiveMessage; successMessage = '';">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>
@@ -337,7 +360,7 @@
                                     <input type="hidden" name="recaptcha_token" id="recaptcha-token">
                                     <div>
                                         <label for="nom_votant" class="block mb-2 text-sm font-medium text-gray-300">Votre nom (Optionnel)</label>
-                                        <input type="tel" id="nom_votant" name="nom_votant"
+                                        <input type="text" id="nom_votant" name="nom_votant"
                                                class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
                                                placeholder="Ex: Paul David Mbaye">
                                     </div>
@@ -429,5 +452,6 @@
     <!-- 🚀 Étape 1: Chargement de la bibliothèque reCAPTCHA v3 -->
     <script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}"></script>
 
+    
 </body> 
 </html>

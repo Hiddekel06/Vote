@@ -406,6 +406,28 @@ public function afficherProjet($id)
 }
 
     /**
+     * Retourne un petit payload JSON pour un projet donné (données non sensibles).
+     * Utilisé pour charger à la demande les modales côté client et éviter d'embarquer
+     * de gros objets ou des champs sensibles dans la page HTML.
+     */
+    public function projectData($id)
+    {
+        $projet = \App\Models\Projet::with('secteur')->findOrFail($id);
+
+        $payload = [
+            'id' => $projet->id,
+            'nom_projet' => $projet->nom_projet,
+            'nom_equipe' => $projet->nom_equipe,
+            'resume' => $projet->resume,
+            'description' => $projet->description,
+            'lien_prototype' => $projet->lien_prototype,
+            'secteur' => $projet->secteur?->nom ?? null,
+        ];
+
+        return response()->json($payload);
+    }
+
+    /**
      * Vérifie si le système de vote est actuellement actif.
      * Interrompt la requête avec une réponse JSON si le vote est fermé.
      */

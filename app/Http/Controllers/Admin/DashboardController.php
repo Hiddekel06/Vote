@@ -83,6 +83,33 @@ public function index(): View
     $categorieLabels = $votesParCategorie->pluck('nom');
     $categorieData = $votesParCategorie->pluck('total_votes');
 
+    // --- NOUVEAU : Répartition par secteur pour chaque profile_type (Étudiant, Startup, Citoyens)
+    // On récupère tous les secteurs avec leurs projets validés et la soumission pour déterminer le profile_type
+    $secteurs = Secteur::with(['projets' => function ($query) {
+        $query->where('validation_admin', 1)->with('submission')->withCount('votes');
+    }])->get();
+
+    $secteurLabels = $secteurs->pluck('nom')->toArray();
+
+    $studentData = $secteurs->map(function ($s) {
+        return $s->projets->filter(function ($p) {
+            return (($p->submission->profile_type ?? 'other') === 'student');
+        })->sum('votes_count');
+    })->toArray();
+
+    $startupData = $secteurs->map(function ($s) {
+        return $s->projets->filter(function ($p) {
+            return (($p->submission->profile_type ?? 'other') === 'startup');
+        })->sum('votes_count');
+    })->toArray();
+
+    $otherData = $secteurs->map(function ($s) {
+        return $s->projets->filter(function ($p) {
+            $type = $p->submission->profile_type ?? 'other';
+            return ($type !== 'student' && $type !== 'startup');
+        })->sum('votes_count');
+    })->toArray();
+
     // --- NOUVEAU : Données pour l'évolution des votes par jour ---
     // Récupérer toutes les dates où il y a eu des votes
     $allVoteDates = Vote::select(DB::raw('DATE(created_at) as vote_date'))
@@ -159,14 +186,45 @@ public function index(): View
     $allLegendNames = array_merge(['Total Votes'], $top3ProjectNames);
     // --- FIN NOUVEAU ---
 
+    // --- Préparer un jeu de données par PROJET (labels 'Equipe — Projet')
+    $chartProjects = Projet::where('validation_admin', 1)
+        ->with('submission')
+        ->withCount('votes')
+        ->orderBy('votes_count', 'desc')
+        ->take(20)
+        ->get();
+
+    $projectLabels = $chartProjects->map(function ($p) {
+        $team = $p->nom_equipe ?? 'Équipe inconnue';
+        $proj = $p->nom_projet ?? 'Projet inconnu';
+        return $team . ' — ' . $proj;
+    })->toArray();
+
+    // Construire les tableaux où chaque projet attribue son total aux bons profile_type
+    $studentData = $chartProjects->map(function ($p) {
+        return ($p->submission->profile_type ?? 'other') === 'student' ? (int) $p->votes_count : 0;
+    })->toArray();
+
+    $startupData = $chartProjects->map(function ($p) {
+        return ($p->submission->profile_type ?? 'other') === 'startup' ? (int) $p->votes_count : 0;
+    })->toArray();
+
+    $otherData = $chartProjects->map(function ($p) {
+        $type = $p->submission->profile_type ?? 'other';
+        return ($type !== 'student' && $type !== 'startup') ? (int) $p->votes_count : 0;
+    })->toArray();
+
+    // On réutilise les noms attendus dans la vue — mais ils correspondent maintenant aux projets
+    $secteurLabels = $projectLabels;
+
     // ✅ Envoi à la vue
     return view('admin.dashboard', compact(
         'projets', 'currentStatus',
         'totalProjets', 'totalVotes', 'totalVotants', 'projetEnTete',
-        'projetLabels', 'projetData',
         'profileTypeLabels', 'profileTypeData',
         'categorieLabels', 'categorieData',
-        'dailyVoteLabels', 'allSeriesData', 'allLegendNames', 'top3Projects' // Ajout des nouvelles données
+        'dailyVoteLabels', 'allSeriesData', 'allLegendNames', 'top3Projects',
+        'secteurLabels', 'studentData', 'startupData', 'otherData'
     ));
 }
 
