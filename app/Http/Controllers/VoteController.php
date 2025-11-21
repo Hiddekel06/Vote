@@ -303,9 +303,15 @@ class VoteController extends Controller
         // 4. Renvoyer une réponse JSON de succès au client.
         $responseData = ['success' => true, 'message' => 'Un code OTP a été envoyé.'];
 
-        // 🚀 IMPORTANT: Pour le développement uniquement. À retirer en production.
-        // Il est plus sûr de supprimer ce bloc et d'utiliser les logs pour le débogage.
-        Log::info('OTP pour dev: ' . $otp);
+        // 🚀 IMPORTANT: Pour le développement uniquement. Ne jamais logger l'OTP en clair.
+        // Journaliser uniquement un identifiant non sensible (ex: 4 derniers chiffres) pour faciliter le debug.
+        try {
+            $digitsOnly = preg_replace('/\D+/', '', $telephone);
+            $last4 = substr($digitsOnly, -4);
+        } catch (\Throwable $e) {
+            $last4 = null;
+        }
+        Log::info('OTP généré et envoyé (valeur non enregistrée)', ['phone_last4' => $last4]);
 
         return response()->json($responseData);
     }

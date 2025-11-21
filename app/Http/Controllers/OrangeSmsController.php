@@ -24,9 +24,10 @@ class OrangeSmsController extends Controller
               ]);
 
             if ($response->failed()) {
+                // Ne pas logger le corps complet (peut contenir des informations sensibles).
                 Log::error('Échec récupération token Orange', [
                     'status' => $response->status(),
-                    'body' => $response->body(),
+                    'body_length' => strlen($response->body() ?? ''),
                 ]);
                 return null;
             }
@@ -78,21 +79,29 @@ class OrangeSmsController extends Controller
     ]);
 
 
-            // Logs pour débogage
-            Log::info('Réponse Orange SMS', [
+            // Ne pas logger ou exposer la réponse complète d'Orange ni l'OTP.
+            try {
+                $digitsOnly = preg_replace('/\D+/', '', $phone);
+                $last4 = substr($digitsOnly, -4);
+            } catch (\Throwable $e) {
+                $last4 = null;
+            }
+            Log::info('Requête SMS envoyée à Orange', [
                 'status' => $response->status(),
-                'body' => $response->body(),
+                'phone_last4' => $last4,
+                'body_length' => strlen($response->body() ?? ''),
             ]);
 
             return response()->json([
                 'success' => $response->successful(), // true si HTTP 2xx
-                'otp' => $otp,
-                'response' => $response->json(),      // retourne la réponse brute d'Orange
+                'message' => $response->successful() ? 'SMS envoyé' : 'Échec envoi SMS',
+                // Ne pas renvoyer l'OTP ni la réponse brute d'Orange dans l'API publique
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Exception envoi SMS Orange: '.$e->getMessage());
-            return response()->json(['error' => $e->getMessage()], 500);
+            // Logger l'exception pour investigation sans exposer les détails côté client
+            Log::error('Exception envoi SMS Orange', ['message' => $e->getMessage()]);
+            return response()->json(['error' => 'Erreur lors de l\'envoi du SMS'], 500);
         }
     }
 }
