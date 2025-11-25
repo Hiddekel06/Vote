@@ -1,3 +1,4 @@
+
 <footer class="
     w-full mt-auto
     bg-black/80 backdrop-blur-sm 
@@ -34,4 +35,6 @@
         </div>
 
     </div>
+    
 </footer>
+

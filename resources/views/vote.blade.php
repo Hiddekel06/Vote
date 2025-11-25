@@ -57,7 +57,7 @@
                 @foreach ($categories as $index => $categorie)
                 {{-- Ajout des classes de transition et de l'attribut de style pour le délai --}}
                 <a href="{{ route('vote.secteurs', ['profile_type' => $categorie->slug]) }}"
-                    class="group block bg-black/50 backdrop-blur-sm border border-black-400/30  p-7 transform hover:scale-105 hover:shadow-xl hover:shadow-yellow-400/10 transition-all duration-500"
+                    class="group block bg-black/50 backdrop-blur-sm border border-gray-400/30  p-7 transform hover:scale-105 hover:shadow-xl hover:shadow-yellow-400/10 transition-all duration-500"
                     :class="visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
                     style="transition-delay: {{ $index * 150 }}ms;">
                     <div class="flex flex-col justify-between h-full text-left">
@@ -73,7 +73,7 @@
                                 <svg class="h-12 w-12 text-yellow-400 group-hover:text-yellow-400 transition-colors duration-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 0 1-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 0 0 6.16-12.12A14.98 14.98 0 0 0 9.631 8.41m5.96 5.96a14.926 14.926 0 0 1-5.841 2.58m-.119-8.54a6 6 0 0 0-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 0 0-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 0 1-2.448-2.448 14.9 14.9 0 0 1 .06-.312m-2.24 2.39a4.493 4.493 0 0 0-1.757 4.306 4.493 4.493 0 0 0 4.306-1.758M16.5 9a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" />
                                 </svg>
-
+          
 
                                 @else
                                 {{-- Icône pour Autre (groupe d'utilisateurs) --}}
@@ -85,7 +85,10 @@
                             <h2 class="text-2xl font-bold text-white group-hover:text-yellow-200 transition-colors duration-300">
                                 {{ $categorie->nom }}
                             </h2>
-                            <p class="mt-3 text-gray-400 text-sm leading-relaxed">
+                            <hr class="my-4 border-gray-400/30">
+
+
+                            <p class="mt-7 text-gray-400 text-sm leading-relaxed">
                                 Explorez les projets qui redéfinissent l'avenir dans le secteur {{ strtolower($categorie->nom) }}.
                                 Une vitrine d'idées audacieuses et de solutions novatrices.
                             </p>
