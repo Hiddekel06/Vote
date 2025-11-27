@@ -59,42 +59,52 @@ class VoteController extends Controller
         $categorie = (object)['nom' => $categorieNom, 'slug' => $profileType];
 
         $search = $request->input('search', '');
+        // Sous-requête : IDs des projets présélectionnés
+    $preselectedProjectIds = DB::table('liste_preselectionnes')
+        ->select('projet_id');
+
+    // Secteurs qui ont AU MOINS un projet :
+    // - validé
+    // - bon profile_type
+    // - présent dans liste_preselectionnes
 
         // On ne veut que les secteurs qui ont au moins un projet validé ET de la bonne catégorie.
-        $query = Secteur::whereHas('projets', function ($projetQuery) use ($profileType) {
-            $projetQuery->where('validation_admin', 1)
-                        ->whereHas('submission', function ($submissionQuery) use ($profileType) {
-                            $submissionQuery->where('profile_type', $profileType);
-                        });
+         $query = Secteur::whereHas('projets', function ($projetQuery) use ($profileType, $preselectedProjectIds) {
+        $projetQuery->where('validation_admin', 1)
+            ->whereHas('submission', function ($submissionQuery) use ($profileType) {
+                $submissionQuery->where('profile_type', $profileType);
+            })
+            ->whereIn('id', $preselectedProjectIds);
         });
 
         // Si un terme de recherche est présent, on applique les filtres
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('nom', 'like', '%' . $search . '%')
-                  ->orWhereHas('projets', function ($subQuery) use ($search) {
-                      $subQuery->where('validation_admin', 1)
-                               ->where(function ($subSubQuery) use ($search) {
-                                   $subSubQuery->where('nom_projet', 'like', '%' . $search . '%')
-                                               ->orWhere('nom_equipe', 'like', '%' . $search . '%');
-                               });
-                  });
-            });
-        }
+    if ($search) {
+        $query->where(function ($q) use ($search, $preselectedProjectIds) {
+            $q->where('nom', 'like', '%' . $search . '%')
+              ->orWhereHas('projets', function ($subQuery) use ($search, $preselectedProjectIds) {
+                  $subQuery->where('validation_admin', 1)
+                      ->whereIn('id', $preselectedProjectIds)
+                      ->where(function ($subSubQuery) use ($search) {
+                          $subSubQuery->where('nom_projet', 'like', '%' . $search . '%')
+                                      ->orWhere('nom_equipe', 'like', '%' . $search . '%');
+                      });
+              });
+        });
+    }
 
-        // On charge les projets validés de la bonne catégorie (Eager Loading), en filtrant par la recherche si besoin.
-        $query->with(['projets' => function ($projetQuery) use ($search, $profileType) {
-            $projetQuery->where('validation_admin', 1)
-                        ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
-                        ->when($search, function ($q) use ($search) {
-                            $q->where('nom_projet', 'like', "%{$search}%")
-                              ->orWhere('nom_equipe', 'like', "%{$search}%");
-                        })
-                        ->orderBy('nom_projet');
-        }]);
+  // Eager loading uniquement des projets présélectionnés
+    $query->with(['projets' => function ($projetQuery) use ($search, $profileType, $preselectedProjectIds) {
+        $projetQuery->where('validation_admin', 1)
+            ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
+            ->whereIn('id', $preselectedProjectIds)
+            ->when($search, function ($q) use ($search) {
+                $q->where('nom_projet', 'like', "%{$search}%")
+                  ->orWhere('nom_equipe', 'like', "%{$search}%");
+            })
+            ->orderBy('nom_projet');
+    }]);
 
-        $secteurs = $query->orderBy('nom')->get();
-
+    $secteurs = $query->orderBy('nom')->get();
         // On charge les données des pays depuis le fichier JSON
         $countriesData = json_decode(File::get(public_path('data/countries.json')), true);
         $countries = array_map(function ($country) {
