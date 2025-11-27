@@ -11,7 +11,7 @@
             <a href="{{ route('vote.index') }}" 
                class="font-semibold hover:text-emerald-300 transition-colors duration-300 [text-shadow:_0_1px_10px_rgb(255_255_255_/_30%)] 
                       {{ request()->routeIs('vote.index') || request()->routeIs('vote.secteurs') ? 'text-white' : 'text-gray-300' }}">
-                Accueil
+                Accueillll
             </a>
             
             <a href="{{ route('projets.classement') }}" 
