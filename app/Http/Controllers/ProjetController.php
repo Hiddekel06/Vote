@@ -30,16 +30,19 @@ class ProjetController extends Controller
         // et on les trie par ordre décroissant de votes.
         // La méthode withCount('votes') ajoutera une colonne 'votes_count'
         // à chaque projet.
-        $projets = Projet::where('validation_admin', 1)
-                         ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
-                         ->withCount('votes')
-                         
-                         ->with('secteur') // On charge la relation 'secteur' pour l'afficher dans la vue
-                         ->orderBy('votes_count', 'desc')
-                         ->orderBy('nom_projet', 'asc') // Tri secondaire pour la cohérence
-                         ->paginate(20); // 20 projets par page
+            // Sous-requête : IDs des projets présélectionnés
+    $preselectedProjectIds = DB::table('liste_preselectionnes')
+        ->select('projet_id');
 
-        // On passe les projets à la vue
-        return view('classement', compact('projets', 'categorie'));
-    }
+    $projets = Projet::whereIn('id', $preselectedProjectIds)      // 🔹 seulement présélectionnés
+        // ->where('validation_admin', 1)                         // 
+        ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
+        ->withCount('votes')
+        ->with('secteur')
+        ->orderBy('votes_count', 'desc')
+        ->orderBy('nom_projet', 'asc')
+        ->paginate(20);
+
+    return view('classement', compact('projets', 'categorie'));
+} 
 }

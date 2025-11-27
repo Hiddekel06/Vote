@@ -70,7 +70,8 @@ class VoteController extends Controller
 
         // On ne veut que les secteurs qui ont au moins un projet validé ET de la bonne catégorie.
          $query = Secteur::whereHas('projets', function ($projetQuery) use ($profileType, $preselectedProjectIds) {
-        $projetQuery->where('validation_admin', 1)
+        $projetQuery
+        //where('validation_admin', 1) //Pour le moment on ne filtre plus sur la validation admin
             ->whereHas('submission', function ($submissionQuery) use ($profileType) {
                 $submissionQuery->where('profile_type', $profileType);
             })
@@ -82,7 +83,8 @@ class VoteController extends Controller
         $query->where(function ($q) use ($search, $preselectedProjectIds) {
             $q->where('nom', 'like', '%' . $search . '%')
               ->orWhereHas('projets', function ($subQuery) use ($search, $preselectedProjectIds) {
-                  $subQuery->where('validation_admin', 1)
+                  $subQuery
+                  //where('validation_admin', 1) //Pour le moment on ne filtre plus sur la validation admin
                       ->whereIn('id', $preselectedProjectIds)
                       ->where(function ($subSubQuery) use ($search) {
                           $subSubQuery->where('nom_projet', 'like', '%' . $search . '%')
@@ -94,7 +96,8 @@ class VoteController extends Controller
 
   // Eager loading uniquement des projets présélectionnés
     $query->with(['projets' => function ($projetQuery) use ($search, $profileType, $preselectedProjectIds) {
-        $projetQuery->where('validation_admin', 1)
+        $projetQuery
+        //where('validation_admin', 1) //Pour le moment on ne filtre plus sur la validation admin
             ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
             ->whereIn('id', $preselectedProjectIds)
             ->when($search, function ($q) use ($search) {
@@ -136,48 +139,55 @@ class VoteController extends Controller
      */
     public function rechercheAjax(Request $request): \Illuminate\Http\JsonResponse
     {
-        $search = $request->input('search', '');
+      $search = $request->input('search', '');
 
-        // On construit la requête de base pour les Secteurs
-        $query = Secteur::query();
+    // Sous-requête : IDs des projets présélectionnés
+    $preselectedProjectIds = DB::table('liste_preselectionnes')
+        ->select('projet_id');
 
-        // Si un terme de recherche est présent, on applique les filtres
+    $query = Secteur::query();
+
+    if ($search) {
+        $query->where(function ($q) use ($search, $preselectedProjectIds) {
+            $q->where('nom', 'like', '%' . $search . '%')
+              ->orWhereHas('projets', function ($subQuery) use ($search, $preselectedProjectIds) {
+                  $subQuery
+                 // where('validation_admin', 1) //Pour le moment on ne filtre plus sur la validation admin
+                      ->whereIn('id', $preselectedProjectIds)
+                      ->where(function ($subSubQuery) use ($search) {
+                          $subSubQuery->where('nom_projet', 'like', '%' . $search . '%')
+                                      ->orWhere('nom_equipe', 'like', '%' . $search . '%');
+                      });
+              });
+        });
+    } else {
+        // Même sans recherche, on veut seulement les secteurs qui ont des projets présélectionnés
+        $query->whereHas('projets', function ($subQuery) use ($preselectedProjectIds) {
+            $subQuery
+            //where('validation_admin', 1) //Pour le moment on ne filtre plus sur la validation admin
+                ->whereIn('id', $preselectedProjectIds);
+        });
+    }
+
+    $query->with(['projets' => function ($projetQuery) use ($search, $preselectedProjectIds) {
+        $projetQuery
+        //where('validation_admin', 1) //Pour le moment on ne filtre plus sur la validation admin
+            ->whereIn('id', $preselectedProjectIds);
+
         if ($search) {
-            // On veut les secteurs qui correspondent OU qui ont des projets qui correspondent
-            $query->where(function ($q) use ($search) {
-                // Recherche par nom de secteur
-                $q->where('nom', 'like', '%' . $search . '%');
-
-                // OU recherche par nom de projet ou nom d'équipe dans les projets validés
-                $q->orWhereHas('projets', function ($subQuery) use ($search) {
-                    $subQuery->where('validation_admin', 1)
-                             ->where(function ($subSubQuery) use ($search) {
-                                 $subSubQuery->where('nom_projet', 'like', '%' . $search . '%')
-                                             ->orWhere('nom_equipe', 'like', '%' . $search . '%');
-                             });
-                });
+            $projetQuery->where(function ($subQuery) use ($search) {
+                $subQuery->where('nom_projet', 'like', '%' . $search . '%')
+                         ->orWhere('nom_equipe', 'like', '%' . $search . '%');
             });
         }
 
-        // On charge les projets associés (Eager Loading)
-        // On filtre également les projets chargés pour ne garder que ceux qui sont pertinents
-        $query->with(['projets' => function ($projetQuery) use ($search) {
-            $projetQuery->where('validation_admin', 1); // Toujours ne charger que les projets validés
+        $projetQuery->orderBy('nom_projet');
+    }])->orderBy('nom');
 
-            if ($search) {
-                $projetQuery->where(function ($subQuery) use ($search) {
-                    $subQuery->where('nom_projet', 'like', '%' . $search . '%')
-                             ->orWhere('nom_equipe', 'like', '%' . $search . '%');
-                });
-            }
-            $projetQuery->orderBy('nom_projet');
-        }])->orderBy('nom');
+    $secteurs = $query->get()->filter(fn ($secteur) => $secteur->projets->isNotEmpty())->values();
 
-        // On récupère les secteurs et on filtre ceux qui n'ont plus de projets après le filtrage
-        $secteurs = $query->get()->filter(fn ($secteur) => $secteur->projets->isNotEmpty())->values();
+    return response()->json($secteurs);
 
-        // On retourne les secteurs (avec leurs projets) en format JSON
-        return response()->json($secteurs);
     }
 
     /**
