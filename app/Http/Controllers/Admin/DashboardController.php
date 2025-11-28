@@ -23,7 +23,9 @@ class DashboardController extends Controller
      */
 public function index(): View
 {
-    $projets = Projet::where('validation_admin', 1)
+     $preselectedProjectIds = DB::table('liste_preselectionnes')->select('projet_id');
+     $projets = Projet::whereIn('id', $preselectedProjectIds)
+
         ->with('secteur')
         ->withCount('votes')
         ->orderBy('votes_count', 'desc')
@@ -34,13 +36,13 @@ public function index(): View
     $currentStatus = $voteStatus ? $voteStatus->valeur : 'inactive';
 
     // Statistiques générales
-    $totalProjets = Projet::where('validation_admin', 1)->count();
+   $totalProjets = Projet::whereIn('id', $preselectedProjectIds)->count();
     $totalVotes = Vote::count();
     $totalVotants = Vote::distinct('telephone')->count('telephone');
     $projetEnTete = $projets->first();
 
     // ✅ Votes par Projet (Top 20)
-    $projetsLesPlusVotes = Projet::where('validation_admin', 1)
+    $projetsLesPlusVotes = Projet::whereIn('id', $preselectedProjectIds)
         ->withCount('votes')
         ->orderBy('votes_count', 'desc')
         ->take(20)
@@ -50,7 +52,7 @@ public function index(): View
     $projetData = $projetsLesPlusVotes->pluck('votes_count');
 
     // ✅ Votes par type de profil (Étudiant, Startup, Citoyens)
-    $votesParProfileType = Projet::where('validation_admin', 1)
+    $votesParProfileType = Projet::whereIn('id', $preselectedProjectIds)
         ->with('submission')
         ->withCount('votes')
         ->get()
@@ -71,8 +73,8 @@ public function index(): View
     $profileTypeData = $votesParProfileType->values();
 
     // ✅ Votes par Catégorie (ou Secteur)
-    $votesParCategorie = Secteur::with(['projets' => function ($query) {
-        $query->where('validation_admin', 1)->withCount('votes');
+   $votesParCategorie = Secteur::with(['projets' => function ($query) use ($preselectedProjectIds) {
+    $query->whereIn('id', $preselectedProjectIds)->withCount('votes');
     }])
     ->get()
     ->map(function ($secteur) {
@@ -85,8 +87,8 @@ public function index(): View
 
     // --- NOUVEAU : Répartition par secteur pour chaque profile_type (Étudiant, Startup, Citoyens)
     // On récupère tous les secteurs avec leurs projets validés et la soumission pour déterminer le profile_type
-    $secteurs = Secteur::with(['projets' => function ($query) {
-        $query->where('validation_admin', 1)->with('submission')->withCount('votes');
+    $secteurs = Secteur::with(['projets' => function ($query) use ($preselectedProjectIds) {
+    $query->whereIn('id', $preselectedProjectIds)->with('submission')->withCount('votes');
     }])->get();
 
     $secteurLabels = $secteurs->pluck('nom')->toArray();
@@ -132,7 +134,7 @@ public function index(): View
     }
 
     // Récupérer les 3 projets les plus votés
-    $top3Projects = Projet::where('validation_admin', 1)
+    $top3Projects = Projet::whereIn('id', $preselectedProjectIds)
         ->withCount('votes')
         ->orderBy('votes_count', 'desc')
         ->take(3)
@@ -187,7 +189,7 @@ public function index(): View
     // --- FIN NOUVEAU ---
 
     // --- Préparer un jeu de données par PROJET (labels 'Equipe — Projet')
-    $chartProjects = Projet::where('validation_admin', 1)
+    $chartProjects = Projet::whereIn('id', $preselectedProjectIds)
         ->with('submission')
         ->withCount('votes')
         ->orderBy('votes_count', 'desc')
@@ -235,18 +237,21 @@ public function index(): View
      */
     public function statistiques(): View
     {
+        $preselectedProjectIds = DB::table('liste_preselectionnes')->select('projet_id');  
         $totalVotes = Vote::count();
-        $totalProjets = Projet::where('validation_admin', 1)->count();
+        $totalProjets = Projet::whereIn('id', $preselectedProjectIds)->count();
 
         // Utiliser withCount pour plus d'efficacité
-        $projetsAvecVotes = Projet::where('validation_admin', 1)->withCount('votes')->get();
+        $projetsAvecVotes = Projet::whereIn('id', $preselectedProjectIds)
+            ->withCount('votes')
+            ->get();
 
         $projetGagnant = $projetsAvecVotes->sortByDesc('votes_count')->first();
         $projetPerdant = $projetsAvecVotes->sortBy('votes_count')->first();
 
         // Calculer les votes par secteur
-        $votesParSecteur = Secteur::with(['projets' => function ($query) {
-            $query->where('validation_admin', 1)->withCount('votes');
+        $votesParSecteur = Secteur::with(['projets' => function ($query) use ($preselectedProjectIds) {
+            $query->whereIn('id', $preselectedProjectIds)->withCount('votes');
         }])
         ->get()
         ->map(function ($secteur) {
@@ -277,11 +282,13 @@ public function index(): View
      */
     private function getStatistiquesData(): array
     {
+         $preselectedProjectIds = DB::table('liste_preselectionnes')->select('projet_id'); 
         $totalVotes = Vote::count();
-        $totalProjets = Projet::where('validation_admin', 1)->count();
+        $totalProjets = Projet::whereIn('id', $preselectedProjectIds)->count();
+
 
         // On récupère tous les projets validés, avec leur secteur et le compte de leurs votes, classés par votes.
-        $projets = Projet::where('validation_admin', 1)
+        $projets = Projet::whereIn('id', $preselectedProjectIds)
             ->with('secteur')
             ->withCount('votes')
             ->orderBy('votes_count', 'desc')
@@ -290,8 +297,8 @@ public function index(): View
         $projetGagnant = $projets->first();
 
         // Calculer les votes par secteur
-        $votesParSecteur = Secteur::with(['projets' => function ($query) { // Correction: on ne charge que les projets validés
-            $query->where('validation_admin', 1)->withCount('votes');
+        $votesParSecteur = Secteur::with(['projets' => function ($query) use ($preselectedProjectIds) {
+            $query->whereIn('id', $preselectedProjectIds)->withCount('votes');
         }])
         ->get()
         ->map(function ($secteur) {

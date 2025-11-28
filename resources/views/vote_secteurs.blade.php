@@ -231,7 +231,13 @@
                             @endforeach
                         </tbody>
                     </table>
+
                 </div>
+                <div class="mt-6">
+                   
+</div>
+
+
                 
 
                 <!-- Fenêtre modale DÉTAILS -->

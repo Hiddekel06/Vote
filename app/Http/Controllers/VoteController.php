@@ -92,6 +92,7 @@ class VoteController extends Controller
                       });
               });
         });
+      
     }
 
   // Eager loading uniquement des projets présélectionnés
