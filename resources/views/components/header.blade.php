@@ -5,6 +5,7 @@
             <img src="{{ asset('images/LogoGova.jpeg') }}" alt="Logo GovAthon" class="h-16">
         </a>
         
+        
 
         <!-- Navigation -->
         <nav class="flex justify-center items-center space-x-8 text-lg">
