@@ -27,17 +27,25 @@ class ClassementController extends Controller
         $preselectedProjectIds = DB::table('liste_preselectionnes')
             ->select('projet_id');
 
+        // Déterminer le nombre d'éléments par page (paramètre 'per_page')
+        $allowedPerPage = [5, 10, 15];
+        $defaultPerPage = 5;
+        $perPage = (int) $request->query('per_page', $defaultPerPage);
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = $defaultPerPage;
+        }
+
         // 1. Classement général = uniquement les projets présélectionnés
-        // Pagination serveur : 6 éléments par page (nom de paramètre 'page_general')
+        // Pagination serveur : paramétrable via 'per_page' (nom de paramètre 'page_general')
         $classementGeneral = Projet::whereIn('id', $preselectedProjectIds)
             ->withCount('votes')
             ->with('secteur', 'submission')
             ->orderBy('votes_count', 'desc')
             ->orderBy('nom_projet', 'asc')
-            ->paginate(6, ['*'], 'page_general');
+            ->paginate($perPage, ['*'], 'page_general');
 
         // 2. Classements par catégorie (toujours sur les présélectionnés)
-        $classementsParCategorie = $categories->mapWithKeys(function ($categorie) use ($preselectedProjectIds) {
+        $classementsParCategorie = $categories->mapWithKeys(function ($categorie) use ($preselectedProjectIds, $perPage) {
             // Chaque catégorie aura son propre nom de page pour la pagination (ex: page_student)
             $pageName = 'page_' . $categorie->slug;
             $projets = Projet::whereIn('id', $preselectedProjectIds)
@@ -46,7 +54,7 @@ class ClassementController extends Controller
                 ->with('secteur')
                 ->orderBy('votes_count', 'desc')
                 ->orderBy('nom_projet', 'asc')
-                ->paginate(6, ['*'], $pageName);
+                ->paginate($perPage, ['*'], $pageName);
 
             return [$categorie->slug => $projets];
         });
@@ -65,9 +73,9 @@ class ClassementController extends Controller
 
         // Si requête AJAX, renvoyer uniquement le partial (HTML) pour injection côté client
         if ($request->ajax()) {
-            return view('partials.classement-list', compact('categories', 'classementGeneral', 'classementsParCategorie', 'activeTab'))->render();
+            return view('partials.classement-list', compact('categories', 'classementGeneral', 'classementsParCategorie', 'activeTab', 'perPage'))->render();
         }
 
-        return view('classement', compact('categories', 'classementGeneral', 'classementsParCategorie', 'activeTab'));
+        return view('classement', compact('categories', 'classementGeneral', 'classementsParCategorie', 'activeTab', 'perPage'));
     }
 }

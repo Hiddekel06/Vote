@@ -1,30 +1,32 @@
 <?php
+
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ListePreselectionne extends Model
 {
+    use HasFactory;
+
     protected $table = 'liste_preselectionnes';
 
+    /**
+     * Champs autorisés en mass-assignment.
+     * La table contient principalement un snapshot JSON et une référence projet_id.
+     */
     protected $fillable = [
-        'projet_id', 'nom_projet', 'nom_equipe', 'resume', 'description', 'lien_prototype', 'validation_admin'
+        'projet_id',
+        'snapshot',
+        'video_demonstration',
     ];
 
-    // Relation avec Projet (si nécessaire)
+    /**
+     * Relation vers le projet lié.
+     */
     public function projet()
     {
         return $this->belongsTo(Projet::class, 'projet_id');
     }
 
-    // Getter magique pour simuler le modèle Projet
-    public function __get($key)
-    {
-        if ($this->attributes[$key] ?? false) {
-            return $this->attributes[$key];
-        }
-
-        // fallback vers relation projet si existe
-        return $this->projet->$key ?? null;
-    }
 }

@@ -23,7 +23,7 @@
 <div class="flex items-center {{ $cardBg }} p-4 rounded-lg border border-white/10 {{ $borderHover }} transition-all duration-300 shadow-lg">
     <div class="hidden list-meta">
         <span class="product">{{ $projet->nom_projet }}</span>
-        <span class="customer">Équipe: {{ $projet->nom_equipe }} Secteur: {{ $projet->secteur->nom }}</span>
+        <span class="customer">Équipe: {{ $projet->nom_equipe }}</span>
         <span class="rating">{{ $projet->votes_count }}</span>
     </div>
     {{-- Rang --}}
@@ -34,9 +34,7 @@
     {{-- Informations du projet --}}
     <div class="flex-grow border-l border-gray-700 pl-4">
         <p class="text-lg font-semibold text-white">{{ $projet->nom_projet }}</p>
-        <p class="text-sm text-gray-400/80">
-            Équipe: {{ $projet->nom_equipe }} <span class="text-gray-600 mx-2">&bull;</span> Secteur: {{ $projet->secteur->nom }}
-        </p>
+        <p class="text-sm text-gray-400/80">Équipe: {{ $projet->nom_equipe }}</p>
     </div>
 
     {{-- Nombre de votes --}}

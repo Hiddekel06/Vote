@@ -1,5 +1,6 @@
 <!-- Partial: Contenu des onglets (liste + pagination) -->
 <div id="classement-list" aria-live="polite">
+    <!-- (per-page control moved to pagination footer) -->
     <!-- Contenu des onglets -->
     <div>
         <!-- Classement général (pagination serveur) -->
@@ -11,8 +12,37 @@
                 @endforeach
 
                 <div class="flex items-center justify-between py-3 mt-2">
-                    <div>
+                    <div class="flex items-center space-x-4">
                         <p class="mb-0 text-sm text-gray-300">Affichage {{ $classementGeneral->firstItem() }}–{{ $classementGeneral->lastItem() }} sur {{ $classementGeneral->total() }}</p>
+
+                        {{-- Compact per-page control (bottom-left) --}}
+                        <div x-data="{ open: false }" class="relative" x-on:keydown.escape="open = false" x-on:click.away="open = false">
+                            @php
+                                $currentPer = (int) request()->query('per_page', $perPage ?? 5);
+                                $opts = [5,10,15];
+                            @endphp
+
+                            <button type="button" @click.prevent="open = !open" aria-haspopup="listbox" :aria-expanded="open"
+                                    class="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-gray-800 text-gray-200 text-sm hover:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-300">
+                                <span class="sr-only">Changer le nombre d'items affichés</span>
+                                <span class="font-medium">{{ $currentPer }}</span>
+                                <svg class="w-3 h-3 text-gray-400" viewBox="0 0 20 20" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M6 8l4 4 4-4"/></svg>
+                            </button>
+
+                            <div x-show="open" x-cloak x-transition class="origin-top-left absolute left-0 mt-2 w-36 rounded-md bg-gray-900/90 backdrop-blur-sm border border-white/5 shadow-lg z-20">
+                                <ul role="listbox" aria-label="Sélection du nombre d'items" class="py-1">
+                                    @foreach($opts as $opt)
+                                        @php $url = request()->fullUrlWithQuery(['per_page' => $opt]); @endphp
+                                        <li>
+                                            <a href="{{ $url }}" role="option" aria-selected="{{ $currentPer === $opt ? 'true' : 'false' }}"
+                                               class="block px-3 py-1 text-sm {{ $currentPer === $opt ? 'text-black bg-amber-300 font-semibold' : 'text-gray-200 hover:bg-gray-800/60' }}">
+                                                {{ $opt }} 
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
                     </div>
 
                     <nav class="flex items-center" role="navigation" aria-label="Pagination">
@@ -67,11 +97,40 @@
                     @endforeach
 
                     <div class="flex items-center justify-between py-3 mt-2">
-                        <div>
-                            <p class="mb-0 text-sm text-gray-300">Affichage {{ $pag->firstItem() }}–{{ $pag->lastItem() }} sur {{ $pag->total() }}</p>
-                        </div>
+                        <div class="flex items-center space-x-4">
+                                <p class="mb-0 text-sm text-gray-300">Affichage {{ $pag->firstItem() }}–{{ $pag->lastItem() }} sur {{ $pag->total() }}</p>
 
-                        <nav class="flex items-center" role="navigation" aria-label="Pagination">
+                                {{-- Compact per-page control (bottom-left for category) --}}
+                                <div x-data="{ open: false }" class="relative" x-on:keydown.escape="open = false" x-on:click.away="open = false">
+                                    @php
+                                        $currentPer = (int) request()->query('per_page', $perPage ?? 5);
+                                        $opts = [5,10,15];
+                                    @endphp
+
+                                    <button type="button" @click.prevent="open = !open" aria-haspopup="listbox" :aria-expanded="open"
+                                            class="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-gray-800 text-gray-200 text-sm hover:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-300">
+                                        <span class="sr-only">Changer le nombre d'items affichés</span>
+                                        <span class="font-medium">{{ $currentPer }}</span>
+                                        <svg class="w-3 h-3 text-gray-400" viewBox="0 0 20 20" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M6 8l4 4 4-4"/></svg>
+                                    </button>
+
+                                    <div x-show="open" x-cloak x-transition class="origin-top-left absolute left-0 mt-2 w-36 rounded-md bg-gray-900/90 backdrop-blur-sm border border-white/5 shadow-lg z-20">
+                                        <ul role="listbox" aria-label="Sélection du nombre d'items" class="py-1">
+                                            @foreach($opts as $opt)
+                                                @php $url = request()->fullUrlWithQuery(['per_page' => $opt]); @endphp
+                                                <li>
+                                                    <a href="{{ $url }}" role="option" aria-selected="{{ $currentPer === $opt ? 'true' : 'false' }}"
+                                                       class="block px-3 py-1 text-sm {{ $currentPer === $opt ? 'text-black bg-amber-300 font-semibold' : 'text-gray-200 hover:bg-gray-800/60' }}">
+                                                        {{ $opt }} / page
+                                                    </a>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <nav class="flex items-center" role="navigation" aria-label="Pagination">
                             @if($pag->previousPageUrl())
                                 <a href="{{ $pag->previousPageUrl() }}" rel="prev" class="inline-flex items-center justify-center w-9 h-9 rounded-md bg-gray-800 hover:bg-gray-700 text-white" aria-label="Page précédente">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M12.293 16.293a1 1 0 0 1-1.414 1.414l-6-6a1 1 0 0 1 0-1.414l6-6a1 1 0 0 1 1.414 1.414L7.414 10l4.879 4.879z" clip-rule="evenodd"/></svg>

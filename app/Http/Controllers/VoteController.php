@@ -97,10 +97,13 @@ class VoteController extends Controller
 
   // Eager loading uniquement des projets présélectionnés
     $query->with(['projets' => function ($projetQuery) use ($search, $profileType, $preselectedProjectIds) {
+        // Join with liste_preselectionnes to include video_demonstration and avoid N+1 lookups
         $projetQuery
-        //where('validation_admin', 1) //Pour le moment on ne filtre plus sur la validation admin
+            ->leftJoin('liste_preselectionnes', 'projets.id', '=', 'liste_preselectionnes.projet_id')
+            ->select('projets.*', 'liste_preselectionnes.video_demonstration')
+            //where('validation_admin', 1) //Pour le moment on ne filtre plus sur la validation admin
             ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
-            ->whereIn('id', $preselectedProjectIds)
+            ->whereIn('projets.id', $preselectedProjectIds)
             ->when($search, function ($q) use ($search) {
                 $q->where('nom_projet', 'like', "%{$search}%")
                   ->orWhere('nom_equipe', 'like', "%{$search}%");
@@ -171,9 +174,12 @@ class VoteController extends Controller
     }
 
     $query->with(['projets' => function ($projetQuery) use ($search, $preselectedProjectIds) {
+        // Join with liste_preselectionnes to include video_demonstration
         $projetQuery
-        //where('validation_admin', 1) //Pour le moment on ne filtre plus sur la validation admin
-            ->whereIn('id', $preselectedProjectIds);
+            ->leftJoin('liste_preselectionnes', 'projets.id', '=', 'liste_preselectionnes.projet_id')
+            ->select('projets.*', 'liste_preselectionnes.video_demonstration')
+            //where('validation_admin', 1) //Pour le moment on ne filtre plus sur la validation admin
+            ->whereIn('projets.id', $preselectedProjectIds);
 
         if ($search) {
             $projetQuery->where(function ($subQuery) use ($search) {
@@ -462,6 +468,9 @@ public function afficherProjet($id)
     {
         $projet = \App\Models\Projet::with('secteur')->findOrFail($id);
 
+        // try to fetch video_demonstration from liste_preselectionnes if present
+        $video = DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
+
         $payload = [
             'id' => $projet->id,
             'nom_projet' => $projet->nom_projet,
@@ -470,6 +479,7 @@ public function afficherProjet($id)
             'description' => $projet->description,
             'lien_prototype' => $projet->lien_prototype,
             'secteur' => $projet->secteur?->nom ?? null,
+            'video_demonstration' => $video,
         ];
 
         return response()->json($payload);
