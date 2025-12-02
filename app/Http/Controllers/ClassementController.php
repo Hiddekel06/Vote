@@ -14,7 +14,7 @@ class ClassementController extends Controller
      *
      * @return View
      */
-    public function index(): View
+    public function index(Request $request)
     {
         // Catégories pour les onglets
         $categories = collect([
@@ -28,28 +28,46 @@ class ClassementController extends Controller
             ->select('projet_id');
 
         // 1. Classement général = uniquement les projets présélectionnés
+        // Pagination serveur : 6 éléments par page (nom de paramètre 'page_general')
         $classementGeneral = Projet::whereIn('id', $preselectedProjectIds)
-            // ->where('validation_admin', 1)   // tu peux laisser commenté si tu ne l’utilises plus
             ->withCount('votes')
             ->with('secteur', 'submission')
             ->orderBy('votes_count', 'desc')
             ->orderBy('nom_projet', 'asc')
-            ->get();
+            ->paginate(6, ['*'], 'page_general');
 
         // 2. Classements par catégorie (toujours sur les présélectionnés)
         $classementsParCategorie = $categories->mapWithKeys(function ($categorie) use ($preselectedProjectIds) {
+            // Chaque catégorie aura son propre nom de page pour la pagination (ex: page_student)
+            $pageName = 'page_' . $categorie->slug;
             $projets = Projet::whereIn('id', $preselectedProjectIds)
-                // ->where('validation_admin', 1)
                 ->whereHas('submission', fn ($q) => $q->where('profile_type', $categorie->slug))
                 ->withCount('votes')
                 ->with('secteur')
                 ->orderBy('votes_count', 'desc')
                 ->orderBy('nom_projet', 'asc')
-                ->get();
+                ->paginate(6, ['*'], $pageName);
 
             return [$categorie->slug => $projets];
         });
 
-        return view('classement', compact('categories', 'classementGeneral', 'classementsParCategorie'));
+        // Déterminer l'onglet actif en fonction des paramètres de page présents
+        $activeTab = 'general';
+        foreach ($categories as $categorie) {
+            if ($request->query('page_' . $categorie->slug) !== null) {
+                $activeTab = $categorie->slug;
+                break;
+            }
+        }
+        if ($request->query('page_general') !== null) {
+            $activeTab = 'general';
+        }
+
+        // Si requête AJAX, renvoyer uniquement le partial (HTML) pour injection côté client
+        if ($request->ajax()) {
+            return view('partials.classement-list', compact('categories', 'classementGeneral', 'classementsParCategorie', 'activeTab'))->render();
+        }
+
+        return view('classement', compact('categories', 'classementGeneral', 'classementsParCategorie', 'activeTab'));
     }
 }

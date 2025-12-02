@@ -21,6 +21,11 @@
 @endphp
 
 <div class="flex items-center {{ $cardBg }} p-4 rounded-lg border border-white/10 {{ $borderHover }} transition-all duration-300 shadow-lg">
+    <div class="hidden list-meta">
+        <span class="product">{{ $projet->nom_projet }}</span>
+        <span class="customer">Équipe: {{ $projet->nom_equipe }} Secteur: {{ $projet->secteur->nom }}</span>
+        <span class="rating">{{ $projet->votes_count }}</span>
+    </div>
     {{-- Rang --}}
     <div class="flex-none w-16 text-center pr-4">
         <span class="text-3xl font-bold {{ $rankColor }}" style="text-shadow: 0 0 10px currentColor;">#{{ $rank }}</span>

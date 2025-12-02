@@ -418,6 +418,7 @@ class VoteController extends Controller
 public function afficherProjet($id)
 {
     $projet = \App\Models\Projet::with('secteur')->findOrFail($id);
+    // Charger les secteurs (avec leurs projets) -- pour compatibilité avec la vue
     $secteurs = \App\Models\Secteur::with('projets')->get();
 
     // On charge également les pays ici car la même vue est utilisée
@@ -429,7 +430,27 @@ public function afficherProjet($id)
     usort($countries, fn($a, $b) => $a['name'] <=> $b['name']);
 
 
-    return view('vote_secteurs', compact('secteurs', 'projet', 'countries'));
+    // Déterminer la catégorie du projet (fallback à 'student' si indisponible)
+    $profileType = $projet->submission->profile_type ?? 'student';
+    $categorieNom = match ($profileType) {
+        'student' => 'Étudiant',
+        'startup' => 'Startup',
+        'other' => 'Citoyens',
+        default => 'Inconnue',
+    };
+    $categorie = (object)['nom' => $categorieNom, 'slug' => $profileType];
+
+    // Liste statique des catégories pour le menu
+    $allCategories = collect([
+        (object) ['nom' => 'Étudiant', 'slug' => 'student'],
+        (object) ['nom' => 'Startup', 'slug' => 'startup'],
+        (object) ['nom' => 'Citoyens', 'slug' => 'other'],
+    ]);
+
+    // Statut du vote pour la vue
+    $voteStatusDetails = $this->getVoteStatusDetails();
+
+    return view('vote_secteurs', compact('secteurs', 'projet', 'countries', 'categorie', 'allCategories', 'voteStatusDetails'));
 }
 
     /**

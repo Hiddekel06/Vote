@@ -30,7 +30,7 @@
                 <p class="text-gray-400 text-lg">Tendances des votes en temps réel</p>
             </div>
 
-            <div x-data="{ tab: 'general' }" class="w-full">
+            <div x-data="{ tab: '{{ $activeTab ?? 'general' }}' }" class="w-full">
                 <!-- Onglets -->
                 <div class="border-b border-gray-700 mb-8">
                     <nav class="-mb-px flex space-x-6" aria-label="Tabs">
@@ -49,60 +49,12 @@
                     </nav>
                 </div>
 
-                <!-- Contenu des onglets -->
-                <div>
-                    <!-- Classement général -->
-                    <div x-show="tab === 'general'" class="space-y-4">
-                        <div x-data="{ showAll: false }">
-                            @forelse ($classementGeneral as $index => $projet)
-                                <div x-show="{{ $index < 7 ? 'true' : 'showAll' }}" x-cloak>
-                                    @include('classement-item', ['projet' => $projet, 'rank' => $index + 1])
-                                </div>
-                            @empty
-                                <div class="text-center p-12 text-gray-400">
-                                    <p class="text-xl">Aucun projet n'a encore reçu de vote.</p>
-                                </div>
-                            @endforelse
-
-                            @if(count($classementGeneral) > 7)
-                                <div class="text-center mt-4">
-                                    <button @click="showAll = !showAll" class="px-3 py-1 bg-emerald-500 text-white rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors">
-                                        <span x-text="showAll ? 'Voir moins' : 'Voir tout'"></span>
-                                    </button>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-
-                    <!-- Classement par catégorie -->
-                    @foreach($categories as $categorie)
-                        <div x-show="tab === '{{ $categorie->slug }}'" class="space-y-4" style="display: none;">
-                            <div x-data="{ showAll: false }">
-                                @forelse ($classementsParCategorie[$categorie->slug] as $index => $projet)
-                                    <div x-show="{{ $index < 7 ? 'true' : 'showAll' }}" x-cloak>
-                                        @include('classement-item', ['projet' => $projet, 'rank' => $index + 1])
-                                    </div>
-                                @empty
-                                    <div class="text-center p-12 text-gray-400">
-                                        <p class="text-xl">Aucun projet n'a encore reçu de vote dans cette catégorie.</p>
-                                    </div>
-                                @endforelse
-
-                                @if(count($classementsParCategorie[$categorie->slug]) > 7)
-                                    <div class="text-center mt-4">
-                                        <button @click="showAll = !showAll" class="px-3 py-1 bg-emerald-500 text-white rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors">
-                                            <span x-text="showAll ? 'Voir moins' : 'Voir tout'"></span>
-                                        </button>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
+                @include('partials.classement-list')
             </div>
         </div>
     </main>
 
     <x-footer />
+    
 </body>
 </html>

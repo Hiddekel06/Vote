@@ -10,6 +10,9 @@ Alpine.start();
 // On importe notre logique de vote spécifique
 import './vote.js';
 
+// AJAX pagination for classement
+import './pagination';
+
 /**
  * Gère le partage d'un projet.
  * Utilise l'API Web Share si disponible, sinon copie le lien dans le presse-papiers.
