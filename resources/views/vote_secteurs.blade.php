@@ -71,7 +71,7 @@
             </div>
 
             <!-- Conteneur Alpine.js global -->
-            {{-- 🚀 Étape 1.1: Ajout des états pour la modale de vote (voteStep, messages, etc.) --}}
+            {{--  Étape 1.1: Ajout des états pour la modale de vote (voteStep, messages, etc.) --}}
                 <div 
     x-data="{
         showModal: false,
@@ -163,12 +163,12 @@
                 <!-- Tableau des projets -->
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse md:max-w-4xl md:mx-auto">
-                        <thead class="bg-gray-100/80 hidden md:table-header-group">
+                        <thead class="bg-gray-800 hidden md:table-header-group">
                             <tr>
-                                <th class="p-4 text-lg font-semibold text-gray-900">Secteur</th>
-                                <th class="p-4 text-lg font-semibold text-gray-900">Equipe</th>
-                                <th class="p-4 text-lg font-semibold text-gray-900">Projet</th>
-                                <th class="p-4 text-lg font-semibold text-gray-900 text-center">Vote</th>
+                                <th class="p-4 text-lg font-semibold text-gray-100">Secteur</th>
+                                <th class="p-4 text-lg font-semibold text-gray-100">Equipe</th>
+                                <th class="p-4 text-lg font-semibold text-gray-100">Projet</th>
+                                <th class="p-4 text-lg font-semibold text-gray-100 text-center">Vote</th>
                             </tr>
                         </thead>
                         <tbody id="projects-table-body">
