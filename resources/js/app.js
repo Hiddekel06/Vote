@@ -5,13 +5,30 @@ import Alpine from 'alpinejs';
 
 window.Alpine = Alpine;
 
-Alpine.start();
+// Démarre Alpine uniquement après que le DOM soit prêt. Cela évite que
+// des scripts (comme `vote.js`) tentent d'accéder à des composants
+// Alpine avant qu'ils aient été initialisés.
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        Alpine.start();
+    } catch (err) {
+        console.error('Erreur lors du démarrage d\'Alpine :', err);
+    }
 
-// On importe notre logique de vote spécifique
-import './vote.js';
+    // Importer dynamiquement les modules qui interagissent avec le DOM
+    // après le démarrage d'Alpine pour éviter les accès précoces au scope.
+    try {
+        await import('./vote.js');
+    } catch (err) {
+        console.error('Impossible de charger vote.js :', err);
+    }
 
-// AJAX pagination for classement
-import './pagination';
+    try {
+        await import('./pagination');
+    } catch (err) {
+        console.error('Impossible de charger pagination.js :', err);
+    }
+});
 
 /**
  * Gère le partage d'un projet.

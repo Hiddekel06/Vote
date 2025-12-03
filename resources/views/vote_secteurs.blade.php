@@ -116,6 +116,16 @@
             errorMessage = isVoteActive ? '' : inactiveMessage;
             successMessage = '';
         });
+        // Fallback: si le script externe ne peut pas écrire directement dans la scope Alpine,
+        // il émettra un événement `otp-sent` que l'on écoute ici pour avancer l'étape du vote.
+        window.addEventListener('otp-sent', function(e) {
+            // e.detail peut contenir des informations utiles (message, etc.)
+            isLoading = false;
+            voteStep = 2;
+            if (e?.detail?.message) {
+                successMessage = e.detail.message;
+            }
+        });
     "
 
     @keydown.escape.window="showModal = false; showVoteModal = false"
@@ -229,7 +239,7 @@
                                             <button
                                                 data-role="vote-btn"
                                                 type="button"
-                                                class="group flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20 {{ $voteStatusDetails['isVoteActive'] ? 'bg-green-400 bg-opacity-75 text-gray-100' : 'bg-gray-600 text-gray-300 cursor-not-allowed' }}"
+                                                class="group flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20 {{ $voteStatusDetails['isVoteActive'] ? 'bg-green-400 bg-opacity-75 text-gray-100 hover:bg-yellow-300 hover:text-black' : 'bg-gray-600 text-gray-300 cursor-not-allowed' }}"
                                                 :class="{
                                                     'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive
                                                 }"
@@ -270,7 +280,7 @@
 
                                         {{-- Pages --}}
                                         @for ($p = 1; $p <= $projets->lastPage(); $p++)
-                                            <a href="{{ $projets->url($p) }}" class="inline-flex items-center px-3 py-2 border-t border-b border-gray-700 {{ $projets->currentPage() === $p ? 'bg-yellow-400/80 text-black font-bold' : 'bg-gray-800 text-gray-200 hover:bg-gray-700' }}">{{ $p }}</a>
+                                            <a href="{{ $projets->url($p) }}" class="inline-flex items-center px-3 py-2 border-t border-b border-gray-700 {{ $projets->currentPage() === $p ? 'bg-emerald-400 text-black font-bold' : 'bg-gray-800 text-gray-200 hover:bg-gray-700' }}">{{ $p }}</a>
                                         @endfor
 
                                         {{-- Next --}}
@@ -430,7 +440,7 @@
                             @endif
                             {{-- Fin du bloc d'erreurs --}}
 
-                            {{-- 🚀 Étape 1: Formulaire Nom & Téléphone --}}
+                            {{--  Étape 1: Formulaire Nom & Téléphone --}}
                             <div x-show="voteStep === 1">
                                 <form id="otp-request-form"
                                       class="space-y-4"
