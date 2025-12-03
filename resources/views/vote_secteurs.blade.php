@@ -165,10 +165,10 @@
                     <table class="w-full text-left border-collapse md:max-w-4xl md:mx-auto">
                         <thead class="bg-gray-800 hidden md:table-header-group">
                             <tr>
-                                <th class="p-4 text-lg font-semibold text-gray-100">Secteur</th>
-                                <th class="p-4 text-lg font-semibold text-gray-100">Equipe</th>
-                                <th class="p-4 text-lg font-semibold text-gray-100">Projet</th>
-                                <th class="p-4 text-lg font-semibold text-gray-100 text-center">Vote</th>
+                                <th class="p-4 text-lg font-semibold text-gray-100 hover:text-yellow-400">Secteur</th>
+                                <th class="p-4 text-lg font-semibold text-gray-100 hover:text-yellow-400">Equipe</th>
+                                <th class="p-4 text-lg font-semibold text-gray-100 hover:text-yellow-400">Projet</th>
+                                <th class="p-4 text-lg font-semibold text-gray-100 text-center hover:text-yellow-400">Vote</th>
                             </tr>
                         </thead>
                         <tbody id="projects-table-body">
