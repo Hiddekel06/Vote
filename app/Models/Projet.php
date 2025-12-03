@@ -26,6 +26,14 @@ class Projet extends Model
     }
 
     /**
+     * Relation vers l'entrée de la table `liste_preselectionnes` associée au projet.
+     */
+    public function listePreselectionne()
+    {
+        return $this->hasOne(\App\Models\ListePreselectionne::class, 'projet_id');
+    }
+
+    /**
      * Définit la relation "un projet appartient à une soumission".
      * La liaison se fait via la colonne 'submission_token'.
      *

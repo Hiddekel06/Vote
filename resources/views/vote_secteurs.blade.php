@@ -233,9 +233,8 @@
                                                 <button
                                                     data-role="vote-btn"
                                                     type="button"
-                                                    class="group flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
+                                                    class="group flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20 {{ $voteStatusDetails['isVoteActive'] ? 'bg-green-400 bg-opacity-75 text-gray-100 hover:bg-yellow-300 hover:text-black' : 'bg-gray-600 text-gray-300 cursor-not-allowed' }}"
                                                     :class="{
-                                                        'bg-green-400 bg-opacity-75 text-gray-100 hover:bg-yellow-300 hover:text-black': isVoteActive,
                                                         'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive
                                                     }"
                                                     :disabled="!isVoteActive"
