@@ -79,7 +79,7 @@
         showVoteModal: false,
         voteProjet: null,
 
-        // 🚀 Variables pour le statut du vote
+        //  Variables pour le statut du vote
         isVoteActive: {{ json_encode($voteStatusDetails['isVoteActive']) }},
         inactiveMessage: {{ json_encode($voteStatusDetails['inactiveMessage']) }},
 
@@ -162,13 +162,13 @@
                 </div>
                 <!-- Tableau des projets -->
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-gray-900/50 hidden md:table-header-group">
+                    <table class="w-full text-left border-collapse md:max-w-4xl md:mx-auto">
+                        <thead class="bg-gray-100/80 hidden md:table-header-group">
                             <tr>
-                                <th class="p-4 text-lg font-semibold text-yellow-400">Secteur</th>
-                                <th class="p-4 text-lg font-semibold text-yellow-400">Nom de l'équipe</th>
-                                <th class="p-4 text-lg font-semibold text-yellow-400">Nom du projet</th>
-                                <th class="p-4 text-lg font-semibold text-yellow-400 text-center">Vote</th>
+                                <th class="p-4 text-lg font-semibold text-gray-900">Secteur</th>
+                                <th class="p-4 text-lg font-semibold text-gray-900">Equipe</th>
+                                <th class="p-4 text-lg font-semibold text-gray-900">Projet</th>
+                                <th class="p-4 text-lg font-semibold text-gray-900 text-center">Vote</th>
                             </tr>
                         </thead>
                         <tbody id="projects-table-body">
@@ -181,26 +181,7 @@
                                         <td class="block md:table-cell p-4 text-center align-middle">
                                                    <div class="relative flex flex-col md:flex-row items-center justify-center gap-2">
 
-                                                <!-- Bouton Voter (maintenu en premier) -->
-                                                <button
-                                                    data-role="vote-btn"
-                                                    type="button"
-                                                    class="group flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
-                                                    :class="{
-                                                        'bg-yellow-300 text-gray-900 hover:bg-yellow-300': isVoteActive,
-                                                        'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive
-                                                    }"
-                                                    :disabled="!isVoteActive"
-                                                    @click="voteProjet = @js($projet); showVoteModal = true; voteStep = isVoteActive ? 1 : 3; errorMessage = isVoteActive ? '' : inactiveMessage; successMessage = '';">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    Voter
-                                                </button>
-
-                                                <!-- Overlay pour capter le clic quand le vote est INactif -->
-                                                <button x-show="!isVoteActive" @click.prevent="showInactiveNotice()" class="absolute inset-0 w-full h-full z-20 bg-transparent" aria-hidden="true"></button>
-
+                                                <!-- Icônes à gauche : Détails, Partager, Démo -->
                                                 <!-- Bouton Détails (icône seulement) -->
                                                 <button
                                                     type="button"
@@ -224,6 +205,7 @@
                                                         <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                                                     </svg>
                                                 </button>
+
                                                 @php
                                                     // Prefer attribute on projet if present (controller may have selected it),
                                                     // otherwise fallback to querying the preselection table.
@@ -246,6 +228,26 @@
                                                         </svg>
                                                     </span>
                                                 @endif
+
+                                                <!-- Bouton Voter () -->
+                                                <button
+                                                    data-role="vote-btn"
+                                                    type="button"
+                                                    class="group flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
+                                                    :class="{
+                                                        'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black': isVoteActive,
+                                                        'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive
+                                                    }"
+                                                    :disabled="!isVoteActive"
+                                                    @click="voteProjet = @js($projet); showVoteModal = true; voteStep = isVoteActive ? 1 : 3; errorMessage = isVoteActive ? '' : inactiveMessage; successMessage = '';">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    Voter
+                                                </button>
+
+                                                <!-- Overlay pour capter le clic quand le vote est INactif (au-dessus du bouton Voter) -->
+                                                <button x-show="!isVoteActive" @click.prevent="showInactiveNotice()" class="absolute inset-0 w-full h-full z-20 bg-transparent" aria-hidden="true"></button>
                                             </div>
                                         </td>
                                     </tr>
