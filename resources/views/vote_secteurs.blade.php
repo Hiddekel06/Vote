@@ -172,94 +172,146 @@
                             </tr>
                         </thead>
                         <tbody id="projects-table-body">
-                            @foreach ($secteurs as $secteur)
-                                @forelse ($secteur->projets as $projet)
-                                    <tr class="block md:table-row border-b border-gray-700 hover:bg-gray-900/30 transition-colors">
-                                        <td class="block md:table-cell p-4" data-label="Secteur : ">{{ $secteur->nom }}</td>
-                                        <td class="block md:table-cell p-4" data-label="Équipe : ">{{ $projet->nom_equipe }}</td>
-                                        <td class="block md:table-cell p-4 font-semibold" data-label="Projet : ">{{ $projet->nom_projet }}</td>
-                                        <td class="block md:table-cell p-4 text-center align-middle">
-                                                   <div class="relative flex flex-col md:flex-row items-center justify-center gap-2">
+                            @foreach ($projets as $projet)
+                                <tr class="block md:table-row border-b border-gray-700 hover:bg-gray-900/30 transition-colors">
+                                    <td class="block md:table-cell p-4" data-label="Secteur : ">{{ $projet->secteur->nom ?? '-' }}</td>
+                                    <td class="block md:table-cell p-4" data-label="Équipe : ">{{ $projet->nom_equipe }}</td>
+                                    <td class="block md:table-cell p-4 font-semibold" data-label="Projet : ">{{ $projet->nom_projet }}</td>
+                                    <td class="block md:table-cell p-4 text-center align-middle">
+                                        <div class="relative flex flex-col md:flex-row items-center justify-center gap-2">
 
-                                                <!-- Icônes à gauche : Détails, Partager, Démo -->
-                                                <!-- Bouton Détails (icône seulement) -->
-                                                <button
-                                                    type="button"
-                                                    class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                    aria-label="Détails du projet"
-                                                    title="Détails"
-                                                    @click="modalProjet = @js($projet); showModal = true; descriptionExpanded = false">
+                                            <!-- Détails -->
+                                            <button
+                                                type="button"
+                                                class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                aria-label="Détails du projet"
+                                                title="Détails"
+                                                @click="modalProjet = @js($projet); showModal = true; descriptionExpanded = false">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            </button>
+
+                                            <!-- Partager -->
+                                            <button
+                                                type="button"
+                                                class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                title="Partager ce projet"
+                                                onclick="shareProject('{{ route('vote.afficherProjet', ['id' => $projet->id]) }}')">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                                                </svg>
+                                            </button>
+
+                                            @php
+                                                $demoUrl = optional($projet->listePreselectionne)->video_demonstration;
+                                            @endphp
+                                            @if($demoUrl)
+                                                <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
+                                                   class="p-2 ml-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Voir la démonstration">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                        <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
                                                     </svg>
-                                                </button>
-
-                                                <!-- Bouton Partager -->
-                                                <button 
-                                                    type="button"
-                                                    class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                    title="Partager ce projet"
-                                                    onclick="shareProject('{{ route('vote.afficherProjet', ['id' => $projet->id]) }}')">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                                                </a>
+                                            @else
+                                                <span class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60" title="Aucune démonstration disponible" aria-hidden="true">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                        <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                        <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
                                                     </svg>
-                                                </button>
+                                                </span>
+                                            @endif
 
-                                                @php
-                                                    // Prefer attribute on projet if present (controller may have selected it),
-                                                    // otherwise fallback to querying the preselection table.
-                                                    $demoUrl = $projet->video_demonstration ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
-                                                @endphp
-                                                @if($demoUrl)
-                                                    <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
-                                                       class="p-2 ml-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Voir la démonstration">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                            <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                        </svg>
-                                                    </a>
-                                                @else
-                                                    <span class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60" title="Aucune démonstration disponible" aria-hidden="true">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                            <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                            <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
-                                                        </svg>
-                                                    </span>
-                                                @endif
+                                            <!-- Voter -->
+                                            <button
+                                                data-role="vote-btn"
+                                                type="button"
+                                                class="group flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20 {{ $voteStatusDetails['isVoteActive'] ? 'bg-green-400 bg-opacity-75 text-gray-100 hover:bg-yellow-300 hover:text-black' : 'bg-gray-600 text-gray-300 cursor-not-allowed' }}"
+                                                :class="{
+                                                    'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive
+                                                }"
+                                                :disabled="!isVoteActive"
+                                                @click="voteProjet = @js($projet); showVoteModal = true; voteStep = isVoteActive ? 1 : 3; errorMessage = isVoteActive ? '' : inactiveMessage; successMessage = '';">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                Voter
+                                            </button>
 
-                                                <!-- Bouton Voter () -->
-                                                <button
-                                                    data-role="vote-btn"
-                                                    type="button"
-                                                    class="group flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20 {{ $voteStatusDetails['isVoteActive'] ? 'bg-green-400 bg-opacity-75 text-gray-100 hover:bg-yellow-300 hover:text-black' : 'bg-gray-600 text-gray-300 cursor-not-allowed' }}"
-                                                    :class="{
-                                                        'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive
-                                                    }"
-                                                    :disabled="!isVoteActive"
-                                                    @click="voteProjet = @js($projet); showVoteModal = true; voteStep = isVoteActive ? 1 : 3; errorMessage = isVoteActive ? '' : inactiveMessage; successMessage = '';">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    Voter
-                                                </button>
-
-                                                <!-- Overlay pour capter le clic quand le vote est INactif (au-dessus du bouton Voter) -->
-                                                <button x-show="!isVoteActive" @click.prevent="showInactiveNotice()" class="absolute inset-0 w-full h-full z-20 bg-transparent" aria-hidden="true"></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                @endforelse
+                                            <button x-show="!isVoteActive" @click.prevent="showInactiveNotice()" class="absolute inset-0 w-full h-full z-20 bg-transparent" aria-hidden="true"></button>
+                                        </div>
+                                    </td>
+                                </tr>
                             @endforeach
                         </tbody>
                     </table>
 
                 </div>
                 <div class="mt-6">
-                   
-</div>
+                    @if ($projets->total() > 0)
+                        <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-300">
+                            <div>
+                                <span class="font-semibold">Affichage</span>
+                                <span>{{ $projets->firstItem() }}&ndash;{{ $projets->lastItem() }}</span>
+                                <span>sur</span>
+                                <span class="font-semibold">{{ $projets->total() }}</span>
+                            </div>
+
+                            <div class="flex items-center gap-4">
+                                <div class="hidden sm:block">
+                                    <nav class="inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                                        {{-- Previous --}}
+                                        <a href="{{ $projets->previousPageUrl() }}" class="inline-flex items-center px-3 py-2 rounded-l-md bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700" aria-label="Précédent">
+                                            &laquo;
+                                        </a>
+
+                                        {{-- Pages --}}
+                                        @for ($p = 1; $p <= $projets->lastPage(); $p++)
+                                            <a href="{{ $projets->url($p) }}" class="inline-flex items-center px-3 py-2 border-t border-b border-gray-700 {{ $projets->currentPage() === $p ? 'bg-yellow-400/80 text-black font-bold' : 'bg-gray-800 text-gray-200 hover:bg-gray-700' }}">{{ $p }}</a>
+                                        @endfor
+
+                                        {{-- Next --}}
+                                        <a href="{{ $projets->nextPageUrl() }}" class="inline-flex items-center px-3 py-2 rounded-r-md bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700" aria-label="Suivant">
+                                            &raquo;
+                                        </a>
+                                    </nav>
+                                </div>
+
+                                {{-- Compact per-page control (copied from classement) --}}
+                                <div x-data="{ open: false }" class="relative" x-on:keydown.escape="open = false" x-on:click.away="open = false">
+                                    @php
+                                        $currentPer = (int) request()->query('per_page', $perPage ?? 5);
+                                        $opts = [5,10,15];
+                                    @endphp
+
+                                    <button type="button" @click.prevent="open = !open" aria-haspopup="listbox" :aria-expanded="open"
+                                            class="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-gray-800 text-gray-200 text-sm hover:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-amber-300">
+                                        <span class="sr-only">Changer le nombre d'items affichés</span>
+                                        <span class="font-medium">{{ $currentPer }}</span>
+                                        <svg class="w-3 h-3 text-gray-400" viewBox="0 0 20 20" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M6 8l4 4 4-4"/></svg>
+                                    </button>
+
+                                    <div x-show="open" x-cloak x-transition class="origin-top-left absolute left-0 mt-2 w-36 rounded-md bg-gray-900/90 backdrop-blur-sm border border-white/5 shadow-lg z-20">
+                                        <ul role="listbox" aria-label="Sélection du nombre d'items" class="py-1">
+                                            @foreach($opts as $opt)
+                                                @php $url = request()->fullUrlWithQuery(['per_page' => $opt]); @endphp
+                                                <li>
+                                                    <a href="{{ $url }}" role="option" aria-selected="{{ $currentPer === $opt ? 'true' : 'false' }}"
+                                                       class="block px-3 py-1 text-sm {{ $currentPer === $opt ? 'text-black bg-amber-300 font-semibold' : 'text-gray-200 hover:bg-gray-800/60' }}">
+                                                        {{ $opt }} 
+                                                    </a>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
 
 
                 

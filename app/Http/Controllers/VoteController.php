@@ -19,6 +19,7 @@ use App\Models\Vote;
 use App\Models\Configuration;
 use App\Models\Categorie;
 use App\Models\Secteur;
+use App\Models\Projet;
 use Illuminate\Support\Facades\DB ;
 
 class VoteController extends Controller
@@ -131,8 +132,22 @@ class VoteController extends Controller
         // 🚀 On récupère le statut du vote pour le passer à la vue
         $voteStatusDetails = $this->getVoteStatusDetails();
 
+        // --- Server-side pagination for projects (same UX as classement) ---
+        $perPage = (int) $request->query('per_page', 5);
 
-        return view('vote_secteurs', compact('secteurs', 'countries', 'voteStatusDetails', 'categorie', 'allCategories'));
+        $projetsQuery = Projet::with(['secteur', 'listePreselectionne'])
+            ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
+            ->whereIn('id', $preselectedProjectIds)
+            ->when($search, function ($q) use ($search) {
+                $q->where('nom_projet', 'like', "%{$search}%")
+                  ->orWhere('nom_equipe', 'like', "%{$search}%");
+            })
+            ->orderBy('nom_projet');
+
+        $projets = $projetsQuery->paginate($perPage)->withQueryString();
+
+
+        return view('vote_secteurs', compact('secteurs', 'projets', 'countries', 'voteStatusDetails', 'categorie', 'allCategories'));
     }
 
     /**
