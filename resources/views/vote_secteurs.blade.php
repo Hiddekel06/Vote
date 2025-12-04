@@ -160,68 +160,9 @@
                         <div class="text-xs text-red-200">{{ $voteStatusDetails['inactiveMessage'] }}</div>
                     </div>
                 </div>
-                <!-- Mobile : cartes de projets (affichées uniquement sur petit écran) -->
-                <div class="md:hidden space-y-4">
-                    @foreach ($secteurs as $secteur)
-                        @forelse ($secteur->projets as $projet)
-                            @php
-                                $demoUrl = $projet->video_demonstration ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
-                            @endphp
-                            <div class="bg-gray-900/60 p-4 rounded-lg border border-gray-800 flex items-start justify-between">
-                                <div class="flex-1 pr-3">
-                                    <div class="text-xs text-gray-400">{{ $secteur->nom }}</div>
-                                    <div class="font-semibold text-white truncate">{{ $projet->nom_projet }}</div>
-                                    <div class="text-sm text-gray-400 truncate">{{ $projet->nom_equipe }}</div>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <div class="flex items-center space-x-1">
-                                        <button type="button" class="p-2 rounded-md text-gray-300 hover:text-white hover:bg-gray-700 transition-colors" aria-label="Détails du projet" title="Détails"
-                                                @click="modalProjet = @js($projet); showModal = true; descriptionExpanded = false">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                        </button>
-
-                                        <button type="button" class="p-2 rounded-md text-gray-300 hover:text-white hover:bg-gray-700 transition-colors" title="Partager ce projet"
-                                                onclick="shareProject('{{ route('vote.afficherProjet', ['id' => $projet->id]) }}')">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                                            </svg>
-                                        </button>
-
-                                        @if($demoUrl)
-                                            <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer" class="p-2 rounded-md text-gray-300 hover:text-white hover:bg-gray-700 transition-colors" title="Voir la démonstration">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                </svg>
-                                            </a>
-                                        @else
-                                            <span class="p-2 rounded-md text-gray-600 opacity-60" title="Aucune démonstration disponible" aria-hidden="true">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                    <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
-                                                </svg>
-                                            </span>
-                                        @endif
-                                    </div>
-
-                                    <button data-role="vote-btn" type="button" class="ml-2 px-3 py-2 text-sm font-bold rounded-lg bg-green-400/75 text-gray-900 hover:bg-yellow-300 hover:text-black transition" :disabled="!isVoteActive"
-                                            @click="voteProjet = @js($projet); showVoteModal = true; voteStep = isVoteActive ? 1 : 3; errorMessage = isVoteActive ? '' : inactiveMessage; successMessage = '';">
-                                        Voter
-                                    </button>
-                                </div>
-                            </div>
-                        @empty
-                        @endforelse
-                    @endforeach
-                </div>
-
-                <!-- Tableau des projets (bureau) -->
-                <div class="hidden md:overflow-x-auto md:block">
-                    <table class="hidden md:table w-full text-left border-collapse md:max-w-4xl md:mx-auto">
+                <!-- Tableau des projets -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse md:max-w-4xl md:mx-auto">
                         <thead class="bg-gray-800 hidden md:table-header-group">
                             <tr>
                                 <th class="p-4 text-lg font-semibold text-gray-100">Secteur</th>
