@@ -29,7 +29,7 @@
         <div>
             <h3 class="text-yellow-400 font-semibold text-lg mb-2">Liens utiles</h3>
             <ul class="space-y-1 text-sm">
-                <li><a href="https://www.communication.gouv.sn" target="_blank" class=" hover:text-emerald-300 transition-colors">Ministère de la Communication, des Télécommunications et du Numérique</a></li>
+                <li><a href="https://www.mctn.sn/" target="_blank" class=" hover:text-emerald-300 transition-colors">Ministère de la Communication, des Télécommunications et du Numérique</a></li>
                 <li><a href="https://www.fonctionpublique.gouv.sn" target="_blank" class=" hover:text-emerald-300 transition-colors">Ministère de la Fonction Publique, du Travail et de la Réforme du Service public</a></li>
             </ul>
         </div>
