@@ -15,65 +15,113 @@
 
 @section('content')
 
+<html>
+    <h1>Gov'Athon 2025 Vote</h1>
+</html>
+<div class="content admin-dashboard">
+    <style>
+        .admin-dashboard .admin-hero {
+            background: linear-gradient(135deg, rgba(34,197,94,0.06), rgba(59,130,246,0.05));
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 1rem;
+        }
+        .admin-dashboard .stat-pill { min-width:110px; padding:10px 14px; border-radius:10px; background:rgba(255,255,255,0.02); }
+        .admin-dashboard .stat-pill .label { font-size:12px; color: #9CA3AF; }
+        .admin-dashboard .stat-pill .value { font-size:18px; font-weight:700; }
+        .admin-dashboard .card { border-radius:12px; box-shadow: 0 6px 18px rgba(2,6,23,0.06); }
+        /* Stat card specific */
+        .admin-dashboard .stat-card { padding:1rem; overflow:hidden; }
+        .admin-dashboard .stat-card .stat-icon { width:56px; height:56px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; }
+        .admin-dashboard .stat-label { font-size:13px; color:#6B7280; margin-bottom:6px; }
+        .admin-dashboard .stat-value { font-size:20px; font-weight:700; }
+        .admin-dashboard .stat-sub { font-size:12px; color:#9CA3AF; }
+        @media (max-width:767px) { .admin-dashboard .admin-hero { padding:12px; } .admin-dashboard .stat-pill { min-width:90px; padding:8px 10px; } }
+    </style>
 
-<div class="content">
-       <h2 class="mb-4 text-body-emphasis"> Dashboard</h2>
+    <div class="admin-hero d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
+        <div class="d-flex align-items-center gap-3">
+            <img src="{{ asset('images/logoGov.jpeg') }}" alt="GovAthon Logo" style="width:68px; height:auto; border-radius:8px;" />
+            <div>
+                <h1 class="h4 mb-0">Admin Dashboard</h1>
+                <p class="mb-0 text-muted small">Vue d'ensemble — statistiques et contrôles rapides</p>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-3 mt-md-0">
+            <div class="stat-pill text-center">
+                <div class="label">Projets</div>
+                <div class="value">{{ $totalProjets }}</div>
+            </div>
+            <div class="stat-pill text-center">
+                <div class="label">Votes</div>
+                <div class="value">{{ $totalVotes }}</div>
+            </div>
+            <div class="stat-pill text-center">
+                <div class="label">Votants</div>
+                <div class="value">{{ $totalVotants }}</div>
+            </div>
+        </div>
+    </div>
 
        {{-- NOUVEAU : Cartes de statistiques --}}
        <div class="row g-3 mb-4">
            <!-- Carte Total Projets -->
            <div class="col-12 col-md-6 col-lg-3">
-               <div class="card h-100">
-                   <div class="card-body">
-                       <div class="d-flex flex-between-center">
-                           <div class="flex-1">
-                               <h5 class="mb-1 text-body-tertiary text-nowrap">Projets Validés</h5>
-                               <h4 class="mb-0">{{ $totalProjets }}</h4>
-                           </div>
-                           <div class="fs-4 text-body-tertiary"><span class="fas fa-folder-open"></span></div>
+               <div class="card h-100 stat-card">
+                   <div class="d-flex align-items-center">
+                       <div class="stat-icon me-3" style="background:#ECFDF5;color:#059669;">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"></path><path d="M16 3v4"></path><path d="M8 3v4"></path><path d="M3 11h18"></path></svg>
+                       </div>
+                       <div class="flex-1">
+                           <div class="stat-label">Projets Validés</div>
+                           <div class="stat-value">{{ $totalProjets }}</div>
+                           <div class="stat-sub">Depuis la dernière semaine</div>
                        </div>
                    </div>
                </div>
            </div>
            <!-- Carte Total Votes -->
            <div class="col-12 col-md-6 col-lg-3">
-               <div class="card h-100">
-                   <div class="card-body">
-                       <div class="d-flex flex-between-center">
-                           <div class="flex-1">
-                               <h5 class="mb-1 text-body-tertiary text-nowrap">Total des Votes</h5>
-                               <h4 class="mb-0">{{ $totalVotes }}</h4>
-                           </div>
-                           <div class="fs-4 text-body-tertiary"><span class="fas fa-vote-yea"></span></div>
+               <div class="card h-100 stat-card">
+                   <div class="d-flex align-items-center">
+                       <div class="stat-icon me-3" style="background:#EFF6FF;color:#2563EB;">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10h-6l-2 9-2-5-4 5H3"></path></svg>
+                       </div>
+                       <div class="flex-1">
+                           <div class="stat-label">Total des Votes</div>
+                           <div class="stat-value">{{ $totalVotes }}</div>
+                           <div class="stat-sub">Depuis la dernière semaine</div>
                        </div>
                    </div>
                </div>
            </div>
            <!-- Carte Votants Uniques -->
            <div class="col-12 col-md-6 col-lg-3">
-               <div class="card h-100">
-                   <div class="card-body">
-                       <div class="d-flex flex-between-center">
-                           <div class="flex-1">
-                               <h5 class="mb-1 text-body-tertiary text-nowrap">Votants Uniques</h5>
-                               <h4 class="mb-0">{{ $totalVotants }}</h4>
-                           </div>
-                           <div class="fs-4 text-body-tertiary"><span class="fas fa-users"></span></div>
+               <div class="card h-100 stat-card">
+                   <div class="d-flex align-items-center">
+                       <div class="stat-icon me-3" style="background:#FFFBEB;color:#D97706;">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="11" cy="7" r="4"></circle></svg>
+                       </div>
+                       <div class="flex-1">
+                           <div class="stat-label">Votants Uniques</div>
+                           <div class="stat-value">{{ $totalVotants }}</div>
+                           <div class="stat-sub">Depuis la dernière semaine</div>
                        </div>
                    </div>
                </div>
            </div>
            <!-- Carte Projet en Tête -->
            <div class="col-12 col-md-6 col-lg-3">
-               <div class="card h-100">
-                   <div class="card-body">
-                       <div class="d-flex flex-between-center">
-                           <div class="flex-1">
-                               <h5 class="mb-1 text-body-tertiary text-nowrap">Projet en Tête</h5>
-                               <h6 class="mb-0 text-truncate" title="{{ $projetEnTete?->nom_projet }}">{{ $projetEnTete?->nom_projet ?? 'N/A' }}</h6>
-                               <small class="text-success fw-bold">{{ $projetEnTete?->votes_count ?? 0 }} votes</small>
-                           </div>
-                           <div class="fs-4 text-body-tertiary"><span class="fas fa-trophy"></span></div>
+               <div class="card h-100 stat-card">
+                   <div class="d-flex align-items-center">
+                       <div class="stat-icon me-3" style="background:#F0F9FF;color:#0EA5E9;">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"></path></svg>
+                       </div>
+                       <div class="flex-1">
+                           <div class="stat-label">Projet en Tête</div>
+                           <div class="stat-value">{{ $projetEnTete?->nom_projet ?? 'N/A' }}</div>
+                           <div class="stat-sub text-success">{{ $projetEnTete?->votes_count ?? 0 }} votes</div>
                        </div>
                    </div>
                </div>
@@ -226,16 +274,50 @@
             var dom = document.getElementById(id);
             if (!dom) return;
             var chart = echarts.init(dom);
+
+            // create a subtle gradient from the provided color
+            var gradientFill = new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: color },
+                { offset: 1, color: 'rgba(255,255,255,0.06)' }
+            ]);
+
             var option = {
-                tooltip: { trigger: 'axis' },
-                xAxis: { type: 'category', data: labels, axisLabel: { color: '#666' } },
-                yAxis: { type: 'value', axisLabel: { color: '#666' } },
-                series: [{ data: data, type: 'bar', itemStyle: { color: color } }]
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(0,0,0,0.75)',
+                    textStyle: { color: '#fff' }
+                },
+                grid: { left: '3%', right: '3%', bottom: '3%', containLabel: true },
+                xAxis: {
+                    type: 'category',
+                    data: labels,
+                    axisLabel: { color: '#9CA3AF' },
+                    axisLine: { lineStyle: { color: 'rgba(148,163,184,0.18)' } },
+                    axisTick: { show: false }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { color: '#9CA3AF' },
+                    axisLine: { show: false },
+                    splitLine: { lineStyle: { color: 'rgba(148,163,184,0.06)' } }
+                },
+                series: [{
+                    name: title,
+                    data: data,
+                    type: 'bar',
+                    barWidth: '42%',
+                    itemStyle: {
+                        color: gradientFill,
+                        borderRadius: [6,6,4,4]
+                    },
+                    emphasis: { itemStyle: { opacity: 0.9 } }
+                }]
             };
             chart.setOption(option);
             window.addEventListener('resize', chart.resize);
         }
 
+        // use a modern palette and render three bar charts
         renderBar('chartVotesCategorieStudent', 'Étudiants', studentData, '#60a5fa'); // bleu
         renderBar('chartVotesCategorieStartup', 'Startups', startupData, '#34d399'); // vert
         renderBar('chartVotesCategorieOther', 'Citoyens', otherData, '#f59e0b'); // jaune/orange
@@ -318,15 +400,37 @@
                });
 
                var option = {
-                   tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-                   legend: { orient: 'vertical', left: 'left' },
+                   backgroundColor: 'transparent',
+                   color: ['#60a5fa', '#34d399', '#f59e0b', '#A78BFA', '#FB7185'],
+                   tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)', backgroundColor: 'rgba(0,0,0,0.75)', textStyle: { color: '#fff' } },
+                   legend: {
+                       orient: 'vertical',
+                       left: 'left',
+                       textStyle: { color: '#9CA3AF' }
+                   },
                    series: [
                        {
                            name: 'Votes par profil',
                            type: 'pie',
-                           radius: '60%',
-                           data: seriesData,
-                           emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' } }
+                           radius: ['40%', '64%'],
+                           center: ['65%', '50%'],
+                           roseType: false,
+                           avoidLabelOverlap: true,
+                           label: {
+                               show: true,
+                               position: 'outside',
+                               formatter: '{b}\n{d}%',
+                               color: '#111827'
+                           },
+                           labelLine: { length: 12, length2: 8, lineStyle: { color: 'rgba(34,34,34,0.08)' } },
+                           itemStyle: {
+                               borderColor: '#fff',
+                               borderWidth: 2,
+                               shadowBlur: 6,
+                               shadowColor: 'rgba(0,0,0,0.08)'
+                           },
+                           emphasis: { itemStyle: { shadowBlur: 12, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.25)' } },
+                           data: seriesData
                        }
                    ]
                };
@@ -359,43 +463,37 @@
                var allSeriesData = {!! json_encode($allSeriesData) !!};
                var allLegendNames = {!! json_encode($allLegendNames) !!};
 
+               var palette = ['#60a5fa','#34d399','#f59e0b','#A78BFA','#FB7185'];
+
                var option = {
                    tooltip: {
                        trigger: 'axis',
-                       axisPointer: {
-                           type: 'cross',
-                           label: {
-                               backgroundColor: '#6a7985'
-                           }
-                       }
+                       backgroundColor: 'rgba(0,0,0,0.75)',
+                       textStyle: { color: '#fff' },
+                       axisPointer: { type: 'cross', label: { backgroundColor: '#6a7985' } }
                    },
                    legend: {
                        data: allLegendNames,
-                       textStyle: {
-                           color: '#ccc' // Adjust legend text color for dark theme
-                       }
+                       textStyle: { color: '#374151' }
                    },
-                   grid: {
-                       left: '3%',
-                       right: '4%',
-                       bottom: '3%',
-                       containLabel: true
-                   },
-                   xAxis: [
-                       {
-                           type: 'category',
-                           boundaryGap: false,
-                           data: dailyVoteLabels,
-                           axisLabel: { color: '#ccc' }
-                       }
-                   ],
-                   yAxis: [
-                       {
-                           type: 'value',
-                           axisLabel: { color: '#ccc' }
-                       }
-                   ],
-                   series: allSeriesData
+                   grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                   xAxis: [{ type: 'category', boundaryGap: false, data: dailyVoteLabels, axisLine: { lineStyle: { color: 'rgba(15,23,42,0.06)' } }, axisLabel: { color: '#6B7280' } }],
+                   yAxis: [{ type: 'value', axisLine: { show: false }, axisLabel: { color: '#6B7280' }, splitLine: { lineStyle: { color: 'rgba(15,23,42,0.04)' } } }],
+                   series: allSeriesData.map(function(s, idx) {
+                       var color = palette[idx % palette.length];
+                       return Object.assign({}, s, {
+                           smooth: true,
+                           symbol: 'circle',
+                           symbolSize: 6,
+                           lineStyle: { width: 2, color: color },
+                           areaStyle: {
+                               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                   { offset: 0, color: color + '33' },
+                                   { offset: 1, color: 'rgba(255,255,255,0.02)' }
+                               ])
+                           }
+                       });
+                   })
                };
 
                myChart.setOption(option);

@@ -39,27 +39,6 @@
             </div>
 
             <!-- Section Chiffres Clés -->
-            <div class="border-t border-yellow-400/20 pt-12">
-                <h2 x-animate class="text-center text-2xl font-bold text-white mb-8 opacity-0 translate-y-4 transition-all duration-700 ease-out delay-300">Le GovAthon en Chiffres</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
-                    <!-- Stat 1 -->
-                    <div x-animate class="bg-gray-900/50 p-6 rounded-lg border border-gray-800 opacity-0 translate-y-4 transition-all duration-700 ease-out delay-500">
-                        <p class="text-4xl font-bold text-emerald-400">150+</p>
-                        <p class="text-gray-400 mt-2">Projets Soumis</p>
-                    </div>
-                    <!-- Stat 2 -->
-                    <div x-animate class="bg-gray-900/50 p-6 rounded-lg border border-gray-800 opacity-0 translate-y-4 transition-all duration-700 ease-out delay-700">
-                        <p class="text-4xl font-bold text-sky-400">30,000+</p>
-                        <p class="text-gray-400 mt-2">Votes Enregistrés</p>
-                    </div>
-                    <!-- Stat 3 -->
-                    <div x-animate class="bg-gray-900/50 p-6 rounded-lg border border-gray-800 opacity-0 translate-y-4 transition-all duration-700 ease-out delay-[900ms]">
-                        <p class="text-4xl font-bold text-yellow-400">3</p>
-                        <p class="text-gray-400 mt-2">Catégories d'Innovation</p>
-                    </div>
-                </div>
-            </div>
-        </div>
     </main>
 
     <x-footer />

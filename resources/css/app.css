@@ -7,8 +7,13 @@ html, body {
     background-color: #000000; /* Noir pur */
 }
 .bg-image-custom {
-    /* Le chemin est relatif au fichier CSS */
-    background-image: url('../../../public/images/LogoBG.jpg');
+    /* Use public path so it works in dev and production */
+    background-image: url('/images/LogoBG.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    /* fallback color */
+    background-color: #000000;
 }
 
 /* Style personnalisé pour les boutons avec effet skew */
