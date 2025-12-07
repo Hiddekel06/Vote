@@ -32,7 +32,7 @@
     }
 @endphp
 
-<div class="flex items-center {{ $cardBg }} p-4 rounded-lg border border-white/10 {{ $borderHover }} transition-all duration-300 shadow-lg">
+<div class="flex flex-col sm:flex-row sm:items-center {{ $cardBg }} p-4 rounded-lg border border-white/10 {{ $borderHover }} transition-all duration-300 shadow-lg min-w-0 gap-3 sm:gap-0">
     <div class="hidden list-meta">
         <span class="product">{{ $projet->nom_projet }}</span>
         <span class="customer">Équipe: {{ $projet->nom_equipe }}</span>
@@ -44,14 +44,14 @@
     </div>
 
     {{-- Informations du projet --}}
-    <div class="flex-grow border-l border-gray-700 pl-4">
-        <p class="text-lg font-semibold text-white">{{ $projet->nom_projet }}</p>
-        <p class="text-sm text-gray-400/80">Équipe: {{ $projet->nom_equipe }}</p>
+    <div class="flex-grow border-l border-gray-700 pl-4 sm:pl-4 border-0 sm:border-l min-w-0">
+        <p class="text-lg font-semibold text-white truncate">{{ $projet->nom_projet }}</p>
+        <p class="text-sm text-gray-400/80 truncate">Équipe: {{ $projet->nom_equipe }}</p>
     </div>
 
     {{-- Nombre de votes --}}
-    <div class="flex-none w-28 text-right pl-4">
-        <p class="text-2xl font-bold text-emerald-400" style="text-shadow: 0 0 8px rgba(52, 211, 153, 0.4);" title="{{ number_format($projet->votes_count, 0, ',', ' ') }} votes">{{ $displayVotes }}</p>
+    <div class="flex-none w-full sm:w-28 text-left sm:text-right pl-0 sm:pl-4">
+        <p class="text-xl sm:text-2xl font-bold text-emerald-400" style="text-shadow: 0 0 8px rgba(52, 211, 153, 0.4);" title="{{ number_format($projet->votes_count, 0, ',', ' ') }} votes">{{ $displayVotes }}</p>
         <p class="text-xs text-gray-500 uppercase tracking-wider">Votes</p>
     </div>
 </div>
