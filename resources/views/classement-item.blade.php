@@ -20,6 +20,18 @@
     }
 @endphp
 
+@php
+    // Format votes: keep raw below 1000, switch to K with 1 decimal (trimmed) from 1000+
+    $votes = (int) ($projet->votes_count ?? 0);
+    if ($votes >= 1000) {
+        $shortVotes = number_format($votes / 1000, $votes >= 10000 ? 0 : 1, ',', ' ');
+        $shortVotes = rtrim(rtrim($shortVotes, '0'), ',');
+        $displayVotes = $shortVotes . 'k';
+    } else {
+        $displayVotes = number_format($votes, 0, ',', ' ');
+    }
+@endphp
+
 <div class="flex items-center {{ $cardBg }} p-4 rounded-lg border border-white/10 {{ $borderHover }} transition-all duration-300 shadow-lg">
     <div class="hidden list-meta">
         <span class="product">{{ $projet->nom_projet }}</span>
@@ -39,7 +51,7 @@
 
     {{-- Nombre de votes --}}
     <div class="flex-none w-28 text-right pl-4">
-        <p class="text-2xl font-bold text-emerald-400" style="text-shadow: 0 0 8px rgba(52, 211, 153, 0.4);">{{ number_format($projet->votes_count, 0, ',', ' ') }}</p>
+        <p class="text-2xl font-bold text-emerald-400" style="text-shadow: 0 0 8px rgba(52, 211, 153, 0.4);" title="{{ number_format($projet->votes_count, 0, ',', ' ') }} votes">{{ $displayVotes }}</p>
         <p class="text-xs text-gray-500 uppercase tracking-wider">Votes</p>
     </div>
 </div>
