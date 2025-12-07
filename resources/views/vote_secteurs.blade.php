@@ -23,7 +23,7 @@
             <div class="text-center mb-4">
                 <div x-data="{ open: false }" class="relative inline-block text-left">
                     <div>
-                        <button @click="open = !open" type="button" class="inline-flex justify-center items-center w-full rounded-md px-4 py-2 text-2xl sm:text-3xl font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none" id="menu-button" aria-expanded="true" aria-haspopup="true">
+                        <button @click="open = !open" type="button" class="inline-flex justify-center items-center w-full rounded-md px-4 py-2 text-2xl sm:text-xl font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none" id="menu-button" aria-expanded="true" aria-haspopup="true">
                             Projets : <span class="text-white ml-2">{{ $categorie->nom }}</span>
                             <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -175,11 +175,16 @@
                             @foreach ($secteurs as $secteur)
                                 @forelse ($secteur->projets as $projet)
                                     <tr class="block md:table-row border-b border-gray-700 hover:bg-gray-900/30 transition-colors">
-                                        <td class="block md:table-cell p-4" data-label="Secteur : ">{{ $secteur->nom }}</td>
+                                        <td class="hidden md:table-cell p-4" data-label="Secteur : ">{{ $secteur->nom }}</td>
                                         <td class="block md:table-cell p-4" data-label="Équipe : ">{{ $projet->nom_equipe }}</td>
-                                        <td class="block md:table-cell p-4 font-semibold" data-label="Projet : ">{{ $projet->nom_projet }}</td>
+                                        <td class="block md:table-cell p-4 font-semibold" data-label="Projet : ">
+                                            <div class="flex flex-col gap-1">
+                                                <span>{{ $projet->nom_projet }}</span>
+                                                <span class="text-sm text-gray-400 md:hidden">Équipe : {{ $projet->nom_equipe }}</span>
+                                            </div>
+                                        </td>
                                         <td class="block md:table-cell p-4 text-center align-middle">
-                                                   <div class="relative flex flex-col md:flex-row items-center justify-center gap-2">
+                                                   <div class="relative flex flex-row flex-wrap md:flex-row items-center justify-center gap-2">
 
                                                 <!-- Icônes à gauche : Détails, Partager, Démo -->
                                                 <!-- Bouton Détails (icône seulement) -->
@@ -200,7 +205,7 @@
                                                     type="button"
                                                     class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                                                     title="Partager ce projet"
-                                                    onclick="shareProject('{{ route('vote.afficherProjet', ['id' => $projet->id]) }}')">
+                                                    onclick="shareProjectForProject({{ $projet->id }})">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                         <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                                                     </svg>
@@ -314,10 +319,7 @@
                                         <span x-text="descriptionExpanded ? 'Voir moins' : 'Voir plus'"></span>
                                     </button>
                                 </div>
-                                <p x-show="modalProjet?.lien_prototype">
-                                    <strong class="text-yellow-300">Prototype :</strong> 
-                                    <a :href="modalProjet?.lien_prototype" target="_blank" class="text-blue-400 hover:underline break-all" x-text="modalProjet?.lien_prototype"></a>
-                                </p>
+                             
                             </div>
 
                         </div>
@@ -379,7 +381,7 @@
                             @endif
                             {{-- Fin du bloc d'erreurs --}}
 
-                            {{-- 🚀 Étape 1: Formulaire Nom & Téléphone --}}
+                            {{-- Étape 1: Formulaire Nom & Téléphone --}}
                             <div x-show="voteStep === 1">
                                 <form id="otp-request-form"
                                       class="space-y-4"
@@ -452,7 +454,7 @@
                                 </form>
                             </div>
 
-                            {{-- 🚀 Étape 3: Messages de succès ou d'erreur --}}
+                            {{-- Étape 3: Messages de succès ou d'erreur --}}
                             <div x-show="voteStep === 3" style="display: none;" class="text-center py-8">
                                 <div x-show="successMessage" class="text-emerald-400">
                                     <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -486,3 +488,72 @@
     
 </body> 
 </html>
+
+<script>
+// Fonction de partage : Web Share API + fallback clipboard/prompt
+function shareProject(url) {
+    const title = document.title || 'Découvrez ce projet';
+    const text = 'Jetez un œil à ce projet :';
+
+    if (navigator.share) {
+        navigator.share({ title, text, url }).catch(() => {
+            // ignore share errors
+        });
+        return;
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            // Petit feedback utilisateur — vous pouvez remplacer par un toast
+            alert('Lien copié dans le presse-papiers');
+        }).catch(() => {
+            prompt('Copiez ce lien:', url);
+        });
+        return;
+    }
+
+    // Fallback classique
+    prompt('Copiez ce lien:', url);
+}
+
+// Construit l'URL de partage pour un projet et appelle shareProject
+function shareProjectForProject(id) {
+    const url = "{{ url('/vote/projet') }}/" + id + "?open=1&project_id=" + id;
+    shareProject(url);
+}
+
+// Si l'URL contient ?open=1&project_id=..., charger les données et ouvrir la modal
+document.addEventListener('DOMContentLoaded', function () {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('open') === '1') {
+            const pid = params.get('project_id');
+            if (!pid) return;
+
+            // Utiliser l'endpoint léger déjà présent pour récupérer les données du projet
+            fetch('/vote/project/' + pid + '/data')
+                .then(function (res) {
+                    if (!res.ok) throw new Error('Impossible de charger le projet');
+                    return res.json();
+                })
+                .then(function (data) {
+                    // Dispatch event que l'Alpine component écoute déjà
+                    window.dispatchEvent(new CustomEvent('project-for-vote', { detail: data }));
+
+                    // Nettoyer l'URL pour éviter la réouverture au refresh
+                    if (history && history.replaceState) {
+                        const url = new URL(window.location);
+                        url.searchParams.delete('open');
+                        url.searchParams.delete('project_id');
+                        history.replaceState({}, '', url.toString());
+                    }
+                })
+                .catch(function (err) {
+                    console.warn('Erreur en chargeant le projet pour la modal:', err);
+                });
+        }
+    } catch (e) {
+        console.warn('Erreur lors du traitement des params d\'URL', e);
+    }
+});
+</script>
