@@ -6,12 +6,31 @@
     {{-- Ligne de séparation fine et lumineuse --}}
     <div class="h-px bg-gradient-to-r from-transparent via-yellow-400/50 to-transparent"></div>
 
-    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 py-10 px-10 mt-4">
+    <!-- Sponsors horizontal strip (placed above links) -->
+    <div class="mx-auto px-4 sm:px-6 md:px-10 pt-8 pb-6 max-w-5xl">
+        <h3 class="text-yellow-300 font-bold text-2xl sm:text-3xl md:text-4xl mb-5 text-center tracking-wider [text-shadow:_0_2px_10px_rgb(250_204_21_/_40%)]">Sponsors</h3>
+        <div class="overflow-x-auto scrollbar-thin scrollbar-thumb-yellow-500/50 scrollbar-track-transparent">
+            <div class="flex items-center justify-center gap-6 sm:gap-8 md:gap-10 py-4">
+                              <!-- SPONSORS IMAGES -->
+                <img src="{{ asset('images/sponsors/DDD.jpg') }}" alt="DDD" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
+                <img src="{{ asset('images/sponsors/GIZ.png') }}" alt="GIZ" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
+                <img src="{{ asset('images/sponsors/SAR.png') }}" alt="SAR" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
+                <img src="{{ asset('images/sponsors/MFP.PNG') }}" alt="MFP" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
+                <img src="{{ asset('images/sponsors/PAMA.jpg') }}" alt="PAMA" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
+                <img src="{{ asset('images/sponsors/SAR.png') }}" alt="SAR" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
+                <img src="{{ asset('images/sponsors/DIMENSION.jpg') }}" alt="DIMENSION" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
+                <img src="{{ asset('images/sponsors/EXPERTISEFRANCE.png') }}" alt="EXPERTISEFRANCE" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
+            </div>
+        </div>
+        <p class="text-xs text-gray-500 mt-3 text-center">Glissez horizontalement pour voir tous les sponsors.</p>
+    </div>
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 py-10 px-10 mt-2">
 
         <!-- Copyright -->
         <div class="text-center md:text-left">
-            <h3 class="text-yellow-400 font-semibold text-lg mb-2">GovAthon</h3>
-            <p class="text-sm text-gray-400">&copy; {{ date('Y') }} GovAthon. Tous droits réservés.</p>
+            <h3 class="text-yellow-400 font-semibold text-lg mb-2">Gov'Athon</h3>
+            <p class="text-sm text-gray-400">&copy; {{ date('Y') }} Gov'Athon. Tous droits réservés.</p>
         </div>
 
         <!-- Accès rapides -->
@@ -35,6 +54,7 @@
         </div>
 
     </div>
+
     
 </footer>
 
