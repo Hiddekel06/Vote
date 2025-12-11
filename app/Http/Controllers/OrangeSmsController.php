@@ -107,13 +107,43 @@ class OrangeSmsController extends Controller
                 ]);
             } else {
                 $responseBody = $response->json();
+                $resourceURL = $responseBody['outboundSMSMessageRequest']['resourceURL'] ?? null;
+                $deliveryStatus = $responseBody['outboundSMSMessageRequest']['deliveryInfoList']['deliveryInfo'][0]['deliveryStatus'] ?? null;
+
                 Log::info('Requête SMS envoyée à Orange', [
                     'status' => $response->status(),
                     'phone_last4' => $last4,
                     'body_length' => strlen($response->body() ?? ''),
-                    'resourceURL' => $responseBody['outboundSMSMessageRequest']['resourceURL'] ?? null,
-                    'deliveryStatus' => $responseBody['outboundSMSMessageRequest']['deliveryInfoList']['deliveryInfo'][0]['deliveryStatus'] ?? null,
+                    'resourceURL' => $resourceURL,
+                    'deliveryStatus' => $deliveryStatus,
                 ]);
+
+                // Tentative de récupération du statut de livraison si Orange le permet via resourceURL
+                if ($resourceURL) {
+                    try {
+                        // Orange documente souvent un accès via {resourceURL}/deliveryInfos
+                        $dlrUrl = rtrim($resourceURL, '/') . '/deliveryInfos';
+                        $dlrResponse = Http::timeout(10)
+                            ->withToken($token)
+                            ->withoutVerifying()
+                            ->get($dlrUrl);
+
+                        $dlrBody = $dlrResponse->json();
+                        Log::info('Statut livraison SMS Orange', [
+                            'status' => $dlrResponse->status(),
+                            'phone_last4' => $last4,
+                            'body_length' => strlen($dlrResponse->body() ?? ''),
+                            'deliveryStatus' => $dlrBody['deliveryInfoList']['deliveryInfo'][0]['deliveryStatus'] ?? null,
+                            'messageReference' => $dlrBody['deliveryInfoList']['deliveryInfo'][0]['messageReference'] ?? null,
+                            'dlrUrl' => $dlrUrl,
+                        ]);
+                    } catch (\Throwable $e) {
+                        Log::warning('Impossible de récupérer le statut de livraison Orange', [
+                            'message' => $e->getMessage(),
+                            'resourceURL' => $resourceURL,
+                        ]);
+                    }
+                }
             }
 
             return response()->json([
