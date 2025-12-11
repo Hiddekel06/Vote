@@ -102,8 +102,9 @@ class OrangeSmsController extends Controller
                     'status' => $response->status(),
                     'phone_last4' => $last4,
                     'body_length' => strlen($body ?? ''),
-                    'body_preview' => mb_substr($body ?? '', 0, 2000),
+                    'body_preview' => mb_substr($body ?? '', 0, 3000),
                     'headers' => $response->headers(),
+                    'full_response' => $response->json(),
                 ]);
             } else {
                 $responseBody = $response->json();
