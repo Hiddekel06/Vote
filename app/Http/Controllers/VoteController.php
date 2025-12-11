@@ -274,14 +274,36 @@ class VoteController extends Controller
 
         $telephone = $e164;
 
-        // --- Vérification d'un vote existant ---
-        $existingVote = Vote::where('telephone', $telephone)
-                      ->where('projet_id', $projetId)
-                      ->where('est_verifie', true) // On ne compte que les votes déjà vérifiés
-                      ->first();
+        // --- Vérifications côté serveur : nombre total de votes et vote par secteur ---
+        try {
+            $totalVerified = DB::table('vote_publics')
+                ->where('telephone', $telephone)
+                ->where('est_verifie', true)
+                ->count();
 
-        if ($existingVote) {
-            return response()->json(['success' => false, 'message' => 'Ce numéro de téléphone a déjà été utilisé pour voter pour ce projet.'], 409); // 409 Conflict
+            if ($totalVerified >= 3) {
+                return response()->json(['success' => false, 'message' => 'Vous avez déjà utilisé vos 3 votes autorisés.'], 409);
+            }
+
+            // Vérifier si l'utilisateur a déjà voté pour le secteur de ce projet
+            $projet = Projet::find($projetId);
+            $secteurId = $projet?->secteur_id;
+
+            if ($secteurId) {
+                $alreadyInSector = DB::table('vote_publics')
+                    ->join('projets', 'vote_publics.projet_id', '=', 'projets.id')
+                    ->where('vote_publics.telephone', $telephone)
+                    ->where('projets.secteur_id', $secteurId)
+                    ->where('vote_publics.est_verifie', true)
+                    ->exists();
+
+                if ($alreadyInSector) {
+                    return response()->json(['success' => false, 'message' => 'Vous avez déjà voté dans cette catégorie.'], 409);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Erreur lors des vérifications pré-OTP', ['error' => $e->getMessage()]);
+            // En cas d'erreur lors des vérifs, on continue mais on logue
         }
 
         // --- Vérification conditionnelle du token reCAPTCHA ---
@@ -402,18 +424,51 @@ class VoteController extends Controller
             return response()->json(['success' => false, 'message' => 'Code OTP incorrect. Veuillez réessayer.'], 401);
         }
 
-        // 4. Si l'OTP est valide, enregistrer le vote
-        try {
-            // Assurez-vous que le modèle 'Vote' existe et est correctement configuré
-            // et que les champs sont bien dans la propriété '$fillable' du modèle App\Models\Vote.
-            Vote::create([
-                'projet_id' => $otpData['projet_id'],
-                'telephone' => $otpData['telephone'],
-                'token' => Str::uuid(), // On génère un identifiant unique (UUID) pour ce vote.
-                'est_verifie' => true,
-            ]);
+        // 4. Si l'OTP est valide, effectuer des vérifications finales côté serveur (atomiques)
+        $phone = $otpData['telephone'];
+        $projetId = $otpData['projet_id'];
 
-            // 5. Nettoyer les données OTP de la session après un vote réussi
+        try {
+            // Re-vérifier le compteur global des votes vérifiés pour ce téléphone
+            $totalVerified = DB::table('vote_publics')
+                ->where('telephone', $phone)
+                ->where('est_verifie', true)
+                ->count();
+
+            if ($totalVerified >= 3) {
+                $request->session()->forget('otp_data');
+                return response()->json(['success' => false, 'message' => 'Vous avez déjà utilisé vos 3 votes autorisés.'], 409);
+            }
+
+            // Vérifier qu'il n'a pas déjà voté pour le même secteur
+            $projet = Projet::find($projetId);
+            $secteurId = $projet?->secteur_id;
+
+            if ($secteurId) {
+                $alreadyInSector = DB::table('vote_publics')
+                    ->join('projets', 'vote_publics.projet_id', '=', 'projets.id')
+                    ->where('vote_publics.telephone', $phone)
+                    ->where('projets.secteur_id', $secteurId)
+                    ->where('vote_publics.est_verifie', true)
+                    ->exists();
+
+                if ($alreadyInSector) {
+                    $request->session()->forget('otp_data');
+                    return response()->json(['success' => false, 'message' => 'Vous avez déjà voté dans cette catégorie.'], 409);
+                }
+            }
+
+            // Enregistrer le vote dans une transaction pour plus de sûreté
+            DB::transaction(function () use ($projetId, $phone) {
+                Vote::create([
+                    'projet_id' => $projetId,
+                    'telephone' => $phone,
+                    'token' => Str::uuid(),
+                    'est_verifie' => true,
+                ]);
+            });
+
+            // Nettoyer les données OTP de la session après un vote réussi
             $request->session()->forget('otp_data');
 
             return response()->json(['success' => true, 'message' => 'Votre vote a été enregistré avec succès ! Merci de votre participation.']);
@@ -421,7 +476,6 @@ class VoteController extends Controller
         } catch (QueryException $e) {
             // Gestion spécifique des erreurs de contrainte (duplicate key)
             $sqlState = $e->getCode();
-            // MySQL duplicate key généralement SQLSTATE '23000' and error code 1062
             Log::warning('QueryException lors de la création du vote', ['code' => $sqlState, 'message' => $e->getMessage()]);
 
             // Nettoyer la session OTP pour forcer le flux à redemarrer
@@ -429,8 +483,9 @@ class VoteController extends Controller
 
             return response()->json(['success' => false, 'message' => 'Ce numéro a déjà été utilisé pour voter pour ce projet.'], 409);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Erreur lors de l\'enregistrement du vote: ' . $e->getMessage());
+            $request->session()->forget('otp_data');
             return response()->json(['success' => false, 'message' => 'Une erreur est survenue lors de l\'enregistrement de votre vote. Veuillez réessayer.'], 500);
         }
     }

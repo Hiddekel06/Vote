@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="overflow-x-hidden">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,16 +14,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 
 </head>
-<body class="bg-black text-white flex flex-col min-h-screen bg-cover bg-center bg-fixed bg-image-custom font-poppins">
+<body class="bg-black text-white flex flex-col min-h-screen bg-cover bg-center bg-fixed bg-image-custom font-poppins overflow-x-hidden">
 
     <x-header />
 
-    <main class="flex-grow container mx-auto px-4 py-12 flex items-center">
+    <main class="flex-grow container mx-auto px-4 py-12 flex items-center overflow-x-hidden">
         <div class="bg-black bg-opacity-60 p-8 rounded-lg shadow-2xl max-w-6xl mx-auto">
             <div class="text-center mb-4">
                 <div x-data="{ open: false }" class="relative inline-block text-left">
                     <div>
-                        <button @click="open = !open" type="button" class="inline-flex justify-center items-center w-full rounded-md px-4 py-2 text-2xl sm:text-xl font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none" id="menu-button" aria-expanded="true" aria-haspopup="true">
+                        <button @click="open = !open" type="button" class="inline-flex justify-center items-center w-full rounded-md px-4 py-2 text-lg sm:text-xl md:text-2xl font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none" id="menu-button" aria-expanded="open" aria-haspopup="true">
                             Projets : <span class="text-white ml-2">{{ $categorie->nom }}</span>
                             <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
@@ -161,7 +161,7 @@
                     </div>
                 </div>
                 <!-- Tableau des projets -->
-                <div class="overflow-x-auto">
+                <div class="overflow-x-visible md:overflow-x-auto">
                     <table class="w-full text-left border-collapse md:max-w-4xl md:mx-auto">
                         <thead class="bg-gray-800 hidden md:table-header-group">
                             <tr>
@@ -174,86 +174,159 @@
                         <tbody id="projects-table-body">
                             @foreach ($secteurs as $secteur)
                                 @forelse ($secteur->projets as $projet)
-                                    <tr class="block md:table-row border-b border-gray-700 hover:bg-gray-900/30 transition-colors">
+                                    <tr class="block md:table-row border-b border-gray-700 hover:bg-gray-900/30 transition-colors bg-gray-800/40 md:bg-transparent rounded-lg md:rounded-none mb-3 md:mb-0">
                                         <td class="hidden md:table-cell p-4" data-label="Secteur : ">{{ $secteur->nom }}</td>
-                                        <td class="block md:table-cell p-4" data-label="Équipe : ">{{ $projet->nom_equipe }}</td>
-                                        <td class="block md:table-cell p-4 font-semibold" data-label="Projet : ">
+                                        <td class="hidden md:table-cell p-4" data-label="Équipe : ">{{ $projet->nom_equipe }}</td>
+                                        <td class="block md:table-cell p-3 md:p-4 font-semibold" data-label="Projet : ">
                                             <div class="flex flex-col gap-1">
-                                                <span>{{ $projet->nom_projet }}</span>
-                                                <span class="text-sm text-gray-400 md:hidden">Équipe : {{ $projet->nom_equipe }}</span>
+                                                <div class="md:hidden">   <!-- Cache le bloc a partir d'un ecran mobile -->
+                                                    <div class="text-[10px] text-gray-400 font-medium tracking-tight mb-1">Nom Équipe :</div>
+                                                    <div class="text-sm text-white">{{ $projet->nom_equipe }}</div>
+                                                    <div class="text-[10px] text-gray-400 font-medium tracking-tight mt-2 mb-1">Nom Projet :</div>
+                                                    <div class="text-sm font-semibold text-white">{{ $projet->nom_projet }}</div>
+                                                </div>
+                                                <span class="hidden md:inline">{{ $projet->nom_projet }}</span>
                                             </div>
                                         </td>
-                                        <td class="block md:table-cell p-4 text-center align-middle">
-                                                   <div class="relative flex flex-row flex-wrap md:flex-row items-center justify-center gap-2">
+                                        <td class="block md:table-cell p-3 md:p-4 text-center align-middle">
+                                                   <!-- Mobile: row of icon buttons, then vote button below -->
+                                                   <!-- Desktop: flex row as before -->
+                                                   <div class="md:hidden flex flex-col gap-3">
+                                                       <!-- Row of 3 icon buttons centered -->
+                                                       <div class="flex items-center justify-center gap-3">
+                                                           <!-- Bouton Détails -->
+                                                           <button
+                                                               type="button"
+                                                               class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                               aria-label="Détails du projet"
+                                                               title="Détails"
+                                                               @click="modalProjet = @js($projet); showModal = true; descriptionExpanded = false">
+                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                                   <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                   <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                               </svg>
+                                                           </button>
 
-                                                <!-- Icônes à gauche : Détails, Partager, Démo -->
-                                                <!-- Bouton Détails (icône seulement) -->
-                                                <button
-                                                    type="button"
-                                                    class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                    aria-label="Détails du projet"
-                                                    title="Détails"
-                                                    @click="modalProjet = @js($projet); showModal = true; descriptionExpanded = false">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                    </svg>
-                                                </button>
+                                                           <!-- Bouton Partager -->
+                                                           <button 
+                                                               type="button"
+                                                               class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                               title="Partager ce projet"
+                                                               onclick="shareProjectForProject({{ $projet->id }})">
+                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                                   <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                                                               </svg>
+                                                           </button>
 
-                                                <!-- Bouton Partager -->
-                                                <button 
-                                                    type="button"
-                                                    class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                    title="Partager ce projet"
-                                                    onclick="shareProjectForProject({{ $projet->id }})">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                                                    </svg>
-                                                </button>
+                                                           @php
+                                                               $demoUrl = $projet->video_demonstration ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
+                                                           @endphp
+                                                           @if($demoUrl)
+                                                               <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
+                                                                  class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Voir la démonstration">
+                                                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                                       <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                                       <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                                   </svg>
+                                                               </a>
+                                                           @else
+                                                               <span class="p-2 rounded-full text-gray-600 bg-transparent opacity-60" title="Aucune démonstration disponible" aria-hidden="true">
+                                                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                                                                       <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                                       <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                                       <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
+                                                                   </svg>
+                                                               </span>
+                                                           @endif
+                                                       </div>
+                                                       <!-- Vote button below, full width -->
+                                                       <div class="relative">
+                                                           <button
+                                                               data-role="vote-btn"
+                                                               type="button"
+                                                               class="group flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
+                                                               :class="{
+                                                                   'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black': isVoteActive,
+                                                                   'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive
+                                                               }"
+                                                               :disabled="!isVoteActive"
+                                                               @click="voteProjet = @js($projet); showVoteModal = true; voteStep = isVoteActive ? 1 : 3; errorMessage = isVoteActive ? '' : inactiveMessage; successMessage = '';">
+                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                               </svg>
+                                                               Voter
+                                                           </button>
+                                                           <button x-show="!isVoteActive" @click.prevent="showInactiveNotice()" class="absolute inset-0 w-full h-full z-20 bg-transparent" aria-hidden="true"></button>
+                                                       </div>
+                                                   </div>
 
-                                                @php
-                                                    // Prefer attribute on projet if present (controller may have selected it),
-                                                    // otherwise fallback to querying the preselection table.
-                                                    $demoUrl = $projet->video_demonstration ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
-                                                @endphp
-                                                @if($demoUrl)
-                                                    <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
-                                                       class="p-2 ml-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Voir la démonstration">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                            <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                        </svg>
-                                                    </a>
-                                                @else
-                                                    <span class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60" title="Aucune démonstration disponible" aria-hidden="true">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                            <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                            <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
-                                                        </svg>
-                                                    </span>
-                                                @endif
+                                                   <!-- Desktop: original flex row layout -->
+                                                   <div class="hidden md:flex relative md:flex-row items-center justify-center gap-2">
+                                                       <!-- Bouton Détails (icône seulement) -->
+                                                       <button
+                                                           type="button"
+                                                           class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                           aria-label="Détails du projet"
+                                                           title="Détails"
+                                                           @click="modalProjet = @js($projet); showModal = true; descriptionExpanded = false">
+                                                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                               <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                               <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                           </svg>
+                                                       </button>
 
-                                                <!-- Bouton Voter () -->
-                                                <button
-                                                    data-role="vote-btn"
-                                                    type="button"
-                                                    class="group flex items-center justify-center gap-2 w-full md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
-                                                    :class="{
-                                                        'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black': isVoteActive,
-                                                        'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive
-                                                    }"
-                                                    :disabled="!isVoteActive"
-                                                    @click="voteProjet = @js($projet); showVoteModal = true; voteStep = isVoteActive ? 1 : 3; errorMessage = isVoteActive ? '' : inactiveMessage; successMessage = '';">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    Voter
-                                                </button>
+                                                       <!-- Bouton Partager -->
+                                                       <button 
+                                                           type="button"
+                                                           class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                           title="Partager ce projet"
+                                                           onclick="shareProjectForProject({{ $projet->id }})">
+                                                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                               <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                                                           </svg>
+                                                       </button>
 
-                                                <!-- Overlay pour capter le clic quand le vote est INactif (au-dessus du bouton Voter) -->
-                                                <button x-show="!isVoteActive" @click.prevent="showInactiveNotice()" class="absolute inset-0 w-full h-full z-20 bg-transparent" aria-hidden="true"></button>
-                                            </div>
+                                                       @php
+                                                           $demoUrl = $projet->video_demonstration ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
+                                                       @endphp
+                                                       @if($demoUrl)
+                                                           <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
+                                                              class="p-2 ml-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Voir la démonstration">
+                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                                   <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                                   <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                               </svg>
+                                                           </a>
+                                                       @else
+                                                           <span class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60" title="Aucune démonstration disponible" aria-hidden="true">
+                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                                                                   <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                                   <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                                   <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
+                                                               </svg>
+                                                           </span>
+                                                       @endif
+
+                                                       <!-- Bouton Voter () -->
+                                                       <button
+                                                           data-role="vote-btn"
+                                                           type="button"
+                                                           class="group flex items-center justify-center gap-2 md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
+                                                           :class="{
+                                                               'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black': isVoteActive,
+                                                               'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive
+                                                           }"
+                                                           :disabled="!isVoteActive"
+                                                           @click="voteProjet = @js($projet); showVoteModal = true; voteStep = isVoteActive ? 1 : 3; errorMessage = isVoteActive ? '' : inactiveMessage; successMessage = '';">
+                                                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                           </svg>
+                                                           Voter
+                                                       </button>
+
+                                                       <!-- Overlay pour capter le clic quand le vote est INactif (au-dessus du bouton Voter) -->
+                                                       <button x-show="!isVoteActive" @click.prevent="showInactiveNotice()" class="absolute inset-0 w-full h-full z-20 bg-transparent" aria-hidden="true"></button>
+                                                   </div>
                                         </td>
                                     </tr>
                                 @empty

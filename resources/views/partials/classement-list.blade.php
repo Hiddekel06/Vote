@@ -11,8 +11,8 @@
                     @include('classement-item', ['projet' => $projet, 'rank' => $rank])
                 @endforeach
 
-                <div class="flex items-center justify-between py-3 mt-2">
-                    <div class="flex items-center space-x-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-3 mt-2">
+                    <div class="flex flex-wrap items-center gap-3 sm:gap-4">
                         <p class="mb-0 text-sm text-gray-300">Affichage {{ $classementGeneral->firstItem() }}–{{ $classementGeneral->lastItem() }} sur {{ $classementGeneral->total() }}</p>
 
                         {{-- Compact per-page control (bottom-left) --}}
@@ -45,7 +45,7 @@
                         </div>
                     </div>
 
-                    <nav class="flex items-center" role="navigation" aria-label="Pagination">
+                    <nav class="flex items-center flex-wrap gap-2" role="navigation" aria-label="Pagination">
                         {{-- Prev --}}
                         @if($classementGeneral->previousPageUrl())
                             <a href="{{ $classementGeneral->previousPageUrl() }}" rel="prev" class="inline-flex items-center justify-center w-9 h-9 rounded-md bg-gray-800 hover:bg-gray-700 text-white" aria-label="Page précédente">
@@ -58,9 +58,19 @@
                         @endif
 
                         {{-- Pages --}}
-                        <ul class="flex items-center ml-3 space-x-2">
-                            @for($p = 1; $p <= $classementGeneral->lastPage(); $p++)
-                                @php $url = $classementGeneral->url($p); $isActive = $classementGeneral->currentPage() == $p; @endphp
+                        @php
+                            $lastPage = $classementGeneral->lastPage();
+                            $current = $classementGeneral->currentPage();
+                            $pages = [1, $current - 1, $current, $current + 1, $lastPage];
+                            $pages = array_values(array_unique(array_filter($pages, fn($p) => $p >= 1 && $p <= $lastPage)));
+                            sort($pages);
+                        @endphp
+                        <ul class="flex items-center ml-1 space-x-2">
+                            @for ($i = 0; $i < count($pages); $i++)
+                                @if($i > 0 && $pages[$i] - $pages[$i-1] > 1)
+                                    <li class="text-gray-500 text-sm">…</li>
+                                @endif
+                                @php $p = $pages[$i]; $url = $classementGeneral->url($p); $isActive = $current == $p; @endphp
                                 <li>
                                     <a href="{{ $url }}" class="px-3 py-1 rounded-md text-sm {{ $isActive ? 'bg-yellow-400 text-black' : 'bg-gray-800 text-white hover:bg-gray-700' }}" @if($isActive) aria-current="page" @endif>{{ $p }}</a>
                                 </li>
@@ -96,8 +106,8 @@
                         @include('classement-item', ['projet' => $projet, 'rank' => $rank])
                     @endforeach
 
-                    <div class="flex items-center justify-between py-3 mt-2">
-                        <div class="flex items-center space-x-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-3 mt-2">
+                        <div class="flex flex-wrap items-center gap-3 sm:gap-4">
                                 <p class="mb-0 text-sm text-gray-300">Affichage {{ $pag->firstItem() }}–{{ $pag->lastItem() }} sur {{ $pag->total() }}</p>
 
                                 {{-- Compact per-page control (bottom-left for category) --}}
@@ -130,7 +140,7 @@
                                 </div>
                             </div>
 
-                            <nav class="flex items-center" role="navigation" aria-label="Pagination">
+                            <nav class="flex items-center flex-wrap gap-2" role="navigation" aria-label="Pagination">
                             @if($pag->previousPageUrl())
                                 <a href="{{ $pag->previousPageUrl() }}" rel="prev" class="inline-flex items-center justify-center w-9 h-9 rounded-md bg-gray-800 hover:bg-gray-700 text-white" aria-label="Page précédente">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fill-rule="evenodd" d="M12.293 16.293a1 1 0 0 1-1.414 1.414l-6-6a1 1 0 0 1 0-1.414l6-6a1 1 0 0 1 1.414 1.414L7.414 10l4.879 4.879z" clip-rule="evenodd"/></svg>
@@ -141,9 +151,19 @@
                                 </span>
                             @endif
 
-                            <ul class="flex items-center ml-3 space-x-2">
-                                @for($p = 1; $p <= $pag->lastPage(); $p++)
-                                    @php $url = $pag->url($p); $isActive = $pag->currentPage() == $p; @endphp
+                            @php
+                                $lastPageCat = $pag->lastPage();
+                                $currentCat = $pag->currentPage();
+                                $pagesCat = [1, $currentCat - 1, $currentCat, $currentCat + 1, $lastPageCat];
+                                $pagesCat = array_values(array_unique(array_filter($pagesCat, fn($p) => $p >= 1 && $p <= $lastPageCat)));
+                                sort($pagesCat);
+                            @endphp
+                            <ul class="flex items-center ml-1 space-x-2">
+                                @for ($i = 0; $i < count($pagesCat); $i++)
+                                    @if($i > 0 && $pagesCat[$i] - $pagesCat[$i-1] > 1)
+                                        <li class="text-gray-500 text-sm">…</li>
+                                    @endif
+                                    @php $p = $pagesCat[$i]; $url = $pag->url($p); $isActive = $currentCat == $p; @endphp
                                     <li>
                                         <a href="{{ $url }}" class="px-3 py-1 rounded-md text-sm {{ $isActive ? 'bg-yellow-400 text-black' : 'bg-gray-800 text-white hover:bg-gray-700' }}" @if($isActive) aria-current="page" @endif>{{ $p }}</a>
                                     </li>

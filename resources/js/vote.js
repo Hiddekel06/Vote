@@ -126,6 +126,7 @@ function initVoteHandlers() {
             if (data?.success) {
                 // If Alpine scope is available, update it; otherwise, emit an event
                 if (alpineScope) {
+                    safeSet(alpineScope, 'successMessage', data?.message || 'Code envoyé !');
                     safeSet(alpineScope, 'voteStep', 2);
                 } else {
                     window.dispatchEvent(new CustomEvent('otp-sent', { detail: data }));

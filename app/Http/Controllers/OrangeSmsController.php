@@ -24,10 +24,13 @@ class OrangeSmsController extends Controller
               ]);
 
             if ($response->failed()) {
-                // Ne pas logger le corps complet (peut contenir des informations sensibles).
+                // Log diagnostic (corps tronqué) pour comprendre les 401/4xx
+                $body = $response->body();
                 Log::error('Échec récupération token Orange', [
                     'status' => $response->status(),
-                    'body_length' => strlen($response->body() ?? ''),
+                    'body_length' => strlen($body ?? ''),
+                    'body_preview' => mb_substr($body ?? '', 0, 2000),
+                    'headers' => $response->headers(),
                 ]);
                 return null;
             }
@@ -62,6 +65,13 @@ class OrangeSmsController extends Controller
         try {
          $sender = 'tel:' . env('ORANGE_SENDER'); // ex: tel:SMS132230
 
+         // Log de la requête pour debug (sans l'OTP)
+         Log::info('Préparation envoi SMS Orange', [
+             'sender' => $sender,
+             'destination' => 'tel:' . $phone,
+             'message_length' => strlen($message),
+         ]);
+
          $response = Http::timeout(10)
        ->withToken($token)
        ->withoutVerifying() // uniquement pour dev local
@@ -86,11 +96,25 @@ class OrangeSmsController extends Controller
             } catch (\Throwable $e) {
                 $last4 = null;
             }
-            Log::info('Requête SMS envoyée à Orange', [
-                'status' => $response->status(),
-                'phone_last4' => $last4,
-                'body_length' => strlen($response->body() ?? ''),
-            ]);
+            if ($response->failed()) {
+                $body = $response->body();
+                Log::error('Échec envoi SMS Orange', [
+                    'status' => $response->status(),
+                    'phone_last4' => $last4,
+                    'body_length' => strlen($body ?? ''),
+                    'body_preview' => mb_substr($body ?? '', 0, 2000),
+                    'headers' => $response->headers(),
+                ]);
+            } else {
+                $responseBody = $response->json();
+                Log::info('Requête SMS envoyée à Orange', [
+                    'status' => $response->status(),
+                    'phone_last4' => $last4,
+                    'body_length' => strlen($response->body() ?? ''),
+                    'resourceURL' => $responseBody['outboundSMSMessageRequest']['resourceURL'] ?? null,
+                    'deliveryStatus' => $responseBody['outboundSMSMessageRequest']['deliveryInfoList']['deliveryInfo'][0]['deliveryStatus'] ?? null,
+                ]);
+            }
 
             return response()->json([
                 'success' => $response->successful(), // true si HTTP 2xx

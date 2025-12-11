@@ -15,7 +15,7 @@
     <div class="relative z-10 w-full max-w-4xl mx-auto px-4">
         <div class="bg-black/80 border border-white/10 rounded-2xl overflow-hidden shadow-2xl grid grid-cols-1 md:grid-cols-2">
             <!-- Left: illustration / image (you will provide) -->
-            <div class="hidden md:block bg-cover bg-center" style="background-image: url({{ asset('images/startup.png') }}); min-height:420px;">
+            <div class="hidden md:block bg-cover bg-center" style="background-image: url({{ asset('images/StarBlack.jpg') }}); min-height:420px;">
                 <!-- image provided by user; currently a placeholder path -->
             </div>
 
