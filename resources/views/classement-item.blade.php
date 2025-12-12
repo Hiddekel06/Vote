@@ -9,14 +9,7 @@
         $rankColor = 'text-yellow-300';
         $cardBg = 'bg-gradient-to-br from-yellow-900/50 via-gray-900/60 to-gray-900/60';
         $borderHover = 'hover:border-yellow-300';
-    } elseif ($rank == 2) {
-        $rankColor = 'text-slate-300';
-        $cardBg = 'bg-gradient-to-br from-slate-800/50 via-gray-900/60 to-gray-900/60';
-        $borderHover = 'hover:border-slate-300';
-    } elseif ($rank == 3) {
-        $rankColor = 'text-amber-500';
-        $cardBg = 'bg-gradient-to-br from-amber-900/50 via-gray-900/60 to-gray-900/60';
-        $borderHover = 'hover:border-amber-500';
+   
     }
 @endphp
 
