@@ -39,6 +39,25 @@
         {{-- On ajoute un conteneur Alpine.js pour gérer l'état de l'animation --}}
         <div class="w-full" x-data="{ visible: false }" x-init="setTimeout(() => { visible = true }, 100)">
 
+            <!-- Banner countdown pour le 23 Decembre -->
+            <div class="-mt-6 sm:-mt-8 mb-6">
+                <div class="px-5 py-4 flex flex-col items-center justify-center gap-4">
+                    <p class="text-yellow-400 font-semibold text-base sm:text-lg md:text-xl lg:text-2xl text-center">
+                        En route pour la grande finale !
+                    </p>
+                    <div id="final-countdown" class="flex items-center justify-center gap-5 text-base font-mono">
+                        <div class="flex flex-col items-center"><span id="cd-days" class="text-3xl font-bold text-white">00</span><span class="text-gray-400 text-xs">Jours</span></div>
+                        <div class="flex flex-col items-center"><span id="cd-hours" class="text-3xl font-bold text-white">00</span><span class="text-gray-400 text-xs">Heures</span></div>
+                        <div class="flex flex-col items-center"><span id="cd-mins" class="text-3xl font-bold text-white">00</span><span class="text-gray-400 text-xs">Minutes</span></div>
+                        <div class="flex flex-col items-center"><span id="cd-secs" class="text-3xl font-bold text-white">00</span><span class="text-gray-400 text-xs">Secondes</span></div>
+                    </div>
+                </div>
+                <p class="mt-2 text-sm text-gray-400 text-center">
+                    Pour plus d'informations,
+                    <a href="{{ route('apropos') }}" class="text-yellow-300/40 hover:text-yellow-200 underline underline-offset-2">cliquez ici</a>.
+                </p>
+            </div>
+
             <h1
                 class="text-3xl sm:text-4xl font-bold text-yellow-400 mb-4 transition-all duration-700"
                 :class="visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-5'">
@@ -104,6 +123,35 @@
             </div>
         </div>
     </main>
+
+    <script>
+        // Simple countdown to Dec 23, 23:59:59 local time
+        (function(){
+            const target = new Date(new Date().getFullYear(), 11, 23, 23, 59, 59); // Month 11 = December
+            const elDays = document.getElementById('cd-days');
+            const elHours = document.getElementById('cd-hours');
+            const elMins = document.getElementById('cd-mins');
+            const elSecs = document.getElementById('cd-secs');
+
+            function pad(n){ return String(n).padStart(2,'0'); }
+
+            function tick(){
+                const now = new Date();
+                let diff = Math.max(0, target - now);
+                const secs = Math.floor(diff / 1000);
+                const d = Math.floor(secs / 86400);
+                const h = Math.floor((secs % 86400) / 3600);
+                const m = Math.floor((secs % 3600) / 60);
+                const s = secs % 60;
+                if (elDays) elDays.textContent = pad(d);
+                if (elHours) elHours.textContent = pad(h);
+                if (elMins) elMins.textContent = pad(m);
+                if (elSecs) elSecs.textContent = pad(s);
+            }
+            tick();
+            setInterval(tick, 1000);
+        })();
+    </script>
 
     <!-- Footer -->
     <x-footer />
