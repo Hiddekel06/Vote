@@ -21,6 +21,8 @@
                 <img src="{{ asset('images/sponsors/DIMENSION.jpg') }}" alt="DIMENSION" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
                 <img src="{{ asset('images/sponsors/EXPERTISEFRANCE.png') }}" alt="EXPERTISEFRANCE" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
                 <img src="{{ asset('images/sponsors/ODS.png') }}" alt="ODS" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
+                <img src="{{ asset('images/sponsors/MCTN.png') }}" alt="MCTN" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
+                
             </div>
         </div>
 
