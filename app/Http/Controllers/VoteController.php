@@ -60,8 +60,9 @@ class VoteController extends Controller
         $categorie = (object)['nom' => $categorieNom, 'slug' => $profileType];
 
         $search = $request->input('search', '');
-        // Sous-requête : IDs des projets présélectionnés
+        // Sous-requête : IDs des projets finalistes uniquement
     $preselectedProjectIds = DB::table('liste_preselectionnes')
+        ->where('is_finaliste', 1)
         ->select('projet_id');
 
     // Secteurs qui ont AU MOINS un projet :
@@ -160,8 +161,9 @@ class VoteController extends Controller
     {
       $search = $request->input('search', '');
 
-    // Sous-requête : IDs des projets présélectionnés
+    // Sous-requête : IDs des projets finalistes uniquement
     $preselectedProjectIds = DB::table('liste_preselectionnes')
+        ->where('is_finaliste', 1)
         ->select('projet_id');
 
     $query = Secteur::query();
@@ -538,8 +540,11 @@ public function afficherProjet($id)
     {
         $projet = \App\Models\Projet::with('secteur')->findOrFail($id);
 
-        // try to fetch video_demonstration from liste_preselectionnes if present
-        $video = DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
+        // try to fetch video_demonstration from liste_preselectionnes if finaliste
+        $video = DB::table('liste_preselectionnes')
+            ->where('projet_id', $projet->id)
+            ->where('is_finaliste', 1)
+            ->value('video_demonstration');
 
         $payload = [
             'id' => $projet->id,

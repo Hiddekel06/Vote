@@ -29,4 +29,20 @@ class ListePreselectionne extends Model
         return $this->belongsTo(Projet::class, 'projet_id');
     }
 
+    /**
+     * Scope pour filtrer uniquement les projets finalistes.
+     */
+    public function scopeFinaliste($query)
+    {
+        return $query->where('is_finaliste', 1);
+    }
+
+    /**
+     * Accessor pour vérifier si le projet est finaliste.
+     */
+    public function getIsFinalisteAttribute($value)
+    {
+        return (bool) $value;
+    }
+
 }

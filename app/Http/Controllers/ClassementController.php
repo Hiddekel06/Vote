@@ -23,8 +23,9 @@ class ClassementController extends Controller
             (object) ['nom' => 'Citoyens', 'slug' => 'other'],
         ]);
 
-        // 🔹 IDs des projets présélectionnés (liste_preselectionnes)
+        // 🔹 IDs des projets finalistes uniquement (is_finaliste = 1)
         $preselectedProjectIds = DB::table('liste_preselectionnes')
+            ->where('is_finaliste', 1)
             ->select('projet_id');
 
         // Déterminer le nombre d'éléments par page (paramètre 'per_page')
@@ -39,7 +40,7 @@ class ClassementController extends Controller
         // Pagination serveur : paramétrable via 'per_page' (nom de paramètre 'page_general')
         $classementGeneral = Projet::whereIn('id', $preselectedProjectIds)
             ->withCount('votes')
-            ->with('secteur', 'submission')
+            ->with('secteur', 'submission', 'listePreselectionne')
             ->orderBy('votes_count', 'desc')
             ->orderBy('nom_projet', 'asc')
             ->paginate($perPage, ['*'], 'page_general');
@@ -51,7 +52,7 @@ class ClassementController extends Controller
             $projets = Projet::whereIn('id', $preselectedProjectIds)
                 ->whereHas('submission', fn ($q) => $q->where('profile_type', $categorie->slug))
                 ->withCount('votes')
-                ->with('secteur')
+                ->with('secteur', 'submission', 'listePreselectionne')
                 ->orderBy('votes_count', 'desc')
                 ->orderBy('nom_projet', 'asc')
                 ->paginate($perPage, ['*'], $pageName);

@@ -40,6 +40,27 @@
     <div class="flex-grow border-l border-gray-700 pl-4 sm:pl-4 border-0 sm:border-l min-w-0">
         <p class="text-lg font-semibold text-white truncate">{{ $projet->nom_projet }}</p>
         <p class="text-sm text-gray-400/80 truncate">Équipe: {{ $projet->nom_equipe }}</p>
+        @php
+            // Extraire l'école depuis le snapshot si c'est un étudiant
+            $school = null;
+            
+            if ($projet->submission?->profile_type === 'student' && $projet->listePreselectionne?->snapshot) {
+                $snapshot = json_decode($projet->listePreselectionne->snapshot, true);
+                
+                // L'école est dans champs_personnalises
+                if (isset($snapshot['champs_personnalises'])) {
+                    $champsPerso = is_string($snapshot['champs_personnalises']) 
+                        ? json_decode($snapshot['champs_personnalises'], true) 
+                        : $snapshot['champs_personnalises'];
+                    
+                    $school = $champsPerso['student_school'] ?? null;
+                }
+            }
+        @endphp
+        
+        @if($school)
+            <p class="text-xs text-gray-400/80 truncate mt-1">{{ $school }}</p>
+        @endif
     </div>
 
     {{-- Nombre de votes --}}

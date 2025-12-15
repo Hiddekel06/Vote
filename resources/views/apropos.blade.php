@@ -26,10 +26,10 @@
                         Notre Vision : Sénégal 2050
                     </h1>
                     <p class="text-gray-300 text-lg mb-6">
-                        Le GovAthon est plus qu'une compétition ; c'est un mouvement pour catalyser l'innovation et construire le Sénégal de demain. Nous croyons au pouvoir de la technologie pour transformer les services publics et améliorer la vie de chaque citoyen.
+                        L’Administration doit agir à tous les niveaux de façon plus accueillante et plus efficace pour les usagers du service public. Nous devons bannir de nos pratiques les procédures et formalités indues qui altèrent l’efficacité de l’Etat.
                     </p>
                     <p class="text-gray-400 text-sm">
-                        Ensemble, nous co-créons des solutions audacieuses, transparentes et efficaces, jetant les bases d'une administration moderne et d'un futur prospère pour tous. Rejoignez-nous dans cette aventure vers Sénégal 2050.
+                        Dans cet objectif, nous entendons investir massivement dans la digitalisation des services et des procédures administratives.
                     </p>
                 </div>
                 <!-- Colonne d'image à droite -->

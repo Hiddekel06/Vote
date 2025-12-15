@@ -23,7 +23,9 @@ class DashboardController extends Controller
      */
 public function index(): View
 {
-     $preselectedProjectIds = DB::table('liste_preselectionnes')->select('projet_id');
+     $preselectedProjectIds = DB::table('liste_preselectionnes')
+         ->where('is_finaliste', 1)
+         ->select('projet_id');
      $projets = Projet::whereIn('id', $preselectedProjectIds)
 
         ->with('secteur')
@@ -237,7 +239,9 @@ public function index(): View
      */
     public function statistiques(): View
     {
-        $preselectedProjectIds = DB::table('liste_preselectionnes')->select('projet_id');  
+        $preselectedProjectIds = DB::table('liste_preselectionnes')
+            ->where('is_finaliste', 1)
+            ->select('projet_id');  
         $totalVotes = Vote::count();
         $totalProjets = Projet::whereIn('id', $preselectedProjectIds)->count();
 
@@ -282,7 +286,9 @@ public function index(): View
      */
     private function getStatistiquesData(): array
     {
-         $preselectedProjectIds = DB::table('liste_preselectionnes')->select('projet_id'); 
+         $preselectedProjectIds = DB::table('liste_preselectionnes')
+             ->where('is_finaliste', 1)
+             ->select('projet_id'); 
         $totalVotes = Vote::count();
         $totalProjets = Projet::whereIn('id', $preselectedProjectIds)->count();
 

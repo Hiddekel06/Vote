@@ -30,8 +30,9 @@ class ProjetController extends Controller
         // et on les trie par ordre décroissant de votes.
         // La méthode withCount('votes') ajoutera une colonne 'votes_count'
         // à chaque projet.
-            // Sous-requête : IDs des projets présélectionnés
+            // Sous-requête : IDs des projets finalistes uniquement
     $preselectedProjectIds = DB::table('liste_preselectionnes')
+        ->where('is_finaliste', 1)
         ->select('projet_id');
 
     $projets = Projet::whereIn('id', $preselectedProjectIds)      // 🔹 seulement présélectionnés
