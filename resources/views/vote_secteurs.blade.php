@@ -174,14 +174,35 @@
                         <tbody id="projects-table-body">
                             @foreach ($secteurs as $secteur)
                                 @forelse ($secteur->projets as $projet)
+                                    @php
+                                        // Extraire l'école une seule fois pour éviter la duplication
+                                        $school = null;
+                                        if ($projet->submission?->profile_type === 'student' && $projet->listePreselectionne?->snapshot) {
+                                            $snapshot = json_decode($projet->listePreselectionne->snapshot, true);
+                                            if (isset($snapshot['champs_personnalises'])) {
+                                                $champsPerso = is_string($snapshot['champs_personnalises']) 
+                                                    ? json_decode($snapshot['champs_personnalises'], true) 
+                                                    : $snapshot['champs_personnalises'];
+                                                $school = $champsPerso['student_school'] ?? null;
+                                            }
+                                        }
+                                    @endphp
                                     <tr class="block md:table-row border-b border-gray-700 hover:bg-gray-900/30 transition-colors bg-gray-800/40 md:bg-transparent rounded-lg md:rounded-none mb-3 md:mb-0">
                                         <td class="hidden md:table-cell p-4" data-label="Secteur : ">{{ $secteur->nom }}</td>
-                                        <td class="hidden md:table-cell p-4" data-label="Équipe : ">{{ $projet->nom_equipe }}</td>
+                                        <td class="hidden md:table-cell p-4" data-label="Équipe : ">
+                                            <div>{{ $projet->nom_equipe }}</div>
+                                            @if($school)
+                                                <div class="text-sm text-red-300 font-semibold mt-1">{{ $school }}</div>
+                                            @endif
+                                        </td>
                                         <td class="block md:table-cell p-3 md:p-4 font-semibold" data-label="Projet : ">
                                             <div class="flex flex-col gap-1">
                                                 <div class="md:hidden">   <!-- Cache le bloc a partir d'un ecran mobile -->
                                                     <div class="text-[10px] text-gray-400 font-medium tracking-tight mb-1">Nom Équipe :</div>
                                                     <div class="text-sm text-white">{{ $projet->nom_equipe }}</div>
+                                                    @if($school)
+                                                        <div class="text-xs text-yellow-300 font-bold mt-1">{{ $school }}</div>
+                                                    @endif
                                                     <div class="text-[10px] text-gray-400 font-medium tracking-tight mt-2 mb-1">Nom Projet :</div>
                                                     <div class="text-sm font-semibold text-white">{{ $projet->nom_projet }}</div>
                                                 </div>

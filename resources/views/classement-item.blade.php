@@ -59,7 +59,7 @@
         @endphp
         
         @if($school)
-            <p class="text-xs text-gray-400/80 truncate mt-1">{{ $school }}</p>
+            <p class="text-sm text-red-300 font-semibold truncate mt-1">{{ $school }}</p>
         @endif
     </div>
 

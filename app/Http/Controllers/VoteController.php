@@ -103,6 +103,7 @@ class VoteController extends Controller
         $projetQuery
             ->leftJoin('liste_preselectionnes', 'projets.id', '=', 'liste_preselectionnes.projet_id')
             ->select('projets.*', 'liste_preselectionnes.video_demonstration')
+            ->with('submission', 'listePreselectionne')
             //where('validation_admin', 1) //Pour le moment on ne filtre plus sur la validation admin
             ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
             ->whereIn('projets.id', $preselectedProjectIds)
