@@ -2,8 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\VoteController; 
-use App\Http\Controllers\Admin\DashboardController; 
+use App\Http\Controllers\VoteController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\VoteStatusController;
 use App\Http\Controllers\ProjetController;
 use App\Http\Controllers\PageController;
@@ -27,15 +27,7 @@ Route::get('/vote/project/{id}/data', [VoteController::class, 'projectData'])->n
 Route::get('/vote/recherche-ajax', [VoteController::class, 'rechercheAjax'])->name('vote.rechercheAjax');
 
 // --- Processus de vote ---
-// L'utilisateur soumet le formulaire de la modale pour recevoir son code OTP
-Route::post('/vote/envoyer-otp', [VoteController::class, 'envoyerOtp'])
-    ->middleware('throttle:3,10') // Limite à 3 demandes d'OTP toutes les 10 minutes par IP
-    ->name('vote.envoyerOtp');
 
-// L'utilisateur soumet le code OTP pour valider son vote
-Route::post('/vote/verifier-otp', [VoteController::class, 'verifierOtp'])
-    ->middleware('throttle:5,10') // Limite à 5 tentatives de vérification toutes les 10 minutes par IP
-    ->name('vote.verifierOtp');
 
 // 🔹 Page de classement des projets (Général et par catégorie)
 Route::get('/classement', [ClassementController::class, 'index'])->name('projets.classement');
@@ -90,8 +82,22 @@ Route::get('/check-assets', function() {
         FileChecker::checkAsset($file);
     }
 });
-Route::post('/send-otp', [OrangeSmsController::class, 'sendOtp']);
+//Route::post('/send-otp', [OrangeSmsController::class, 'sendOtp']);
 
 Route::get('/apropos', [App\Http\Controllers\PageController::class, 'apropos'])->name('apropos');
 
 require __DIR__.'/auth.php';
+
+
+
+Route::post('/vote/envoyer-otp', [VoteController::class, 'envoyerOtp'])
+    ->middleware('throttle:10,10')
+    ->name('vote.envoyerOtp');
+
+Route::post('/vote/verifier-otp', [VoteController::class, 'verifierOtp'])
+    ->middleware('throttle:10,10')
+    ->name('vote.verifierOtp');
+
+
+Route::get('/test-orange-sms', [OrangeSmsController::class, 'testSimple'])
+    ->name('orange.test');

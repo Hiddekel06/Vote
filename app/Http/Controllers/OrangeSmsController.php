@@ -5,158 +5,405 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 
 class OrangeSmsController extends Controller
 {
     /**
-     * Récupérer le token d'accès Orange
+     * Récupère un token d'accès Orange
+     * à partir du Basic stocké dans ORANGE_AUTH_HEADER.
      */
-    public function getAccessToken()
+    private function getAccessToken(): ?string
     {
+        $baseUrl = rtrim(env('ORANGE_API_URL', 'https://api.orange.com'), '/');
+
         try {
-            // Ajout d'un timeout de 10 secondes pour éviter que la requête ne bloque indéfiniment
-            $response = Http::timeout(10)->withHeaders([
-                'Authorization' => env('ORANGE_AUTH_HEADER'),
-            ])->withoutVerifying() // uniquement pour dev local
-              ->asForm()
-              ->post(env('ORANGE_API_URL').'/oauth/v3/token', [
-                  'grant_type' => 'client_credentials',
-              ]);
+            $response = Http::timeout(10)
+                ->withHeaders([
+                    'Authorization' => env('ORANGE_AUTH_HEADER'), // Basic xxxx
+                ])
+                ->asForm()
+                ->withoutVerifying() // dev local
+                ->post($baseUrl . '/oauth/v3/token', [
+                    'grant_type' => 'client_credentials',
+                ]);
+
+            Log::info('Orange - token response', [
+                'status' => $response->status(),
+            ]);
 
             if ($response->failed()) {
-                // Log diagnostic (corps tronqué) pour comprendre les 401/4xx
-                $body = $response->body();
-                Log::error('Échec récupération token Orange', [
-                    'status' => $response->status(),
-                    'body_length' => strlen($body ?? ''),
-                    'body_preview' => mb_substr($body ?? '', 0, 2000),
-                    'headers' => $response->headers(),
-                ]);
                 return null;
             }
 
-            $data = $response->json();
-            return $data['access_token'] ?? null;
-
-        } catch (\Exception $e) {
-            Log::error('Exception récupération token Orange: '.$e->getMessage());
+            return $response->json('access_token');
+        } catch (\Throwable $e) {
+            Log::error('Orange - token exception', [
+                'message' => $e->getMessage(),
+            ]);
             return null;
         }
     }
 
     /**
-     * Envoyer un OTP par SMS
+     * Normalise un numéro type "77 379 27 37" => "+221773792737"
+     */
+    private function normalizePhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone ?? '');
+
+        if (str_starts_with($digits, '00')) {
+            $digits = substr($digits, 2);
+        }
+
+        if (str_starts_with($digits, '0')) {
+            $digits = substr($digits, 1);
+        }
+
+        if (! str_starts_with($digits, '221')) {
+            $digits = '221' . $digits;
+        }
+
+        return '+' . $digits; // ex : +221773792737
+    }
+
+    /**
+     * Rate limiting "maison" par IP et par téléphone
+     * pour contrer les bots / brute-force.
+     */
+    private function checkRateLimit(string $normalizedPhone, string $ip): ?\Illuminate\Http\JsonResponse
+    {
+        // 1) Limite par IP (ex: 20 OTP max sur 1h)
+        $ipKey = 'otp_ip:' . $ip;
+        $ipCount = Cache::add($ipKey, 0, now()->addHour()) ? 0 : Cache::increment($ipKey);
+
+        if ($ipCount > 20) {
+            Log::warning('OTP rate-limit IP', ['ip' => $ip]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Trop de tentatives depuis cette adresse IP. Réessayez plus tard.',
+            ], 429);
+        }
+
+        // 2) Limite par téléphone (ex: 5 OTP max sur 1h)
+        $phoneKey = 'otp_phone:' . $normalizedPhone;
+        $phoneCount = Cache::add($phoneKey, 0, now()->addHour()) ? 0 : Cache::increment($phoneKey);
+
+        if ($phoneCount > 5) {
+            Log::warning('OTP rate-limit phone', ['phone_last4' => substr($normalizedPhone, -4)]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Trop de demandes de code pour ce numéro. Réessayez plus tard.',
+            ], 429);
+        }
+
+        return null;
+    }
+
+    /**
+     * Envoi d’un SMS via Orange (couche bas niveau)
+     */
+    public function sendSmsInternal(string $phone, string $message): array
+
+    {
+        $token = $this->getAccessToken();
+        if (! $token) {
+            return [
+                'ok'     => false,
+                'status' => 500,
+                'body'   => 'Impossible de récupérer le token Orange',
+                'raw'    => null,
+            ];
+        }
+
+        $normalizedPhone = $this->normalizePhone($phone);  // +2217737...
+        $destAddress     = 'tel:' . $normalizedPhone;      // tel:+2217737...
+
+        $shortCode     = env('ORANGE_COUNTRY_SENDER', '2210000'); // donné par Orange
+        $senderAddress = 'tel:+' . $shortCode;                     // tel:+2210000
+        $senderName    = env('ORANGE_SENDER', 'govathon');         // sender whiteliste
+
+        $baseUrl = rtrim(env('ORANGE_API_URL', 'https://api.orange.com'), '/');
+        $url     = $baseUrl . '/smsmessaging/v1/outbound/' . urlencode($senderAddress) . '/requests';
+
+        $payload = [
+            'outboundSMSMessageRequest' => [
+                'address'       => $destAddress,
+                'senderAddress' => $senderAddress,
+                'senderName'    => $senderName,
+                'outboundSMSTextMessage' => [
+                    'message' => $message,
+                ],
+                'receiptRequest' => [
+                    'callbackData' => 'govathon-otp',
+                ],
+            ],
+        ];
+
+        Log::info('Orange - SMS payload', [
+            'url'     => $url,
+            'phone'   => substr($normalizedPhone, -4),
+        ]);
+
+        $response = Http::timeout(10)
+            ->withToken($token) // Bearer <token>
+            ->withoutVerifying()
+            ->post($url, $payload);
+
+        Log::info('Orange - SMS response', [
+            'status' => $response->status(),
+        ]);
+
+        return [
+            'ok'     => $response->successful(),
+            'status' => $response->status(),
+            'body'   => $response->json(),
+            'raw'    => $response,
+        ];
+    }
+
+    /**
+     * ENVOI OTP
+     * ---------------
+     * body: { "phone": "...", "projet_id": 123 }
+     * - génère un OTP,
+     * - le stocke hashé dans otp_codes,
+     * - refuse si le numéro a déjà voté (table votes),
+     * - applique du rate-limiting.
      */
     public function sendOtp(Request $request)
     {
-        $phone = $request->phone; // Numéro en format international +221771234567
-        if (!$phone) {
-            return response()->json(['error' => 'Le numéro de téléphone est requis'], 422);
+        $request->validate([
+            'telephone' => ['required', 'string', 'min:6', 'max:20'],
+            'projet_id' => ['required', 'integer'],
+        ]);
+
+        $rawPhone        = $request->input('telephone');
+        $normalizedPhone = $this->normalizePhone($rawPhone);
+        $projetId        = $request->input('projet_id');
+        $ip              = $request->ip();
+
+        // 1) Vérifier si ce numéro a déjà voté (quel que soit le projet)
+        $alreadyVoted = DB::table('vote_publics')
+            ->where('telephone', $normalizedPhone)
+            ->where('est_verifie', 1)
+            ->exists();
+
+        if ($alreadyVoted) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ce numéro a déjà voté.',
+            ], 403);
         }
 
-        $otp = $request->input('otp', rand(100000, 999999));
-        $message = $request->input('message', "Votre code OTP est : $otp");
-
-        $token = $this->getAccessToken();
-        if (!$token) {
-            return response()->json(['error' => 'Impossible d’obtenir le token'], 500);
+        // 2) Rate limiting anti-bot (IP + phone)
+        if ($resp = $this->checkRateLimit($normalizedPhone, $ip)) {
+            return $resp; // JSON 429
         }
 
-        try {
-         $sender = 'tel:' . env('ORANGE_SENDER'); // ex: tel:SMS132230
+        // 3) Générer un OTP et le stocker hashé
+        $otp = random_int(100000, 999999);
 
-         // Log de la requête pour debug (sans l'OTP)
-         Log::info('Préparation envoi SMS Orange', [
-             'sender' => $sender,
-             'destination' => 'tel:' . $phone,
-             'message_length' => strlen($message),
-         ]);
+        // On supprime un éventuel ancien OTP pour ce couple (phone, projet)
+        DB::table('otp_codes')
+            ->where('phone', $normalizedPhone)
+            ->where('projet_id', $projetId)
+            ->delete();
 
-         $response = Http::timeout(10)
-       ->withToken($token)
-       ->withoutVerifying() // uniquement pour dev local
-       ->post(env('ORANGE_API_URL')."/smsmessaging/v1/outbound/$sender/requests", [
-         'outboundSMSMessageRequest' => [
-              'address' => ['tel:' . $phone],   // destinataire
-             'senderAddress' => $sender,        // sender officiel avec tel:
-             'outboundSMSTextMessage' => [
-                 'message' => $message
-             ],
-             'receiptRequest' => [               // facultatif, pour les DLR
-                'callbackData' => 'optional info'
-            ]
-        ]
-    ]);
+        DB::table('otp_codes')->insert([
+            'phone'       => $normalizedPhone,
+            'projet_id'   => $projetId,
+            'code_hash'   => Hash::make((string) $otp),
+            'expires_at'  => now()->addMinutes(5),
+            'attempts'    => 0,
+            'consumed_at' => null,
+            'ip_address'  => $ip,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
 
+        // 4) Envoyer le SMS avec le message demandé
+        $message = "Votre code OTP est de : {$otp}";
 
-            // Ne pas logger ou exposer la réponse complète d'Orange ni l'OTP.
-            try {
-                $digitsOnly = preg_replace('/\D+/', '', $phone);
-                $last4 = substr($digitsOnly, -4);
-            } catch (\Throwable $e) {
-                $last4 = null;
-            }
-            if ($response->failed()) {
-                $body = $response->body();
-                Log::error('Échec envoi SMS Orange', [
-                    'status' => $response->status(),
-                    'phone_last4' => $last4,
-                    'body_length' => strlen($body ?? ''),
-                    'body_preview' => mb_substr($body ?? '', 0, 3000),
-                    'headers' => $response->headers(),
-                    'full_response' => $response->json(),
+        $result = $this->sendSmsInternal($normalizedPhone, $message);
+
+        if (! $result['ok']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Échec de l’envoi du SMS.',
+                'status'  => $result['status'],
+            ], 500);
+        }
+
+        // 🔒 On NE renvoie PAS l’OTP côté client (sécurité).
+        return response()->json([
+            'success' => true,
+            'message' => 'Code OTP envoyé par SMS.',
+        ]);
+    }
+
+    /**
+     * VÉRIFICATION OTP
+     * -----------------
+     * body: { "phone": "...", "projet_id": 123, "otp": "123456" }
+     * - vérifie le code saisi,
+     * - limite le nombre d’essais,
+     * - marque l’OTP comme consommé,
+     * - enregistre le vote (table votes),
+     * - bloque définitivement ce numéro.
+     */
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'telephone' => ['required', 'string', 'min:6', 'max:20'],
+            'projet_id' => ['required', 'integer'],
+            'otp'       => ['required', 'digits:6'],
+        ]);
+
+        $rawPhone        = $request->input('telephone');
+        $normalizedPhone = $this->normalizePhone($rawPhone);
+
+        $projetId        = $request->input('projet_id');
+        $otpInput        = $request->input('otp');
+        $ip              = $request->ip();
+
+        // 1) Si le numéro a déjà voté (est_verifie = 1 sur n'importe quel projet), on bloque
+        $alreadyVoted = DB::table('vote_publics')
+            ->where('telephone', $normalizedPhone)
+            ->where('est_verifie', 1)
+            ->exists();
+
+        if ($alreadyVoted) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ce numéro a déjà voté.',
+            ], 403);
+        }
+
+        // 2) Récupérer l’OTP actif pour ce couple (phone, projet)
+        $otpRow = DB::table('otp_codes')
+            ->where('phone', $normalizedPhone)
+            ->where('projet_id', $projetId)
+            ->whereNull('consumed_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $otpRow) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun code OTP actif pour ce numéro et ce projet.',
+            ], 400);
+        }
+
+        // 3) Vérifier expiration
+        if (now()->greaterThan($otpRow->expires_at)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le code OTP a expiré. Merci de redemander un nouveau code.',
+            ], 400);
+        }
+
+        // 4) Limiter le nombre d’essais (ex: 5 max)
+        if ($otpRow->attempts >= 5) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nombre d’essais dépassé. Merci de redemander un nouveau code.',
+            ], 429);
+        }
+
+        // 5) Vérifier l’OTP (hash)
+        $isValid = Hash::check($otpInput, $otpRow->code_hash);
+
+        if (! $isValid) {
+            DB::table('otp_codes')
+                ->where('id', $otpRow->id)
+                ->update([
+                    'attempts'   => $otpRow->attempts + 1,
+                    'updated_at' => now(),
                 ]);
-            } else {
-                $responseBody = $response->json();
-                $resourceURL = $responseBody['outboundSMSMessageRequest']['resourceURL'] ?? null;
-                $deliveryStatus = $responseBody['outboundSMSMessageRequest']['deliveryInfoList']['deliveryInfo'][0]['deliveryStatus'] ?? null;
-
-                Log::info('Requête SMS envoyée à Orange', [
-                    'status' => $response->status(),
-                    'phone_last4' => $last4,
-                    'body_length' => strlen($response->body() ?? ''),
-                    'resourceURL' => $resourceURL,
-                    'deliveryStatus' => $deliveryStatus,
-                ]);
-
-                // Tentative de récupération du statut de livraison si Orange le permet via resourceURL
-                if ($resourceURL) {
-                    try {
-                        // Orange documente souvent un accès via {resourceURL}/deliveryInfos
-                        $dlrUrl = rtrim($resourceURL, '/') . '/deliveryInfos';
-                        $dlrResponse = Http::timeout(10)
-                            ->withToken($token)
-                            ->withoutVerifying()
-                            ->get($dlrUrl);
-
-                        $dlrBody = $dlrResponse->json();
-                        Log::info('Statut livraison SMS Orange', [
-                            'status' => $dlrResponse->status(),
-                            'phone_last4' => $last4,
-                            'body_length' => strlen($dlrResponse->body() ?? ''),
-                            'deliveryStatus' => $dlrBody['deliveryInfoList']['deliveryInfo'][0]['deliveryStatus'] ?? null,
-                            'messageReference' => $dlrBody['deliveryInfoList']['deliveryInfo'][0]['messageReference'] ?? null,
-                            'dlrUrl' => $dlrUrl,
-                        ]);
-                    } catch (\Throwable $e) {
-                        Log::warning('Impossible de récupérer le statut de livraison Orange', [
-                            'message' => $e->getMessage(),
-                            'resourceURL' => $resourceURL,
-                        ]);
-                    }
-                }
-            }
 
             return response()->json([
-                'success' => $response->successful(), // true si HTTP 2xx
-                'message' => $response->successful() ? 'SMS envoyé' : 'Échec envoi SMS',
-                // Ne pas renvoyer l'OTP ni la réponse brute d'Orange dans l'API publique
-            ]);
-
-        } catch (\Exception $e) {
-            // Logger l'exception pour investigation sans exposer les détails côté client
-            Log::error('Exception envoi SMS Orange', ['message' => $e->getMessage()]);
-            return response()->json(['error' => 'Erreur lors de l\'envoi du SMS'], 500);
+                'success' => false,
+                'message' => 'Code OTP incorrect.',
+            ], 400);
         }
+
+        // 6) OTP valide : on le marque consommé et on enregistre le vote
+      // 6) OTP valide : on le marque consommé et on enregistre le vote
+DB::transaction(function () use ($otpRow, $normalizedPhone, $projetId, $ip, $request) {
+
+    // 6.1 Marquer l’OTP comme consommé
+    DB::table('otp_codes')
+        ->where('id', $otpRow->id)
+        ->update([
+            'consumed_at' => now(),
+            'updated_at'  => now(),
+        ]);
+
+    // 6.2 Récupérer les infos techniques
+    $userAgent = substr($request->userAgent() ?? 'unknown', 0, 1000);
+
+    $geoCountry = null;
+    $geoCity    = null;
+
+    try {
+        // Si tu as installé un package GeoIP (ex: torann/geoip)
+        if (function_exists('geoip')) {
+            $geo = geoip()->getLocation($ip);
+            $geoCountry = $geo->iso_code ?? $geo->country ?? null; // SN
+            $geoCity    = $geo->city ?? null;
+        }
+    } catch (\Throwable $e) {
+        Log::warning('GeoIP lookup failed', [
+            'ip'      => $ip,
+            'message' => $e->getMessage(),
+        ]);
+    }
+
+    // 6.3 Enregistrer le vote vérifié
+    DB::table('vote_publics')->updateOrInsert(
+        [
+            'telephone' => $normalizedPhone,
+            'projet_id' => $projetId,
+        ],
+        [
+            'email'       => null,
+            'token'       => null,
+            'est_verifie' => 1,
+            'ip_address'  => $ip,
+            'user_agent'  => $userAgent,
+            'geo_country' => $geoCountry,
+            'geo_city'    => $geoCity,
+            'updated_at'  => now(),
+            'created_at'  => now(),
+        ]
+    );
+});
+
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Vote validé avec succès.',
+        ]);
+    }
+
+    /**
+     * Test manuel de SMS simple (sans OTP) si besoin
+     * GET /test-orange-sms
+     */
+    public function testSimple()
+    {
+        $result = $this->sendSmsInternal(
+            '773792737',
+            'Test Govathon (Laravel) - ' . now()->toDateTimeString()
+        );
+
+        return response()->json([
+            'success' => $result['ok'],
+            'status'  => $result['status'],
+            'body'    => $result['body'],
+        ], $result['ok'] ? 200 : 500);
     }
 }
