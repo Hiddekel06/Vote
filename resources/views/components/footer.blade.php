@@ -9,13 +9,12 @@
     <!-- Sponsors horizontal strip (placed above links) -->
     <div class="mx-auto px-4 sm:px-6 md:px-10 pt-8 pb-6 max-w-5xl">
         <h3 class="text-yellow-300 font-bold text-2xl sm:text-3xl md:text-4xl mb-5 text-center tracking-wider [text-shadow:_0_2px_10px_rgb(250_204_21_/_40%)]">Sponsors</h3>
-        <div id="sponsors-scroll" class="overflow-x-auto scrollbar-thin scrollbar-thumb-yellow-500/50 scrollbar-track-transparent">
+        <div id="sponsors-scroll" class="overflow-x-auto scrollbar-thin scrollbar-thumb-yellow-500/50 scrollbar-track-transparent bg-white">
             <div id="sponsors-track" class="flex items-center justify-start gap-6 sm:gap-8 md:gap-10 py-4">
                               <!-- SPONSORS IMAGES -->
                 <img src="{{ asset('images/sponsors/DDD.jpg') }}" alt="DDD" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
-                <img src="{{ asset('images/sponsors/GIZ.png') }}" alt="GIZ" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
                 <img src="{{ asset('images/sponsors/SAR.png') }}" alt="SAR" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
-                <img src="{{ asset('images/sponsors/MFP.PNG') }}" alt="MFP" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
+                <img src="{{ asset('images/sponsors/MFPremove.png') }}" alt="MFP" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
                 <img src="{{ asset('images/sponsors/PAMA.jpg') }}" alt="PAMA" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
                 <img src="{{ asset('images/sponsors/SAR.png') }}" alt="SAR" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
                 <img src="{{ asset('images/sponsors/DIMENSION.jpg') }}" alt="DIMENSION" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">

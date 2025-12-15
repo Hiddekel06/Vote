@@ -183,7 +183,14 @@
                                                 $champsPerso = is_string($snapshot['champs_personnalises']) 
                                                     ? json_decode($snapshot['champs_personnalises'], true) 
                                                     : $snapshot['champs_personnalises'];
-                                                $school = $champsPerso['student_school'] ?? null;
+                                                
+                                                // Si l'école est "OTHER", utiliser le champ student_school_other
+                                                $schoolValue = $champsPerso['student_school'] ?? null;
+                                                if ($schoolValue === 'OTHER') {
+                                                    $school = $champsPerso['student_school_other'] ?? null;
+                                                } else {
+                                                    $school = $schoolValue;
+                                                }
                                             }
                                         }
                                     @endphp

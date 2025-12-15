@@ -16,6 +16,8 @@ class ClassementController extends Controller
      */
     public function index(Request $request)
     {
+        $search = trim((string) $request->query('search', ''));
+
         // Catégories pour les onglets
         $categories = collect([
             (object) ['nom' => 'Étudiant', 'slug' => 'student'],
@@ -39,23 +41,37 @@ class ClassementController extends Controller
         // 1. Classement général = uniquement les projets présélectionnés
         // Pagination serveur : paramétrable via 'per_page' (nom de paramètre 'page_general')
         $classementGeneral = Projet::whereIn('id', $preselectedProjectIds)
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('nom_projet', 'like', "%{$search}%")
+                        ->orWhere('nom_equipe', 'like', "%{$search}%");
+                });
+            })
             ->withCount('votes')
             ->with('secteur', 'submission', 'listePreselectionne')
             ->orderBy('votes_count', 'desc')
             ->orderBy('nom_projet', 'asc')
-            ->paginate($perPage, ['*'], 'page_general');
+            ->paginate($perPage, ['*'], 'page_general')
+            ->withQueryString();
 
         // 2. Classements par catégorie (toujours sur les présélectionnés)
-        $classementsParCategorie = $categories->mapWithKeys(function ($categorie) use ($preselectedProjectIds, $perPage) {
+        $classementsParCategorie = $categories->mapWithKeys(function ($categorie) use ($preselectedProjectIds, $perPage, $search) {
             // Chaque catégorie aura son propre nom de page pour la pagination (ex: page_student)
             $pageName = 'page_' . $categorie->slug;
             $projets = Projet::whereIn('id', $preselectedProjectIds)
                 ->whereHas('submission', fn ($q) => $q->where('profile_type', $categorie->slug))
+                ->when($search !== '', function ($q) use ($search) {
+                    $q->where(function ($sub) use ($search) {
+                        $sub->where('nom_projet', 'like', "%{$search}%")
+                            ->orWhere('nom_equipe', 'like', "%{$search}%");
+                    });
+                })
                 ->withCount('votes')
                 ->with('secteur', 'submission', 'listePreselectionne')
                 ->orderBy('votes_count', 'desc')
                 ->orderBy('nom_projet', 'asc')
-                ->paginate($perPage, ['*'], $pageName);
+                ->paginate($perPage, ['*'], $pageName)
+                ->withQueryString();
 
             return [$categorie->slug => $projets];
         });

@@ -91,7 +91,14 @@
                 </div>
             @else
                 <div class="text-center p-12 text-gray-400">
-                    <p class="text-xl">Aucun projet n'a encore reçu de vote.</p>
+                    @if(request('search'))
+                        <p class="text-xl mb-4">Aucun projet trouvé pour "{{ request('search') }}"</p>
+                        <a href="{{ url()->current() }}" class="inline-block px-6 py-2 rounded-lg border-2 border-emerald-400 text-emerald-400 font-semibold hover:bg-emerald-400/10 transition-colors">
+                            Revenir à la liste complète
+                        </a>
+                    @else
+                        <p class="text-xl">Aucun projet n'a encore reçu de vote.</p>
+                    @endif
                 </div>
             @endif
         </div>
@@ -183,7 +190,14 @@
                     </div>
                 @else
                     <div class="text-center p-12 text-gray-400">
-                        <p class="text-xl">Aucun projet n'a encore reçu de vote dans cette catégorie.</p>
+                        @if(request('search'))
+                            <p class="text-xl mb-4">Aucun projet trouvé pour "{{ request('search') }}" dans cette catégorie.</p>
+                            <a href="{{ url()->current() }}" class="inline-block px-6 py-2 rounded-lg border-2 border-emerald-400 text-emerald-400 font-semibold hover:bg-emerald-400/10 transition-colors">
+                                Revenir à la liste complète
+                            </a>
+                        @else
+                            <p class="text-xl">Aucun projet n'a encore reçu de vote dans cette catégorie.</p>
+                        @endif
                     </div>
                 @endif
             </div>

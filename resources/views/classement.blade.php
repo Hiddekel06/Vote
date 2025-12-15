@@ -28,6 +28,21 @@
                     Classement des Projets
                 </h1>
                 <p class="text-gray-400 text-lg">Tendances des votes en temps réel</p>
+
+                <form action="" method="GET" class="mt-6 max-w-xl mx-auto">
+                    <label for="search" class="sr-only">Rechercher un projet ou une équipe</label>
+                    <div class="flex items-center gap-3">
+                        <input
+                            type="text"
+                            id="search"
+                            name="search"
+                            value="{{ request('search') }}"
+                            placeholder="Rechercher un projet ou une équipe"
+                            class="w-full rounded-lg bg-gray-900/70 border border-gray-700 px-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                        >
+                        <button type="submit" class="px-4 py-2 rounded-lg text-white font-semibold text-sm hover:bg-yellow-300 transition-colors">Rechercher</button>
+                    </div>
+                </form>
             </div>
 
             <div x-data="{ tab: '{{ $activeTab ?? 'general' }}' }" class="w-full">
