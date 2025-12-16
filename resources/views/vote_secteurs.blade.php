@@ -98,6 +98,9 @@
     }"
 
     x-init="
+        // Capturer le contexte Alpine pour les event listeners
+        const self = this;
+        
         // Si le vote est inactif, on initialise la modale
         if (!isVoteActive) {
             voteStep = 3;
@@ -105,16 +108,20 @@
         }
         // Écouteurs pour charger les projets depuis le client sans embarquer l'objet complet dans la page
         window.addEventListener('project-data', function(e) {
-            modalProjet = e.detail;
-            showModal = true;
-            descriptionExpanded = false;
+            console.log('📊 Alpine: Event project-data reçu', e.detail);
+            self.modalProjet = e.detail;
+            self.showModal = true;
+            self.descriptionExpanded = false;
         });
         window.addEventListener('project-for-vote', function(e) {
-            voteProjet = e.detail;
-            showVoteModal = true;
-            voteStep = isVoteActive ? 1 : 3;
-            errorMessage = isVoteActive ? '' : inactiveMessage;
-            successMessage = '';
+            console.log('🎯 Alpine: Event project-for-vote reçu', e.detail);
+            self.voteProjet = e.detail;
+            self.showVoteModal = true;
+            console.log('🎯 Alpine: showVoteModal mis à true');
+            self.voteStep = isVoteActive ? 1 : 3;
+            self.errorMessage = isVoteActive ? '' : inactiveMessage;
+            self.successMessage = '';
+            console.log('🎯 Alpine: voteStep =', self.voteStep, ', showVoteModal =', self.showVoteModal);
         });
     "
 
@@ -236,18 +243,19 @@
                                                            </button>
 
                                                            <!-- Bouton Partager -->
-                                                           <button 
-                                                               type="button"
-                                                               class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                               title="Partager ce projet"
-                                                               onclick="shareProjectForProject({{ $projet->id }})">
-                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                                   <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                                                               </svg>
-                                                           </button>
+                                                           <div class="relative group">
+                                                               <span class="p-2 rounded-full text-gray-600 bg-transparent opacity-60" title="Le partage est désactivé pour le moment" aria-hidden="true">
+                                                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                                       <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                                                                   </svg>
+                                                               </span>
+                                                               <span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 text-xs text-white bg-gray-700 rounded whitespace-nowrap hidden group-hover:block pointer-events-none z-50">
+                                                                   Le partage est désactivé pour le moment
+                                                               </span>
+                                                           </div>
 
                                                            @php
-                                                               $demoUrl = $projet->video_demonstration ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
+                                                               $demoUrl = $projet->video_demo ?? $projet->video_demonstration ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demo') ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
                                                            @endphp
                                                            @if($demoUrl)
                                                                <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
@@ -304,18 +312,19 @@
                                                        </button>
 
                                                        <!-- Bouton Partager -->
-                                                       <button 
-                                                           type="button"
-                                                           class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                           title="Partager ce projet"
-                                                           onclick="shareProjectForProject({{ $projet->id }})">
-                                                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                               <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                                                           </svg>
-                                                       </button>
+                                                       <div class="relative group">
+                                                           <span class="p-2 rounded-full text-gray-600 bg-transparent opacity-60" title="Le partage est désactivé pour le moment" aria-hidden="true">
+                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                                   <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                                                               </svg>
+                                                           </span>
+                                                           <span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 text-xs text-white bg-gray-700 rounded whitespace-nowrap hidden group-hover:block pointer-events-none z-50">
+                                                               Le partage est désactivé pour le moment
+                                                           </span>
+                                                       </div>
 
                                                        @php
-                                                           $demoUrl = $projet->video_demonstration ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
+                                                           $demoUrl = $projet->video_demo ?? $projet->video_demonstration ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demo') ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
                                                        @endphp
                                                        @if($demoUrl)
                                                            <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
@@ -556,16 +565,60 @@
                             </div>
 
                             {{-- Étape 3: Messages de succès ou d'erreur --}}
-                            <div x-show="voteStep === 3" style="display: none;" class="text-center py-8">
-                                <div x-show="successMessage" class="text-emerald-400">
-                                    <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    <p class="text-xl font-semibold" x-text="successMessage"></p>
+                            <div x-show="voteStep === 3" style="display: none;" class="text-center py-6 px-4">
+                                {{-- Message de succès --}}
+                                <div x-show="successMessage" class="space-y-5">
+                                    {{-- Icône et message principal - version compacte --}}
+                                    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
+                                        <div class="w-16 h-16 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
+                                            <svg class="w-8 h-8 sm:w-7 sm:h-7 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="text-center sm:text-left">
+                                            <h3 class="text-xl sm:text-2xl font-semibold text-white mb-1">Vote enregistré</h3>
+                                            <p class="text-sm text-gray-400">Merci pour votre participation</p>
+                                        </div>
+                                    </div>
+
+                                    {{-- Invitation grande finale - version compacte --}}
+                                    <div class="pt-4 pb-2 border-t border-gray-800">
+                                        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-lg mx-auto">
+                                            <div class="text-center sm:text-left flex-1">
+                                                <h4 class="text-base font-medium text-white mb-1">Grande Finale</h4>
+                                                <p class="text-xs text-gray-400">Réservez votre place dès maintenant</p>
+                                            </div>
+                                            <a href="https://www.exemple.com/reservation" 
+                                               target="_blank"
+                                               class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-medium text-sm rounded-lg transition-all duration-200 shadow-lg hover:shadow-yellow-500/20 flex-shrink-0">
+                                                <span>Réserver</span>
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                                                </svg>
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    {{-- Bouton fermer intégré --}}
+                                    <button @click="showVoteModal = false" class="text-sm text-gray-500 hover:text-gray-300 underline transition-colors">
+                                        Fermer
+                                    </button>
                                 </div>
-                                <div x-show="errorMessage" class="text-red-400">
-                                     <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    <p class="text-xl font-semibold" x-text="errorMessage"></p>
+
+                                {{-- Message d'erreur - version compacte --}}
+                                <div x-show="errorMessage" class="space-y-4">
+                                    <div class="flex items-center justify-center gap-4">
+                                        <div class="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center flex-shrink-0">
+                                            <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </div>
+                                        <p class="text-base text-gray-300 text-left flex-1" x-text="errorMessage"></p>
+                                    </div>
+                                    <button @click="showVoteModal = false" class="text-sm text-gray-500 hover:text-gray-300 underline transition-colors">
+                                        Fermer
+                                    </button>
                                 </div>
-                                <button @click="showVoteModal = false" class="mt-6 skew-btn bg-gray-600 text-white">Fermer</button>
                             </div>
 
                             {{-- Affichage des messages d'erreur globaux --}}
@@ -619,42 +672,82 @@ function shareProject(url) {
 
 // Construit l'URL de partage pour un projet et appelle shareProject
 function shareProjectForProject(id) {
-    const url = "{{ url('/vote/projet') }}/" + id + "?open=1&project_id=" + id;
+    console.log('🔵 shareProjectForProject appelé avec ID:', id);
+    // Utiliser la même page de catégorie avec les paramètres open=1
+    const currentPath = window.location.pathname;
+    const url = window.location.origin + currentPath + "?open=1&project_id=" + id;
+    console.log('🔵 URL générée:', url);
     shareProject(url);
 }
 
 // Si l'URL contient ?open=1&project_id=..., charger les données et ouvrir la modal
 document.addEventListener('DOMContentLoaded', function () {
+    console.log('🟢 DOMContentLoaded déclenché');
     try {
         const params = new URLSearchParams(window.location.search);
+        console.log('🟢 Paramètres URL:', window.location.search);
+        console.log('🟢 Param open:', params.get('open'));
+        console.log('🟢 Param project_id:', params.get('project_id'));
+        
         if (params.get('open') === '1') {
+            console.log('🟡 Condition open=1 remplie');
             const pid = params.get('project_id');
-            if (!pid) return;
+            if (!pid) {
+                console.log('❌ Pas de project_id, abandon');
+                return;
+            }
+            console.log('🟡 Project ID détecté:', pid);
 
-            // Utiliser l'endpoint léger déjà présent pour récupérer les données du projet
-            fetch('/vote/project/' + pid + '/data')
-                .then(function (res) {
-                    if (!res.ok) throw new Error('Impossible de charger le projet');
-                    return res.json();
-                })
-                .then(function (data) {
-                    // Dispatch event que l'Alpine component écoute déjà
-                    window.dispatchEvent(new CustomEvent('project-for-vote', { detail: data }));
+            // Attendre que les composants Alpine soient vraiment initialisés
+            function loadAndOpenModal() {
+                console.log('🟡 Alpine initialisé, début du fetch');
+                // Utiliser l'endpoint léger déjà présent pour récupérer les données du projet
+                fetch('/vote/project/' + pid + '/data')
+                    .then(function (res) {
+                        console.log('🟡 Fetch réponse reçue, status:', res.status, res.ok);
+                        if (!res.ok) throw new Error('Impossible de charger le projet');
+                        return res.json();
+                    })
+                    .then(function (data) {
+                        console.log('✅ Projet chargé pour la modal:', data);
+                        // Petit délai pour s'assurer que les event listeners sont bien enregistrés
+                        setTimeout(function() {
+                            console.log('✅ Dispatch event project-for-vote');
+                            window.dispatchEvent(new CustomEvent('project-for-vote', { detail: data }));
+                        }, 100);
 
-                    // Nettoyer l'URL pour éviter la réouverture au refresh
-                    if (history && history.replaceState) {
-                        const url = new URL(window.location);
-                        url.searchParams.delete('open');
-                        url.searchParams.delete('project_id');
-                        history.replaceState({}, '', url.toString());
-                    }
-                })
-                .catch(function (err) {
-                    console.warn('Erreur en chargeant le projet pour la modal:', err);
-                });
+                        // Nettoyer l'URL pour éviter la réouverture au refresh
+                        if (history && history.replaceState) {
+                            const url = new URL(window.location);
+                            url.searchParams.delete('open');
+                            url.searchParams.delete('project_id');
+                            history.replaceState({}, '', url.toString());
+                            console.log('✅ URL nettoyée');
+                        }
+                    })
+                    .catch(function (err) {
+                        console.error('❌ Erreur en chargeant le projet pour la modal:', err);
+                    });
+            }
+            
+            // Écouter l'événement alpine:initialized
+            document.addEventListener('alpine:initialized', function() {
+                console.log('🎉 Alpine:initialized event reçu');
+                loadAndOpenModal();
+            });
+            
+            // Fallback au cas où Alpine est déjà initialisé
+            setTimeout(function() {
+                if (typeof Alpine !== 'undefined' && Alpine.version) {
+                    console.log('🟡 Fallback: Alpine déjà initialisé');
+                    loadAndOpenModal();
+                }
+            }, 1000);
+        } else {
+            console.log('🔴 Condition open=1 non remplie, pas d\'ouverture automatique');
         }
     } catch (e) {
-        console.warn('Erreur lors du traitement des params d\'URL', e);
+        console.warn('❌ Erreur lors du traitement des params d\'URL', e);
     }
 });
 </script>
