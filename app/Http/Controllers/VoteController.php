@@ -97,7 +97,7 @@ class VoteController extends Controller
         $allCategories = collect([
             (object) ['nom' => 'Étudiant', 'slug' => 'student'],
             (object) ['nom' => 'Startup', 'slug' => 'startup'],
-            (object) ['nom' => 'Citoyens', 'slug' => 'other'],
+            (object) ['nom' => 'Porteurs de projet', 'slug' => 'other'],
         ]);
 
         $voteStatusDetails = $this->getVoteStatusDetails();
@@ -315,7 +315,6 @@ try {
         return response()->json([
             'success' => true,
             'message' => 'Un code OTP a été envoyé.',
-            'otp' => $otp,
         ]);
     }
 
@@ -445,7 +444,7 @@ try {
         $categorieNom = match ($profileType) {
             'student' => 'Étudiant',
             'startup' => 'Startup',
-            'other'   => 'Citoyens',
+            'other'   => 'Porteurs de projet',
             default   => 'Inconnue',
         };
 
@@ -454,7 +453,7 @@ try {
         $allCategories = collect([
             (object) ['nom' => 'Étudiant', 'slug' => 'student'],
             (object) ['nom' => 'Startup', 'slug' => 'startup'],
-            (object) ['nom' => 'Citoyens', 'slug' => 'other'],
+            (object) ['nom' => 'Porteurs de projet', 'slug' => 'other'],
         ]);
 
         $voteStatusDetails = $this->getVoteStatusDetails();

@@ -33,10 +33,10 @@
             <div class="text-center mb-4 px-2">
                 <div x-data="{ open: false }" class="relative inline-block text-left max-w-full">
                     <div>
-                        <button @click="open = !open" type="button" class="inline-flex flex-wrap justify-center items-center w-full rounded-md px-3 py-2 text-sm sm:text-base md:text-lg font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none gap-1" id="menu-button" aria-expanded="open" aria-haspopup="true">
+                        <button @click="open = !open" type="button" class="inline-flex flex-wrap justify-center items-center w-full rounded-md px-3 py-2 text-sm sm:text-base md:text-xl lg:text-2xl font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none gap-1" id="menu-button" aria-expanded="open" aria-haspopup="true">
                             <span class="whitespace-nowrap">Categorie :</span>
                             <span class="text-white break-words">{{ $categorie->nom }}</span>
-                            <svg class="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <svg class="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                             </svg>
                         </button>
@@ -525,8 +525,8 @@
 
                                     <div>
                                         <label for="telephone_display" class="block mb-2 text-sm font-medium text-gray-300">Votre numéro de téléphone</label>
-                                        <div class="flex flex-col sm:flex-row gap-2 sm:gap-0">
-                                            <select id="country_code" name="country_code" class="flex-shrink-0 z-10 inline-flex items-center py-2.5 px-3 sm:px-4 text-sm font-medium text-center text-gray-200 bg-gray-800 border border-gray-600 rounded-lg sm:rounded-l-lg sm:rounded-r-none hover:bg-gray-700 focus:ring-2 focus:outline-none focus:ring-yellow-400">
+                                        <div class="flex flex-row gap-0">
+                                            <select id="country_code" name="country_code" class="flex-shrink-0 z-10 inline-flex items-center py-2.5 px-3 text-sm font-medium text-center text-gray-200 bg-gray-800 border border-gray-600 rounded-l-lg hover:bg-gray-700 focus:ring-2 focus:outline-none focus:ring-yellow-400">
                                                 @foreach($countries as $country)
                                                     <option value="{{ $country['dial_code'] }}" @if($country['code'] === 'SN') selected @endif>
                                                         {!! $country['flag'] !!} {{ $country['dial_code'] }}
@@ -535,7 +535,7 @@
                                             </select>
                                             <div class="relative w-full">
                                                 <input type="tel" id="telephone_display" name="telephone_display"
-                                                       class="block p-2.5 w-full z-20 text-sm text-white bg-gray-700/50 rounded-lg sm:rounded-r-lg sm:rounded-l-none border-l-0 sm:border-l-0 border border-gray-600 focus:ring-2 focus:outline-none focus:ring-yellow-400"
+                                                       class="block p-2.5 w-full z-20 text-sm text-white bg-gray-700/50 rounded-r-lg border border-gray-600 border-l-0 focus:ring-2 focus:outline-none focus:ring-yellow-400"
                                                        placeholder="Ex: 77 123 45 67" required>
                                             </div>
                                         </div>
