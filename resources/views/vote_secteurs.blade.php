@@ -30,12 +30,13 @@
                 </a>
             </div>
 
-            <div class="text-center mb-4">
-                <div x-data="{ open: false }" class="relative inline-block text-left">
+            <div class="text-center mb-4 px-2">
+                <div x-data="{ open: false }" class="relative inline-block text-left max-w-full">
                     <div>
-                        <button @click="open = !open" type="button" class="inline-flex justify-center items-center w-full rounded-md px-4 py-2 text-lg sm:text-xl md:text-2xl font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none" id="menu-button" aria-expanded="open" aria-haspopup="true">
-                            Projets : <span class="text-white ml-2">{{ $categorie->nom }}</span>
-                            <svg class="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <button @click="open = !open" type="button" class="inline-flex flex-wrap justify-center items-center w-full rounded-md px-3 py-2 text-sm sm:text-base md:text-lg font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none gap-1" id="menu-button" aria-expanded="open" aria-haspopup="true">
+                            <span class="whitespace-nowrap">Categorie :</span>
+                            <span class="text-white break-words">{{ $categorie->nom }}</span>
+                            <svg class="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                             </svg>
                         </button>
@@ -49,7 +50,7 @@
                          x-transition:leave="transition ease-in duration-75"
                          x-transition:leave-start="transform opacity-100 scale-100"
                          x-transition:leave-end="transform opacity-0 scale-95"
-                         class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+                         class="origin-top-right absolute left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 sm:translate-x-0 mt-2 w-64 sm:w-56 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
                          role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1">
                         <div class="py-1" role="none">
                             @foreach($allCategories->where('slug', '!=', $categorie->slug) as $cat)
@@ -59,7 +60,7 @@
                     </div>
                 </div>
             </div>
-            <p class="text-center text-gray-300 mb-8">Recherchez un projet, une équipe ou un secteur, puis votez pour votre préféré.</p>
+            <p class="text-center text-gray-300 mb-8 px-4 text-sm sm:text-base">Recherchez un projet, une équipe ou un secteur, puis votez pour votre préféré.</p>
 
             <!-- Barre de recherche -->
             <div class="mb-8">

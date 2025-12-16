@@ -61,6 +61,12 @@
                         <small>Secondes</small>
                     </div>
                 </div>
+                <div class="mt-4 flex items-center justify-center gap-2 text-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="text-sm font-medium">Cicad ,Diamniadio</span>
+                </div>
             </div>
 
             <h1
