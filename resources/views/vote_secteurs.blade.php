@@ -199,7 +199,7 @@
                                         <td class="hidden md:table-cell p-4" data-label="Équipe : ">
                                             <div>{{ $projet->nom_equipe }}</div>
                                             @if($school)
-                                                <div class="text-sm text-red-300 font-semibold mt-1">{{ $school }}</div>
+                                                <div class="text-sm text-yellow-300 font-semibold mt-1">{{ $school }}</div>
                                             @endif
                                         </td>
                                         <td class="block md:table-cell p-3 md:p-4 font-semibold" data-label="Projet : ">

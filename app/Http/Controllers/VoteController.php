@@ -234,29 +234,13 @@ class VoteController extends Controller
         $telephone = $e164;
 
         try {
-            $totalVerified = DB::table('vote_publics')
+            $alreadyVoted = DB::table('vote_publics')
                 ->where('telephone', $telephone)
                 ->where('est_verifie', true)
-                ->count();
+                ->exists();
 
-            if ($totalVerified >= 3) {
-                return response()->json(['success' => false, 'message' => 'Vous avez déjà utilisé vos 3 votes autorisés.'], 409);
-            }
-
-            $projet    = Projet::find($projetId);
-            $secteurId = $projet?->secteur_id;
-
-            if ($secteurId) {
-                $alreadyInSector = DB::table('vote_publics')
-                    ->join('projets', 'vote_publics.projet_id', '=', 'projets.id')
-                    ->where('vote_publics.telephone', $telephone)
-                    ->where('projets.secteur_id', $secteurId)
-                    ->where('vote_publics.est_verifie', true)
-                    ->exists();
-
-                if ($alreadyInSector) {
-                    return response()->json(['success' => false, 'message' => 'Vous avez déjà voté dans cette catégorie.'], 409);
-                }
+            if ($alreadyVoted) {
+                return response()->json(['success' => false, 'message' => 'Vous avez déjà voté. Un seul vote est autorisé.'], 409);
             }
         } catch (\Throwable $e) {
             Log::warning('Erreur lors des vérifications pré-OTP', ['error' => $e->getMessage()]);
@@ -391,37 +375,17 @@ try {
         $projetId = $otpData['projet_id'];
 
         try {
-            $totalVerified = DB::table('vote_publics')
+            $alreadyVoted = DB::table('vote_publics')
                 ->where('telephone', $phone)
                 ->where('est_verifie', true)
-                ->count();
+                ->exists();
 
-            if ($totalVerified >= 3) {
+            if ($alreadyVoted) {
                 $request->session()->forget('otp_data');
                 return response()->json([
                     'success' => false,
-                    'message' => 'Vous avez déjà utilisé vos 3 votes autorisés.',
+                    'message' => 'Vous avez déjà voté. Un seul vote est autorisé.',
                 ], 409);
-            }
-
-            $projet    = Projet::find($projetId);
-            $secteurId = $projet?->secteur_id;
-
-            if ($secteurId) {
-                $alreadyInSector = DB::table('vote_publics')
-                    ->join('projets', 'vote_publics.projet_id', '=', 'projets.id')
-                    ->where('vote_publics.telephone', $phone)
-                    ->where('projets.secteur_id', $secteurId)
-                    ->where('vote_publics.est_verifie', true)
-                    ->exists();
-
-                if ($alreadyInSector) {
-                    $request->session()->forget('otp_data');
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Vous avez déjà voté dans cette catégorie.',
-                    ], 409);
-                }
             }
 
             DB::transaction(function () use ($projetId, $phone) {
@@ -450,7 +414,7 @@ try {
 
             return response()->json([
                 'success' => false,
-                'message' => 'Ce numéro a déjà été utilisé pour voter pour ce projet.',
+                'message' => 'Vous avez déjà voté. Un seul vote est autorisé.',
             ], 409);
         } catch (\Throwable $e) {
             Log::error('Erreur lors de l\'enregistrement du vote: ' . $e->getMessage());

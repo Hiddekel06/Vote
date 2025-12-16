@@ -178,6 +178,13 @@ class OrangeSmsController extends Controller
         $request->validate([
             'telephone' => ['required', 'string', 'min:6', 'max:20'],
             'projet_id' => ['required', 'integer'],
+        ], [
+            'telephone.required' => 'Le numéro de téléphone est obligatoire.',
+            'telephone.string'   => 'Le numéro de téléphone est invalide.',
+            'telephone.min'      => 'Le numéro de téléphone doit contenir au moins 6 caractères.',
+            'telephone.max'      => 'Le numéro de téléphone ne doit pas dépasser 20 caractères.',
+            'projet_id.required' => 'Le projet est obligatoire.',
+            'projet_id.integer'  => 'Le projet sélectionné est invalide.',
         ]);
 
         $rawPhone        = $request->input('telephone');
@@ -194,7 +201,7 @@ class OrangeSmsController extends Controller
         if ($alreadyVoted) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ce numéro a déjà voté.',
+                'message' => 'Vous avez déjà voté. Un seul vote est autorisé.',
             ], 403);
         }
 
@@ -260,6 +267,15 @@ class OrangeSmsController extends Controller
             'telephone' => ['required', 'string', 'min:6', 'max:20'],
             'projet_id' => ['required', 'integer'],
             'otp'       => ['required', 'digits:6'],
+        ], [
+            'telephone.required' => 'Le numéro de téléphone est obligatoire.',
+            'telephone.string'   => 'Le numéro de téléphone est invalide.',
+            'telephone.min'      => 'Le numéro de téléphone doit contenir au moins 6 caractères.',
+            'telephone.max'      => 'Le numéro de téléphone ne doit pas dépasser 20 caractères.',
+            'projet_id.required' => 'Le projet est obligatoire.',
+            'projet_id.integer'  => 'Le projet sélectionné est invalide.',
+            'otp.required'       => 'Le code OTP est obligatoire.',
+            'otp.digits'         => 'Le code OTP doit contenir exactement 6 chiffres.',
         ]);
 
         $rawPhone        = $request->input('telephone');
@@ -278,7 +294,7 @@ class OrangeSmsController extends Controller
         if ($alreadyVoted) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ce numéro a déjà voté.',
+                'message' => 'Vous avez déjà voté. Un seul vote est autorisé.',
             ], 403);
         }
 
