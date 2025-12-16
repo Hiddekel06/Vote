@@ -64,26 +64,46 @@
 
             <!-- Barre de recherche -->
             <div class="mb-8">
-                <form action="{{ route('vote.secteurs', ['profile_type' => $categorie->slug]) }}" method="GET">
-                    <div class="relative flex gap-2">
-                        <input type="text" id="search-input" name="search" placeholder="Rechercher un projet, une équipe ou un secteur..."
-                               class="flex-1 bg-gray-900/50 border border-gray-700 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                               value="{{ request('search') }}" autocomplete="off">
-                        <div class="absolute right-3 top-1/2 -translate-y-1/2 md:block hidden">
-                            <svg id="search-icon" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                        </div>
-                        <!-- Bouton Rechercher mobile uniquement -->
-                        <button type="submit" class="md:hidden bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-4 py-3 rounded-lg transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
-                    </div>
-                </form>
+    <form action="{{ route('vote.secteurs', ['profile_type' => $categorie->slug]) }}" method="GET" class="w-full">
+        <div class="flex flex-col sm:flex-row gap-2 w-full">
+            <!-- Input + icône desktop -->
+            <div class="relative flex-1 min-w-0">
+                <input
+                    type="text"
+                    id="search-input"
+                    name="search"
+                    placeholder="Rechercher un projet, une équipe ou un secteur..."
+                    class="w-full bg-gray-900/50 border border-gray-700 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    value="{{ request('search') }}"
+                    autocomplete="off"
+                >
+                <!-- Icône loupe cliquable sur desktop -->
+                <button
+                    type="submit"
+                    class="hidden md:flex items-center justify-center absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-400 transition-colors"
+                    aria-label="Lancer la recherche"
+                >
+                    <svg id="search-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </button>
             </div>
+
+            <!-- Bouton Rechercher mobile (plein largeur) -->
+            <button
+                type="submit"
+                class="md:hidden w-full bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-4 py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                </svg>
+                <span>Rechercher</span>
+            </button>
+        </div>
+    </form>
+</div>
+
 
             <!-- Conteneur Alpine.js global -->
             {{--  Étape 1.1: Ajout des états pour la modale de vote (voteStep, messages, etc.) --}}
@@ -657,78 +677,113 @@
 </html>
 
 <script>
-
-// Fonction de partage : Web Share API + fallback clipboard/prompt
-function shareProject(url) {
-    const title = document.title || 'Découvrez ce projet';
-    const text  = 'Jetez un œil à ce projet et votez pour lui :';
-
-    if (navigator.share) {
-        navigator.share({ title, text, url }).catch(() => {});
-        return;
-    }
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(() => {
-            alert('Lien copié dans le presse-papiers');
-        }).catch(() => {
-            prompt('Copiez ce lien :', url);
-        });
-        return;
-    }
-
-    prompt('Copiez ce lien :', url);
-}
-
-// Construit l'URL de partage pour un projet et appelle shareProject
-function shareProjectForProject(id) {
+window.shareProjectForProject = function (id) {
     console.log('🔵 shareProjectForProject appelé avec ID:', id);
 
     const urlObj = new URL(window.location.href);
-    urlObj.searchParams.set('vote', '1');        // flag spécial pour vote
-    urlObj.searchParams.set('project_id', id);   // id du projet
+    urlObj.searchParams.set('vote', '1');       // flag spécial pour ouvrir la popup de vote
+    urlObj.searchParams.set('project_id', id);  // id du projet
 
     const finalUrl = urlObj.toString();
     console.log('🔵 URL générée pour le partage:', finalUrl);
 
-    shareProject(finalUrl);
-}
+    // Si window.shareProject vient de app.js, on l'utilise
+    if (typeof window.shareProject === 'function') {
+        window.shareProject(finalUrl);
+    } else {
+        // Fallback simple
+        const title = document.title || 'Découvrez ce projet';
+        const text  = 'Jetez un œil à ce projet et votez pour lui :';
 
+        if (navigator.share) {
+            navigator.share({ title, text, url: finalUrl }).catch(() => {});
+            return;
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(finalUrl)
+                .then(() => alert('Lien copié dans le presse-papiers'))
+                .catch(() => prompt('Copiez ce lien :', finalUrl));
+            return;
+        }
+
+        prompt('Copiez ce lien :', finalUrl);
+    }
+};
+</script>
+
+<script>
+(function () {
+    let voteDeepLinkHandled = false;
+
+    function openVoteFromUrl() {
+        if (voteDeepLinkHandled) return;
+        voteDeepLinkHandled = true;
+
+        const params = new URLSearchParams(window.location.search);
+        const wantVote  = params.get('vote') === '1';
+        const projectId = params.get('project_id');
+
+        if (!wantVote || !projectId) {
+            console.log('🔴 Pas de paramètres vote=1 & project_id, rien à ouvrir.');
+            return;
+        }
+
+        console.log('🟡 Ouverture automatique de la modale de vote pour le projet', projectId);
+
+        fetch('/vote/project/' + projectId + '/data')
+            .then(function (res) {
+                console.log('🟡 Réponse fetch auto-vote:', res.status, res.ok);
+                if (!res.ok) throw new Error('Impossible de charger le projet');
+                return res.json();
+            })
+            .then(function (data) {
+                console.log('✅ Données projet reçues pour auto-vote :', data);
+
+                // ➜ Ici on déclenche l’event attendu par Alpine
+                window.dispatchEvent(new CustomEvent('project-for-vote', { detail: data }));
+
+                // Nettoyage de l'URL pour éviter la réouverture au refresh
+                if (history && history.replaceState) {
+                    const cleanUrl = new URL(window.location);
+                    cleanUrl.searchParams.delete('vote');
+                    cleanUrl.searchParams.delete('project_id');
+                    history.replaceState({}, '', cleanUrl.toString());
+                    console.log('✅ URL nettoyée après ouverture de la modale de vote');
+                }
+            })
+            .catch(function (err) {
+                console.error('❌ Erreur auto-vote / fetch projet :', err);
+            });
+    }
+
+    // Quand Alpine a fini d'initialiser les composants
+    document.addEventListener('alpine:initialized', function () {
+        console.log('🎉 alpine:initialized (auto-vote)');
+        openVoteFromUrl();
+    });
+
+    // Fallback au cas où l'événement passe à côté
+    window.addEventListener('load', function () {
+        setTimeout(openVoteFromUrl, 400);
+    });
+})();
 </script>
 <script>
-// Fonction de partage : Web Share API + fallback clipboard/prompt
-function shareProject(url) {
-    const title = document.title || 'Découvrez ce projet';
-    const text  = 'Jetez un œil à ce projet et votez pour lui :';
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('search-input');
+    if (!input) return;
 
-    if (navigator.share) {
-        navigator.share({ title, text, url }).catch(() => {});
-        return;
-    }
+    const form = input.closest('form');
+    if (!form) return;
 
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(() => {
-            alert('Lien copié dans le presse-papiers');
-        }).catch(() => {
-            prompt('Copiez ce lien :', url);
-        });
-        return;
-    }
+    let timer = null;
 
-    prompt('Copiez ce lien :', url);
-}
-
-// 🔗 Construit l’URL de partage pour un projet (ouverture directe de la modale de vote)
-function shareProjectForProject(id) {
-    console.log('🔵 shareProjectForProject appelé avec ID:', id);
-
-    const urlObj = new URL(window.location.href);
-    urlObj.searchParams.set('vote', '1');        // flag spécial pour vote
-    urlObj.searchParams.set('project_id', id);   // id du projet
-
-    const finalUrl = urlObj.toString();
-    console.log('🔵 URL générée pour le partage:', finalUrl);
-
-    shareProject(finalUrl);
-}
+    input.addEventListener('input', function () {
+        clearTimeout(timer);
+        // lance la recherche 400 ms après que l'utilisateur a fini de taper
+        timer = setTimeout(() => form.submit(), 400);
+    });
+});
 </script>
+
