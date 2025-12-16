@@ -49,7 +49,10 @@ class VoteController extends Controller
             ->where('is_finaliste', 1)
             ->select('projet_id');
 
-        $query = Secteur::whereHas('projets', function ($projetQuery) use ($profileType, $preselectedProjectIds) {
+        $query = Secteur::query();
+
+        // Always filter to only sectors that have projects matching the profile
+        $query->whereHas('projets', function ($projetQuery) use ($profileType, $preselectedProjectIds) {
             $projetQuery
                 ->whereHas('submission', function ($submissionQuery) use ($profileType) {
                     $submissionQuery->where('profile_type', $profileType);
@@ -58,6 +61,7 @@ class VoteController extends Controller
         });
 
         if ($search) {
+            // Show sector if: (sector name matches) OR (sector has projects matching search)
             $query->where(function ($q) use ($search, $preselectedProjectIds) {
                 $q->where('nom', 'like', $search . '%')
                     ->orWhereHas('projets', function ($subQuery) use ($search, $preselectedProjectIds) {

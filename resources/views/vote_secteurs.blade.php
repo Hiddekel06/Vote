@@ -60,7 +60,7 @@
                     </div>
                 </div>
             </div>
-            <p class="text-center text-gray-300 mb-8 px-4 text-sm sm:text-base">Recherchez un projet, une équipe ou un secteur, puis votez pour votre préféré.</p>
+            <p class="text-center text-gray-300 mb-8 px-4 text-sm sm:text-base">Recherchez un projet, une équipe , puis votez pour votre préféré.</p>
 
             <!-- Barre de recherche -->
             <div class="mb-8">
@@ -72,7 +72,7 @@
                     type="text"
                     id="search-input"
                     name="search"
-                    placeholder="Rechercher un projet, une équipe ou un secteur..."
+                    placeholder="Rechercher un projet, une équipe ..."
                     class="w-full bg-gray-900/50 border border-gray-700 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
                     value="{{ request('search') }}"
                     autocomplete="off"
