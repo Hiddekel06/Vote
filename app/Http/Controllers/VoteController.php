@@ -115,11 +115,7 @@ class VoteController extends Controller
 
         $projets = $projetsQuery->paginate($perPage)->withQueryString();
 
-        return response()
-            ->view('vote_secteurs', compact('secteurs', 'projets', 'countries', 'voteStatusDetails', 'categorie', 'allCategories'))
-            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
-            ->header('Pragma', 'no-cache')
-            ->header('Expires', '0');
+        return view('vote_secteurs', compact('secteurs', 'projets', 'countries', 'voteStatusDetails', 'categorie', 'allCategories'));
     }
 
     public function rechercheAjax(Request $request): \Illuminate\Http\JsonResponse
