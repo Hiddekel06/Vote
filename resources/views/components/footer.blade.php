@@ -6,78 +6,13 @@
     {{-- Ligne de séparation fine et lumineuse --}}
     <div class="h-px bg-gradient-to-r from-transparent via-yellow-400/50 to-transparent"></div>
 
-    <!-- Sponsors horizontal strip (placed above links) -->
-    <div class="mx-auto px-4 sm:px-6 md:px-10 pt-8 pb-6 max-w-5xl">
+    <!-- Sponsors section -->
+    <div class="mx-auto px-4 sm:px-6 md:px-10 pt-8 pb-6 max-w-6xl">
         <h3 class="text-yellow-300 font-bold text-2xl sm:text-3xl md:text-4xl mb-5 text-center tracking-wider [text-shadow:_0_2px_10px_rgb(250_204_21_/_40%)]">Sponsors</h3>
-        <div id="sponsors-scroll" class="overflow-x-auto scrollbar-thin scrollbar-thumb-yellow-500/50 scrollbar-track-transparent bg-white">
-            <div id="sponsors-track" class="flex items-center justify-start gap-6 sm:gap-8 md:gap-10 py-4">
-                              <!-- SPONSORS IMAGES -->
-                <img src="{{ asset('images/sponsors/DDD.jpg') }}" alt="DDD" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
-                <img src="{{ asset('images/sponsors/SAR.png') }}" alt="SAR" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
-                <img src="{{ asset('images/sponsors/MFPremove.png') }}" alt="MFP" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
-                <img src="{{ asset('images/sponsors/PAMA.jpg') }}" alt="PAMA" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
-                <img src="{{ asset('images/sponsors/SAR.png') }}" alt="SAR" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
-                <img src="{{ asset('images/sponsors/DIMENSION.jpg') }}" alt="DIMENSION" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
-                <img src="{{ asset('images/sponsors/EXPERTISEFRANCE.png') }}" alt="EXPERTISEFRANCE" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
-                <img src="{{ asset('images/sponsors/ODS.png') }}" alt="ODS" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
-                <img src="{{ asset('images/sponsors/MCTN.png') }}" alt="MCTN" class="h-12 sm:h-16 md:h-20 opacity-90 hover:opacity-100 transition-opacity" loading="lazy">
-                
-            </div>
+        <div class="flex justify-center">
+            <img src="{{ asset('images/sponsors/Partenaires.jpg') }}" alt="Nos sponsors" class="max-w-full h-auto">
         </div>
-
     </div>
-
-    <style>
-        /* Hide scrollbar while keeping horizontal scroll */
-        #sponsors-scroll {
-            -ms-overflow-style: none; /* IE/Edge */
-            scrollbar-width: none;    /* Firefox */
-        }
-        #sponsors-scroll::-webkit-scrollbar {
-            display: none;           /* Chrome/Safari */
-        }
-    </style>
-
-    <script>
-        (function() {
-            const scroller = document.getElementById('sponsors-scroll');
-            const track = document.getElementById('sponsors-track');
-            if (!scroller || !track) return;
-
-            // Duplique le contenu pour un flux continu
-            track.insertAdjacentHTML('beforeend', track.innerHTML);
-            const halfWidth = track.scrollWidth / 2;
-
-            const step = 1; // pixels par tick
-            const interval = 20; // ms
-            let timer = null;
-
-            const tick = () => {
-                scroller.scrollLeft += step;
-                if (scroller.scrollLeft >= halfWidth) {
-                    scroller.scrollLeft -= halfWidth; // reboucle sans saut
-                }
-            };
-
-            const start = () => {
-                if (timer) return;
-                timer = setInterval(tick, interval);
-            };
-
-            const stop = () => {
-                if (timer) {
-                    clearInterval(timer);
-                    timer = null;
-                }
-            };
-
-            scroller.addEventListener('mouseenter', stop);
-            scroller.addEventListener('mouseleave', start);
-
-            // Démarre au chargement
-            start();
-        })();
-    </script>
 
     <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 py-10 px-10 mt-2">
 

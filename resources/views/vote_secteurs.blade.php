@@ -243,16 +243,15 @@
                                                            </button>
 
                                                            <!-- Bouton Partager -->
-                                                           <div class="relative group">
-                                                               <span class="p-2 rounded-full text-gray-600 bg-transparent opacity-60" title="Le partage est désactivé pour le moment" aria-hidden="true">
-                                                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                                       <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                                                                   </svg>
-                                                               </span>
-                                                               <span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 text-xs text-white bg-gray-700 rounded whitespace-nowrap hidden group-hover:block pointer-events-none z-50">
-                                                                   Le partage est désactivé pour le moment
-                                                               </span>
-                                                           </div>
+                                                           <button 
+                                                               type="button"
+                                                               class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                               title="Partager ce projet"
+                                                               onclick="shareProjectForProject({{ $projet->id }})">
+                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                                   <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                                                               </svg>
+                                                           </button>
 
                                                            @php
                                                                $demoUrl = $projet->video_demo ?? $projet->video_demonstration ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demo') ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
@@ -312,16 +311,15 @@
                                                        </button>
 
                                                        <!-- Bouton Partager -->
-                                                       <div class="relative group">
-                                                           <span class="p-2 rounded-full text-gray-600 bg-transparent opacity-60" title="Le partage est désactivé pour le moment" aria-hidden="true">
-                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                                   <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                                                               </svg>
-                                                           </span>
-                                                           <span class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 text-xs text-white bg-gray-700 rounded whitespace-nowrap hidden group-hover:block pointer-events-none z-50">
-                                                               Le partage est désactivé pour le moment
-                                                           </span>
-                                                       </div>
+                                                       <button 
+                                                           type="button"
+                                                           class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                           title="Partager ce projet"
+                                                           onclick="shareProjectForProject({{ $projet->id }})">
+                                                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                               <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                                                           </svg>
+                                                       </button>
 
                                                        @php
                                                            $demoUrl = $projet->video_demo ?? $projet->video_demonstration ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demo') ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
