@@ -19,7 +19,7 @@
                         <div x-data="{ open: false }" class="relative" x-on:keydown.escape="open = false" x-on:click.away="open = false">
                             @php
                                 $currentPer = (int) request()->query('per_page', $perPage ?? 5);
-                                $opts = [5,10,15];
+                                $opts = [10,15,25];
                             @endphp
 
                             <button type="button" @click.prevent="open = !open" aria-haspopup="listbox" :aria-expanded="open"
@@ -121,7 +121,7 @@
                                 <div x-data="{ open: false }" class="relative" x-on:keydown.escape="open = false" x-on:click.away="open = false">
                                     @php
                                         $currentPer = (int) request()->query('per_page', $perPage ?? 5);
-                                        $opts = [5,10,15];
+                                        $opts = [5,10,15,25];
                                     @endphp
 
                                     <button type="button" @click.prevent="open = !open" aria-haspopup="listbox" :aria-expanded="open"

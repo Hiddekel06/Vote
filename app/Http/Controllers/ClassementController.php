@@ -31,7 +31,7 @@ class ClassementController extends Controller
             ->select('projet_id');
 
         // Déterminer le nombre d'éléments par page (paramètre 'per_page')
-        $allowedPerPage = [5, 10, 15];
+        $allowedPerPage = [ 10, 15, 25];
         $defaultPerPage = 5;
         $perPage = (int) $request->query('per_page', $defaultPerPage);
         if (!in_array($perPage, $allowedPerPage, true)) {
