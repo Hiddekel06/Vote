@@ -26,7 +26,7 @@ class VoteController extends Controller
         $categories = collect([
             (object) ['nom' => 'Étudiant', 'slug' => 'student'],
             (object) ['nom' => 'Startup', 'slug' => 'startup'],
-            (object) ['nom' => 'Citoyens', 'slug' => 'other'],
+            (object) ['nom' => 'Porteurs de projet', 'slug' => 'other'],
         ]);
 
         return view('vote', compact('categories'));
@@ -37,7 +37,7 @@ class VoteController extends Controller
         $categorieNom = match ($profileType) {
             'student' => 'Étudiant',
             'startup' => 'Startup',
-            'other'   => 'Citoyens',
+            'other'   => 'Porteurs de projet',
             default   => 'Inconnue',
         };
 

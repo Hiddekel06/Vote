@@ -68,14 +68,14 @@
                 :class="visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-5'">
 
                 <span class="typed-text"
-                    data-typed-text='["Choisissez une catégorie", "Votez maintenant"]'>
+                    data-typed-text='["Ton avis compte ", "Votez maintenant"]'>
                     Choisissez une catégorie
                 </span>
                 <span class="typed-cursor typed-cursor--blink" aria-hidden="true">|</span>
             </h1>
 
 
-            <p class="text-gray-300 mb-10">Sélectionnez une catégorie pour découvrir les projets en compétition.</p>
+            <p class="text-gray-300 mb-10">Selectionnez votre projet préféré</p>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 @foreach ($categories as $index => $categorie)
@@ -111,7 +111,7 @@
 
 
                             <p class="mt-7 text-gray-400 text-sm leading-relaxed">
-                                Explorez les projets qui redéfinissent l'avenir dans la categorie {{ strtolower($categorie->nom) }}.
+                                Explorez les projets qui redéfinissent l'avenir dans la categorie "{{ strtolower($categorie->nom) }}".
                                 Une vitrine d'idées audacieuses et de solutions novatrices.
                             </p>
                         </div>

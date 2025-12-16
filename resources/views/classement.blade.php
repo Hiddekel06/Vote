@@ -23,6 +23,16 @@
 
     <main class="flex-grow container mx-auto px-4 py-12">
         <div class="bg-black/70 backdrop-blur-sm border border-white/10 p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-5xl mx-auto">
+            <!-- Bouton Retour à l'accueil -->
+            <div class="mb-4">
+                <a href="{{ route('vote.index') }}" class="inline-flex items-center gap-2 text-gray-400 hover:text-yellow-400 transition-colors text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Retour
+                </a>
+            </div>
+
             <div class="text-center mb-10">
                 <h1 class="text-3xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-500 mb-2">
                     Classement des Projets
@@ -45,27 +55,8 @@
                 </form>
             </div>
 
-            <div x-data="{ tab: '{{ $activeTab ?? 'general' }}' }" class="w-full">
-                <!-- Onglets -->
-                <div class="border-b border-gray-700 mb-8">
-                    <nav class="-mb-px flex space-x-6" aria-label="Tabs">
-                        <a href="#" @click.prevent="tab = 'general'"
-                           :class="{ 'border-yellow-400 text-yellow-400': tab === 'general', 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500': tab !== 'general' }"
-                           class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
-                            Général
-                        </a>
-                        @foreach($categories as $categorie)
-                        <a href="#" @click.prevent="tab = '{{ $categorie->slug }}'"
-                           :class="{ 'border-yellow-400 text-yellow-400': tab === '{{ $categorie->slug }}', 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500': tab !== '{{ $categorie->slug }}' }"
-                           class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors">
-                            {{ $categorie->nom }}
-                        </a>
-                        @endforeach
-                    </nav>
-                </div>
-
+            <div x-data="{ tab: 'general' }" class="w-full">
                 @include('partials.classement-list')
-            </div>
         </div>
     </main>
 

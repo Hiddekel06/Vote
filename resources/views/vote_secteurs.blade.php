@@ -524,8 +524,8 @@
 
                                     <div>
                                         <label for="telephone_display" class="block mb-2 text-sm font-medium text-gray-300">Votre numéro de téléphone</label>
-                                        <div class="flex">
-                                            <select id="country_code" name="country_code" class="flex-shrink-0 z-10 inline-flex items-center py-2.5 px-4 text-sm font-medium text-center text-gray-200 bg-gray-800 border border-gray-600 rounded-l-lg hover:bg-gray-700 focus:ring-2 focus:outline-none focus:ring-yellow-400">
+                                        <div class="flex flex-col sm:flex-row gap-2 sm:gap-0">
+                                            <select id="country_code" name="country_code" class="flex-shrink-0 z-10 inline-flex items-center py-2.5 px-3 sm:px-4 text-sm font-medium text-center text-gray-200 bg-gray-800 border border-gray-600 rounded-lg sm:rounded-l-lg sm:rounded-r-none hover:bg-gray-700 focus:ring-2 focus:outline-none focus:ring-yellow-400">
                                                 @foreach($countries as $country)
                                                     <option value="{{ $country['dial_code'] }}" @if($country['code'] === 'SN') selected @endif>
                                                         {!! $country['flag'] !!} {{ $country['dial_code'] }}
@@ -534,8 +534,8 @@
                                             </select>
                                             <div class="relative w-full">
                                                 <input type="tel" id="telephone_display" name="telephone_display"
-                                                       class="block p-2.5 w-full z-20 text-sm text-white bg-gray-700/50 rounded-r-lg border-l-0 border border-gray-600 focus:ring-2 focus:outline-none focus:ring-yellow-400"
-                                                       placeholder="" required>
+                                                       class="block p-2.5 w-full z-20 text-sm text-white bg-gray-700/50 rounded-lg sm:rounded-r-lg sm:rounded-l-none border-l-0 sm:border-l-0 border border-gray-600 focus:ring-2 focus:outline-none focus:ring-yellow-400"
+                                                       placeholder="Ex: 77 123 45 67" required>
                                             </div>
                                         </div>
                                         <p class="mt-2 text-xs text-gray-400">Vous recevrez un code unique par SMS pour valider votre vote.</p>
@@ -563,9 +563,9 @@
                                     <p class="text-center text-gray-300">Un code a été envoyé. Veuillez le saisir ci-dessous.</p>
                                     <div>
                                         <label for="otp" class="block mb-2 text-sm font-medium text-gray-300">Code de vérification (OTP)</label>
-                                        <input type="text" id="otp" name="otp"
+                                        <input type="tel" id="otp" name="otp"
                                                class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white text-center text-2xl tracking-[1em]"
-                                               placeholder="------" required maxlength="6" pattern="\d{6}">
+                                               placeholder="------" required maxlength="6" pattern="\d{6}" inputmode="numeric">
                                     </div>
                                     <div class="pt-4">
                                         <button type="button" id="submit-otp-btn"

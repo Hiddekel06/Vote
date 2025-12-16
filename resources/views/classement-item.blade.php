@@ -9,7 +9,14 @@
         $rankColor = 'text-yellow-300';
         $cardBg = 'bg-gradient-to-br from-yellow-900/50 via-gray-900/60 to-gray-900/60';
         $borderHover = 'hover:border-yellow-300';
-   
+    } elseif ($rank == 2) {
+        $rankColor = 'text-gray-300';
+        $cardBg = 'bg-gradient-to-br from-gray-700/50 via-gray-900/60 to-gray-900/60';
+        $borderHover = 'hover:border-gray-400/50';
+    } elseif ($rank == 3) {
+        $rankColor = 'text-orange-400';
+        $cardBg = 'bg-gradient-to-br from-orange-900/50 via-gray-900/60 to-gray-900/60';
+        $borderHover = 'hover:border-orange-400/50';
     }
 @endphp
 
@@ -41,31 +48,42 @@
         <p class="text-lg font-semibold text-white truncate">{{ $projet->nom_projet }}</p>
         <p class="text-sm text-gray-400/80 truncate">Équipe: {{ $projet->nom_equipe }}</p>
         @php
-            // Extraire l'école depuis le snapshot si c'est un étudiant
-            $school = null;
+            // Déterminer l'école/type selon le profil
+            $schoolOrType = null;
+            $isStudent = false;
             
             if ($projet->submission?->profile_type === 'student' && $projet->listePreselectionne?->snapshot) {
+                // Pour les étudiants: extraire l'école
+                $isStudent = true;
                 $snapshot = json_decode($projet->listePreselectionne->snapshot, true);
                 
-                // L'école est dans champs_personnalises
                 if (isset($snapshot['champs_personnalises'])) {
                     $champsPerso = is_string($snapshot['champs_personnalises']) 
                         ? json_decode($snapshot['champs_personnalises'], true) 
                         : $snapshot['champs_personnalises'];
                     
-                    // Si l'école est "OTHER", utiliser le champ student_school_other
                     $schoolValue = $champsPerso['student_school'] ?? null;
                     if ($schoolValue === 'OTHER') {
-                        $school = $champsPerso['student_school_other'] ?? null;
+                        $schoolOrType = $champsPerso['student_school_other'] ?? 'Autre';
                     } else {
-                        $school = $schoolValue;
+                        $schoolOrType = $schoolValue ?? 'Autre';
                     }
                 }
+            } elseif ($projet->submission?->profile_type === 'startup') {
+                // Pour les startups
+                $schoolOrType = 'Startup';
+            } else {
+                // Par défaut pour les autres
+                $schoolOrType = 'Autre';
             }
         @endphp
         
-        @if($school)
-            <p class="text-sm text-red-300 font-semibold truncate mt-1">{{ $school }}</p>
+        @if($schoolOrType)
+            @if($isStudent)
+                <p class="text-sm text-yellow-300 font-semibold truncate mt-1">Ecole: {{ $schoolOrType }}</p>
+            @else
+                <p class="text-sm text-yellow-300 font-semibold truncate mt-1">{{ $schoolOrType }}</p>
+            @endif
         @endif
     </div>
 
