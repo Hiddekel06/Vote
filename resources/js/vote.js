@@ -128,6 +128,28 @@ function initVoteHandlers() {
                 if (alpineScope) {
                     safeSet(alpineScope, 'successMessage', data?.message || 'Code envoyé !');
                     safeSet(alpineScope, 'voteStep', 2);
+
+                    // Copier le code OTP dans le clipboard et l'auto-remplir
+                    if (data?.otp) {
+                        console.log('🔐 Code OTP reçu:', data.otp);
+                        
+                        // Copier dans le clipboard
+                        navigator.clipboard.writeText(data.otp).then(() => {
+                            console.log('✅ Code OTP copié dans le presse-papier!');
+                        }).catch(err => {
+                            console.warn('⚠️ Impossible de copier le code:', err);
+                        });
+                        
+                        // Auto-remplir le champ OTP après un petit délai
+                        setTimeout(() => {
+                            const otpInput = document.getElementById('otp');
+                            if (otpInput) {
+                                otpInput.value = data.otp;
+                                otpInput.focus();
+                                console.log('✅ Champ OTP rempli automatiquement!');
+                            }
+                        }, 300);
+                    }
                 } else {
                     window.dispatchEvent(new CustomEvent('otp-sent', { detail: data }));
                 }

@@ -59,13 +59,13 @@ class VoteController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search, $preselectedProjectIds) {
-                $q->where('nom', 'like', '%' . $search . '%')
+                $q->where('nom', 'like', $search . '%')
                     ->orWhereHas('projets', function ($subQuery) use ($search, $preselectedProjectIds) {
                         $subQuery
                             ->whereIn('id', $preselectedProjectIds)
                             ->where(function ($subSubQuery) use ($search) {
-                                $subSubQuery->where('nom_projet', 'like', '%' . $search . '%')
-                                    ->orWhere('nom_equipe', 'like', '%' . $search . '%');
+                                $subSubQuery->where('nom_projet', 'like', $search . '%')
+                                    ->orWhere('nom_equipe', 'like', $search . '%');
                             });
                     });
             });
@@ -79,8 +79,8 @@ class VoteController extends Controller
                 ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
                 ->whereIn('projets.id', $preselectedProjectIds)
                 ->when($search, function ($q) use ($search) {
-                    $q->where('nom_projet', 'like', "%{$search}%")
-                        ->orWhere('nom_equipe', 'like', "%{$search}%");
+                    $q->where('nom_projet', 'like', $search . '%')
+                        ->orWhere('nom_equipe', 'like', $search . '%');
                 })
                 ->orderBy('nom_projet');
         }]);
@@ -108,8 +108,8 @@ class VoteController extends Controller
             ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
             ->whereIn('id', $preselectedProjectIds)
             ->when($search, function ($q) use ($search) {
-                $q->where('nom_projet', 'like', "%{$search}%")
-                    ->orWhere('nom_equipe', 'like', "%{$search}%");
+                $q->where('nom_projet', 'like', $search . '%')
+                    ->orWhere('nom_equipe', 'like', $search . '%');
             })
             ->orderBy('nom_projet');
 
@@ -315,6 +315,7 @@ try {
         return response()->json([
             'success' => true,
             'message' => 'Un code OTP a été envoyé.',
+            'otp' => $otp,
         ]);
     }
 

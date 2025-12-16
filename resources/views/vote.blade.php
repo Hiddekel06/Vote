@@ -111,7 +111,7 @@
 
 
                             <p class="mt-7 text-gray-400 text-sm leading-relaxed">
-                                Explorez les projets qui redéfinissent l'avenir dans le secteur {{ strtolower($categorie->nom) }}.
+                                Explorez les projets qui redéfinissent l'avenir dans la categorie {{ strtolower($categorie->nom) }}.
                                 Une vitrine d'idées audacieuses et de solutions novatrices.
                             </p>
                         </div>
