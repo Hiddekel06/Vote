@@ -69,7 +69,7 @@
 
                 <span class="typed-text"
                     data-typed-text='["Ton avis compte ", "Votez maintenant"]'>
-                    Choisissez une catégorie
+                    La reforme c'est maintenant !
                 </span>
                 <span class="typed-cursor typed-cursor--blink" aria-hidden="true">|</span>
             </h1>
