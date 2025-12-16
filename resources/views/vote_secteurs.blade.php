@@ -557,7 +557,7 @@
                                             <button type="button" id="submit-vote-btn"
                                                     class="w-full px-8 text-sm py-3 text-white rounded-full font-medium bg-gray-900 flex items-center justify-center"
                                                     :disabled="isLoading">
-                                                <span x-show="!isLoading">Recevoir le code de vote</span>
+                                                <span x-show="!isLoading">Cliquez pour recevoir le code de vote</span>
                                                 <span x-show="isLoading">Envoi en cours...</span>
                                             </button>
                                         </div>
