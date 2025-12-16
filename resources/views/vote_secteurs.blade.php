@@ -87,7 +87,7 @@
 
             <!-- Conteneur Alpine.js global -->
             {{--  Étape 1.1: Ajout des états pour la modale de vote (voteStep, messages, etc.) --}}
-                <div 
+                <div
     x-data="{
         showModal: false,
         modalProjet: null,
@@ -115,7 +115,7 @@
     x-init="
         // Capturer le contexte Alpine pour les event listeners
         const self = this;
-        
+
         // Si le vote est inactif, on initialise la modale
         if (!isVoteActive) {
             voteStep = 3;
@@ -202,10 +202,10 @@
                                         if ($projet->submission?->profile_type === 'student' && $projet->listePreselectionne?->snapshot) {
                                             $snapshot = json_decode($projet->listePreselectionne->snapshot, true);
                                             if (isset($snapshot['champs_personnalises'])) {
-                                                $champsPerso = is_string($snapshot['champs_personnalises']) 
-                                                    ? json_decode($snapshot['champs_personnalises'], true) 
+                                                $champsPerso = is_string($snapshot['champs_personnalises'])
+                                                    ? json_decode($snapshot['champs_personnalises'], true)
                                                     : $snapshot['champs_personnalises'];
-                                                
+
                                                 // Si l'école est "OTHER", utiliser le champ student_school_other
                                                 $schoolValue = $champsPerso['student_school'] ?? null;
                                                 if ($schoolValue === 'OTHER') {
@@ -258,7 +258,7 @@
                                                            </button>
 
                                                            <!-- Bouton Partager -->
-                                                           <button 
+                                                           <button
                                                                type="button"
                                                                class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                                                                title="Partager ce projet"
@@ -326,7 +326,7 @@
                                                        </button>
 
                                                        <!-- Bouton Partager -->
-                                                       <button 
+                                                       <button
                                                            type="button"
                                                            class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                                                            title="Partager ce projet"
@@ -387,14 +387,14 @@
 
                 </div>
                 <div class="mt-6">
-                   
+
 </div>
 
 
-                
+
 
                 <!-- Fenêtre modale DÉTAILS -->
-                <div 
+                <div
                         x-show="showModal"
                         style="display: none;"
                         class="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -405,7 +405,7 @@
                         x-transition:leave-start="opacity-100"
                         x-transition:leave-end="opacity-0">
 
-                        <div 
+                        <div
                             @click.away="showModal = false"
                             class="bg-gray-900/95  border-yellow-400/30 rounded-lg shadow-2xl max-w-2xl w-full text-white relative flex flex-col"
                             style="max-height: 90vh;"
@@ -427,7 +427,7 @@
 
                             <!-- Contenu -->
                             <div class="p-6 space-y-4 text-gray-200 overflow-y-auto scrollbar-thin">
-                                <p><strong class="text-gray-300">Résumé :</strong> 
+                                <p><strong class="text-gray-300">Résumé :</strong>
                                     <span class="whitespace-pre-wrap" x-text="modalProjet?.resume"></span>
                                 </p>
                                 <div>
@@ -435,14 +435,14 @@
                                     <div class="whitespace-pre-wrap" :class="{'max-h-24 overflow-hidden': !descriptionExpanded && modalProjet?.description.length > 250}">
                                         <span x-text="modalProjet?.description"></span>
                                     </div>
-                                    <button 
+                                    <button
                                         x-show="modalProjet?.description.length > 250"
                                         @click="descriptionExpanded = !descriptionExpanded"
                                         class="text-yellow-400 hover:text-yellow-300 mt-2 text-sm">
                                         <span x-text="descriptionExpanded ? 'Voir moins' : 'Voir plus'"></span>
                                     </button>
                                 </div>
-                             
+
                             </div>
 
                         </div>
@@ -601,7 +601,7 @@
                                                 <h4 class="text-base font-medium text-white mb-1">Grande Finale</h4>
                                                 <p class="text-xs text-gray-400">Réservez votre place dès maintenant</p>
                                             </div>
-                                            <a href="https://reservation.govathon.sn" 
+                                            <a href="https://reservation.govathon.sn"
                                                target="_blank"
                                                class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-medium text-sm rounded-lg transition-all duration-200 shadow-lg hover:shadow-yellow-500/20 flex-shrink-0">
                                                 <span>Réserver</span>
@@ -640,7 +640,7 @@
                                 <p x-text="errorMessage"></p>
                             </div>
                         </div>
-                        
+
                     </div>
                 </div>
             </div>
@@ -652,115 +652,83 @@
     <!-- 🚀 Étape 1: Chargement de la bibliothèque reCAPTCHA v3 -->
     <script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}"></script>
 
-    
-</body> 
+
+</body>
 </html>
 
 <script>
+
 // Fonction de partage : Web Share API + fallback clipboard/prompt
 function shareProject(url) {
     const title = document.title || 'Découvrez ce projet';
-    const text = 'Jetez un œil à ce projet :';
+    const text  = 'Jetez un œil à ce projet et votez pour lui :';
 
     if (navigator.share) {
-        navigator.share({ title, text, url }).catch(() => {
-            // ignore share errors
-        });
+        navigator.share({ title, text, url }).catch(() => {});
         return;
     }
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(() => {
-            // Petit feedback utilisateur — vous pouvez remplacer par un toast
             alert('Lien copié dans le presse-papiers');
         }).catch(() => {
-            prompt('Copiez ce lien:', url);
+            prompt('Copiez ce lien :', url);
         });
         return;
     }
 
-    // Fallback classique
-    prompt('Copiez ce lien:', url);
+    prompt('Copiez ce lien :', url);
 }
 
 // Construit l'URL de partage pour un projet et appelle shareProject
 function shareProjectForProject(id) {
     console.log('🔵 shareProjectForProject appelé avec ID:', id);
-    // Utiliser la même page de catégorie avec les paramètres open=1
-    const currentPath = window.location.pathname;
-    const url = window.location.origin + currentPath + "?open=1&project_id=" + id;
-    console.log('🔵 URL générée:', url);
-    shareProject(url);
+
+    const urlObj = new URL(window.location.href);
+    urlObj.searchParams.set('vote', '1');        // flag spécial pour vote
+    urlObj.searchParams.set('project_id', id);   // id du projet
+
+    const finalUrl = urlObj.toString();
+    console.log('🔵 URL générée pour le partage:', finalUrl);
+
+    shareProject(finalUrl);
 }
 
-// Si l'URL contient ?open=1&project_id=..., charger les données et ouvrir la modal
-document.addEventListener('DOMContentLoaded', function () {
-    console.log('🟢 DOMContentLoaded déclenché');
-    try {
-        const params = new URLSearchParams(window.location.search);
-        console.log('🟢 Paramètres URL:', window.location.search);
-        console.log('🟢 Param open:', params.get('open'));
-        console.log('🟢 Param project_id:', params.get('project_id'));
-        
-        if (params.get('open') === '1') {
-            console.log('🟡 Condition open=1 remplie');
-            const pid = params.get('project_id');
-            if (!pid) {
-                console.log('❌ Pas de project_id, abandon');
-                return;
-            }
-            console.log('🟡 Project ID détecté:', pid);
+</script>
+<script>
+// Fonction de partage : Web Share API + fallback clipboard/prompt
+function shareProject(url) {
+    const title = document.title || 'Découvrez ce projet';
+    const text  = 'Jetez un œil à ce projet et votez pour lui :';
 
-            // Attendre que les composants Alpine soient vraiment initialisés
-            function loadAndOpenModal() {
-                console.log('🟡 Alpine initialisé, début du fetch');
-                // Utiliser l'endpoint léger déjà présent pour récupérer les données du projet
-                fetch('/vote/project/' + pid + '/data')
-                    .then(function (res) {
-                        console.log('🟡 Fetch réponse reçue, status:', res.status, res.ok);
-                        if (!res.ok) throw new Error('Impossible de charger le projet');
-                        return res.json();
-                    })
-                    .then(function (data) {
-                        console.log('✅ Projet chargé pour la modal:', data);
-                        // Petit délai pour s'assurer que les event listeners sont bien enregistrés
-                        setTimeout(function() {
-                            console.log('✅ Dispatch event project-for-vote');
-                            window.dispatchEvent(new CustomEvent('project-for-vote', { detail: data }));
-                        }, 100);
-
-                        // Nettoyer l'URL pour éviter la réouverture au refresh
-                        if (history && history.replaceState) {
-                            const url = new URL(window.location);
-                            url.searchParams.delete('open');
-                            url.searchParams.delete('project_id');
-                            history.replaceState({}, '', url.toString());
-                            console.log('✅ URL nettoyée');
-                        }
-                    })
-                    .catch(function (err) {
-                        console.error('❌ Erreur en chargeant le projet pour la modal:', err);
-                    });
-            }
-            
-            // Écouter l'événement alpine:initialized
-            document.addEventListener('alpine:initialized', function() {
-                console.log('🎉 Alpine:initialized event reçu');
-                loadAndOpenModal();
-            });
-            
-            // Fallback au cas où Alpine est déjà initialisé
-            setTimeout(function() {
-                if (typeof Alpine !== 'undefined' && Alpine.version) {
-                    console.log('🟡 Fallback: Alpine déjà initialisé');
-                    loadAndOpenModal();
-                }
-            }, 1000);
-        } else {
-            console.log('🔴 Condition open=1 non remplie, pas d\'ouverture automatique');
-        }
-    } catch (e) {
-        console.warn('❌ Erreur lors du traitement des params d\'URL', e);
+    if (navigator.share) {
+        navigator.share({ title, text, url }).catch(() => {});
+        return;
     }
-});
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            alert('Lien copié dans le presse-papiers');
+        }).catch(() => {
+            prompt('Copiez ce lien :', url);
+        });
+        return;
+    }
+
+    prompt('Copiez ce lien :', url);
+}
+
+// 🔗 Construit l’URL de partage pour un projet (ouverture directe de la modale de vote)
+function shareProjectForProject(id) {
+    console.log('🔵 shareProjectForProject appelé avec ID:', id);
+
+    const urlObj = new URL(window.location.href);
+    urlObj.searchParams.set('vote', '1');        // flag spécial pour vote
+    urlObj.searchParams.set('project_id', id);   // id du projet
+
+    const finalUrl = urlObj.toString();
+    console.log('🔵 URL générée pour le partage:', finalUrl);
+
+    shareProject(finalUrl);
+}
 </script>
