@@ -64,7 +64,6 @@
 
             <!-- Barre de recherche -->
             <div class="mb-8">
-            <div class="mb-8"> 
                 <form action="{{ route('vote.secteurs', ['profile_type' => $categorie->slug]) }}" method="GET">
                     <div class="relative flex gap-2">
                         <input type="text" id="search-input" name="search" placeholder="Rechercher un projet, une équipe ou un secteur..."
@@ -84,7 +83,6 @@
                         </button>
                     </div>
                 </form>
-            </div>
             </div>
 
             <!-- Conteneur Alpine.js global -->
