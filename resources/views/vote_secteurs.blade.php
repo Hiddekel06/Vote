@@ -19,7 +19,17 @@
     <x-header />
 
     <main class="flex-grow container mx-auto px-4 py-12 flex items-center overflow-x-hidden">
-        <div class="bg-black bg-opacity-60 p-8 rounded-lg shadow-2xl max-w-6xl mx-auto">
+        <div class="bg-black bg-opacity-60 p-8 rounded-lg shadow-2xl max-w-6xl mx-auto w-full">
+            <!-- Bouton Retour à l'accueil -->
+            <div class="mb-4">
+                <a href="{{ route('vote.index') }}" class="inline-flex items-center gap-2 text-gray-400 hover:text-yellow-400 transition-colors text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Retour
+                </a>
+            </div>
+
             <div class="text-center mb-4">
                 <div x-data="{ open: false }" class="relative inline-block text-left">
                     <div>
