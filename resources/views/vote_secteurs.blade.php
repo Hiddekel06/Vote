@@ -65,16 +65,22 @@
             <div class="mb-8">
             <div class="mb-8"> 
                 <form action="{{ route('vote.secteurs', ['profile_type' => $categorie->slug]) }}" method="GET">
-                    <div class="relative">
+                    <div class="relative flex gap-2">
                         <input type="text" id="search-input" name="search" placeholder="Rechercher un projet, une équipe ou un secteur..."
-                               class="w-full bg-gray-900/50 border border-gray-700 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                               class="flex-1 bg-gray-900/50 border border-gray-700 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
                                value="{{ request('search') }}" autocomplete="off">
-                        <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div class="absolute right-3 top-1/2 -translate-y-1/2 md:block hidden">
                             <svg id="search-icon" class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                             </svg>
                         </div>
+                        <!-- Bouton Rechercher mobile uniquement -->
+                        <button type="submit" class="md:hidden bg-yellow-400 hover:bg-yellow-300 text-black font-bold px-4 py-3 rounded-lg transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
                     </div>
                 </form>
             </div>
