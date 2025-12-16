@@ -65,7 +65,16 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-400" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
                     </svg>
-                    <span class="text-sm font-medium">Cicad ,Diamniadio</span>
+                    <span class="text-sm font-medium">Cicad , Diamniadio</span>
+                </div>
+                <div class="mt-3 flex items-center justify-center">
+                    <a href="https://reservation.govathon.sn" target="_blank" rel="noopener noreferrer"
+                       class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-500 to-emerald-500 text-black text-xs font-semibold shadow-lg shadow-yellow-500/15 hover:from-yellow-400 hover:to-emerald-400 transition">
+                        <span>Réserver votre place</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                        </svg>
+                    </a>
                 </div>
             </div>
 
