@@ -91,11 +91,9 @@ require __DIR__.'/auth.php';
 
 
 Route::post('/vote/envoyer-otp', [VoteController::class, 'envoyerOtp'])
-    ->middleware('throttle:10,10')
     ->name('vote.envoyerOtp');
 
 Route::post('/vote/verifier-otp', [VoteController::class, 'verifierOtp'])
-    ->middleware('throttle:10,10')
     ->name('vote.verifierOtp');
 
 

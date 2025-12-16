@@ -588,7 +588,7 @@
                                                 <h4 class="text-base font-medium text-white mb-1">Grande Finale</h4>
                                                 <p class="text-xs text-gray-400">Réservez votre place dès maintenant</p>
                                             </div>
-                                            <a href="https://www.exemple.com/reservation" 
+                                            <a href="https://reservation.govathon.sn" 
                                                target="_blank"
                                                class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-medium text-sm rounded-lg transition-all duration-200 shadow-lg hover:shadow-yellow-500/20 flex-shrink-0">
                                                 <span>Réserver</span>
