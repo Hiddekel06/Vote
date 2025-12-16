@@ -782,6 +782,7 @@ document.addEventListener('DOMContentLoaded', function () {
     input.addEventListener('input', function () {
         clearTimeout(timer);
         // lance la recherche 400 ms après que l'utilisateur a fini de taper
+        //sd
         timer = setTimeout(() => form.submit(), 400);
     });
 });
