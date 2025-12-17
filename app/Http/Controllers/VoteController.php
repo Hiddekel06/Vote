@@ -43,7 +43,7 @@ class VoteController extends Controller
 
         $categorie = (object) ['nom' => $categorieNom, 'slug' => $profileType];
 
-        $search = $request->input('search', '');
+        $search = trim($request->input('search', ''));
 
         $preselectedProjectIds = DB::table('liste_preselectionnes')
             ->where('is_finaliste', 1)
@@ -60,31 +60,53 @@ class VoteController extends Controller
                 ->whereIn('id', $preselectedProjectIds);
         });
 
-        if ($search) {
-            // Show sector if: (sector name matches) OR (sector has projects matching search)
-            $query->where(function ($q) use ($search, $preselectedProjectIds) {
+        // Vérifier si la recherche correspond exactement à un projet ou une équipe
+        $hasExact = false;
+        if ($search !== '') {
+            $hasExact = Projet::whereIn('id', $preselectedProjectIds)
+                ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
+                ->where(function ($q) use ($search) {
+                    $q->where('nom_projet', $search)
+                      ->orWhere('nom_equipe', $search);
+                })->exists();
+
+            // Afficher un secteur si son nom correspond, ou s'il contient des projets correspondant (exact si possible)
+            $query->where(function ($q) use ($search, $preselectedProjectIds, $hasExact) {
                 $q->where('nom', 'like', $search . '%')
-                    ->orWhereHas('projets', function ($subQuery) use ($search, $preselectedProjectIds) {
-                        $subQuery
-                            ->whereIn('id', $preselectedProjectIds)
-                            ->where(function ($subSubQuery) use ($search) {
-                                $subSubQuery->where('nom_projet', 'like', $search . '%')
-                                    ->orWhere('nom_equipe', 'like', $search . '%');
+                    ->orWhereHas('projets', function ($subQuery) use ($search, $preselectedProjectIds, $hasExact) {
+                        $subQuery->whereIn('id', $preselectedProjectIds)
+                            ->where(function ($subSubQuery) use ($search, $hasExact) {
+                                if ($hasExact) {
+                                    $subSubQuery->where('nom_projet', $search)
+                                                ->orWhere('nom_equipe', $search);
+                                } else {
+                                    $subSubQuery->where('nom_projet', 'like', $search . '%')
+                                                ->orWhere('nom_equipe', 'like', $search . '%');
+                                }
                             });
                     });
             });
         }
 
-        $query->with(['projets' => function ($projetQuery) use ($search, $profileType, $preselectedProjectIds) {
+        $query->with(['projets' => function ($projetQuery) use ($search, $profileType, $preselectedProjectIds, $hasExact) {
             $projetQuery
                 ->leftJoin('liste_preselectionnes', 'projets.id', '=', 'liste_preselectionnes.projet_id')
                 ->select('projets.*', 'liste_preselectionnes.video_demonstration')
                 ->with('submission', 'listePreselectionne')
                 ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
                 ->whereIn('projets.id', $preselectedProjectIds)
-                ->when($search, function ($q) use ($search) {
-                    $q->where('nom_projet', 'like', $search . '%')
-                        ->orWhere('nom_equipe', 'like', $search . '%');
+                ->when($search, function ($q) use ($search, $hasExact) {
+                    if ($hasExact) {
+                        $q->where(function ($qq) use ($search) {
+                            $qq->where('nom_projet', $search)
+                               ->orWhere('nom_equipe', $search);
+                        });
+                    } else {
+                        $q->where(function ($qq) use ($search) {
+                            $qq->where('nom_projet', 'like', $search . '%')
+                               ->orWhere('nom_equipe', 'like', $search . '%');
+                        });
+                    }
                 })
                 ->orderBy('nom_projet');
         }]);
@@ -111,9 +133,18 @@ class VoteController extends Controller
         $projetsQuery = Projet::with(['secteur', 'listePreselectionne'])
             ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
             ->whereIn('id', $preselectedProjectIds)
-            ->when($search, function ($q) use ($search) {
-                $q->where('nom_projet', 'like', $search . '%')
-                    ->orWhere('nom_equipe', 'like', $search . '%');
+            ->when($search, function ($q) use ($search, $hasExact) {
+                if ($hasExact) {
+                    $q->where(function ($qq) use ($search) {
+                        $qq->where('nom_projet', $search)
+                           ->orWhere('nom_equipe', $search);
+                    });
+                } else {
+                    $q->where(function ($qq) use ($search) {
+                        $qq->where('nom_projet', 'like', $search . '%')
+                           ->orWhere('nom_equipe', 'like', $search . '%');
+                    });
+                }
             })
             ->orderBy('nom_projet');
 

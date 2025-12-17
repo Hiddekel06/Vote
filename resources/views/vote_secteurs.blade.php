@@ -274,7 +274,7 @@
                                                                type="button"
                                                                class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                                                                title="Partager ce projet"
-                                                               onclick="shareProjectForProject({{ $projet->id }})">
+                                                               onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                                    <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                                                                </svg>
@@ -342,7 +342,7 @@
                                                            type="button"
                                                            class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                                                            title="Partager ce projet"
-                                                           onclick="shareProjectForProject({{ $projet->id }})">
+                                                           onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                                <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                                                            </svg>
@@ -668,38 +668,38 @@
 </html>
 
 <script>
-window.shareProjectForProject = function (id) {
-    console.log('🔵 shareProjectForProject appelé avec ID:', id);
-
+window.shareProjectForProject = function (id, projectName) {
     const urlObj = new URL(window.location.href);
-    urlObj.searchParams.set('vote', '1');       // flag spécial pour ouvrir la popup de vote
-    urlObj.searchParams.set('project_id', id);  // id du projet
-
+    // Construire une URL de filtre basée sur la barre de recherche
+    urlObj.searchParams.delete('vote');
+    urlObj.searchParams.delete('project_id');
+    urlObj.searchParams.delete('page');
+    if (projectName && typeof projectName === 'string') {
+        urlObj.searchParams.set('search', projectName);
+    }
     const finalUrl = urlObj.toString();
-    console.log('🔵 URL générée pour le partage:', finalUrl);
 
-    // Si window.shareProject vient de app.js, on l'utilise
+    const title = document.title || 'GovAthon – Découvrir un projet';
+    const text  = 'Découvrez ce projet et votez pour lui :';
+
     if (typeof window.shareProject === 'function') {
         window.shareProject(finalUrl);
-    } else {
-        // Fallback simple
-        const title = document.title || 'Découvrez ce projet';
-        const text  = 'Jetez un œil à ce projet et votez pour lui :';
-
-        if (navigator.share) {
-            navigator.share({ title, text, url: finalUrl }).catch(() => {});
-            return;
-        }
-
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(finalUrl)
-                .then(() => alert('Lien copié dans le presse-papiers'))
-                .catch(() => prompt('Copiez ce lien :', finalUrl));
-            return;
-        }
-
-        prompt('Copiez ce lien :', finalUrl);
+        return;
     }
+
+    if (navigator.share) {
+        navigator.share({ title, text, url: finalUrl }).catch(() => {});
+        return;
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(finalUrl)
+            .then(() => alert('Lien copié dans le presse-papiers'))
+            .catch(() => prompt('Copiez ce lien :', finalUrl));
+        return;
+    }
+
+    prompt('Copiez ce lien :', finalUrl);
 };
 </script>
 
