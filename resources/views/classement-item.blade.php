@@ -21,15 +21,9 @@
 @endphp
 
 @php
-    // Format votes: keep raw below 1000, switch to K with 1 decimal (trimmed) from 1000+
+    // Format votes: affiche le nombre complet sans notation K
     $votes = (int) ($projet->votes_count ?? 0);
-    if ($votes >= 1000) {
-        $shortVotes = number_format($votes / 1000, $votes >= 10000 ? 0 : 1, ',', ' ');
-        $shortVotes = rtrim(rtrim($shortVotes, '0'), ',');
-        $displayVotes = $shortVotes . 'k';
-    } else {
-        $displayVotes = number_format($votes, 0, ',', ' ');
-    }
+    $displayVotes = number_format($votes, 0, ',', ' ');
 @endphp
 
 <div class="flex flex-col sm:flex-row sm:items-center {{ $cardBg }} p-4 rounded-lg border border-white/10 {{ $borderHover }} transition-all duration-300 shadow-lg min-w-0 gap-3 sm:gap-0">
