@@ -660,6 +660,8 @@
 
     <x-footer />
 
+    
+
     <!-- 🚀 Étape 1: Chargement de la bibliothèque reCAPTCHA v3 -->
     <script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}"></script>
 
@@ -681,6 +683,8 @@ window.shareProjectForProject = function (id, projectName) {
 
     const title = document.title || 'GovAthon – Découvrir un projet';
     const text  = 'Découvrez ce projet et votez pour lui :';
+
+    // Message visuel retiré (demande produit) : partage direct uniquement
 
     if (typeof window.shareProject === 'function') {
         window.shareProject(finalUrl);
