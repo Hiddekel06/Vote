@@ -38,7 +38,6 @@
                     Classement des Projets
                 </h1>
                 <p class="text-gray-400 text-lg">Tendances des votes en temps réel</p>
-                <p class="mt-2 text-xs text-gray-500">Bouton de partage mis à jour — partagez en masse.</p>
 
                 <form action="" method="GET" class="mt-6 max-w-xl mx-auto">
                     <label for="search" class="sr-only">Rechercher un projet ou une équipe</label>
