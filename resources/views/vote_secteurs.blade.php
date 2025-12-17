@@ -536,13 +536,12 @@
                                     <div>
                                         <label for="telephone_display" class="block mb-2 text-sm font-medium text-gray-300">Votre numéro de téléphone</label>
                                         <div class="flex flex-row gap-0">
-                                            <select id="country_code" name="country_code" class="flex-shrink-0 z-10 inline-flex items-center py-2.5 px-3 text-sm font-medium text-center text-gray-200 bg-gray-800 border border-gray-600 rounded-l-lg hover:bg-gray-700 focus:ring-2 focus:outline-none focus:ring-yellow-400">
-                                                @foreach($countries as $country)
-                                                    <option value="{{ $country['dial_code'] }}" @if($country['code'] === 'SN') selected @endif>
-                                                        {!! $country['flag'] !!} {{ $country['dial_code'] }}
-                                                    </option>
-                                                @endforeach
+                                            <select id="country_code" name="country_code" class="hidden">
+                                                <option value="+221" selected>+221</option>
                                             </select>
+                                            <div class="flex-shrink-0 z-10 inline-flex items-center py-2.5 px-3 text-sm font-medium text-center text-gray-200 bg-gray-800 border border-gray-600 rounded-l-lg">
+                                                🇸🇳 +221
+                                            </div>
                                             <div class="relative w-full">
                                                 <input type="tel" id="telephone_display" name="telephone_display"
                                                        class="block p-2.5 w-full z-20 text-sm text-white bg-gray-700/50 rounded-r-lg border border-gray-600 border-l-0 focus:ring-2 focus:outline-none focus:ring-yellow-400"
