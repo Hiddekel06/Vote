@@ -134,7 +134,7 @@
     </main>
 
         <style>
-            .slogan-phrase{ text-align:center; color:#00a651; font-weight:600; font-family:'Poppins',sans-serif; letter-spacing:.35px; font-size:clamp(12px,2.8vw,14px); margin-bottom:4px; }
+            .slogan-phrase{ text-align:center; color:#00a651; font-weight:600; font-family:'Poppins',sans-serif; letter-spacing:.35px; font-size:clamp(16px,4.2vw,22px); margin-bottom:4px; }
             .banner-phrase{ text-align:center; color:#f7f7f7; font-weight:600; font-family:'Poppins',sans-serif; letter-spacing:.3px; font-size:clamp(13px,3.2vw,16px); margin-bottom:8px; }
             .timer-modern { display:flex; gap:12px; justify-content:center; margin:16px 0; flex-wrap:wrap; }
             .time-card { background:rgba(255,193,7,.08); border:2px solid #ffc107; border-radius:14px; width:clamp(64px,11.5vw,92px); padding:clamp(9px,2.4vw,15px) 7px; text-align:center; box-shadow:0 0 18px rgba(255,193,7,.32); transition:transform .25s ease, box-shadow .25s ease; }
