@@ -13,7 +13,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon; // Import Carbon for date manipulation
 use Illuminate\View\View;
 
@@ -59,19 +58,8 @@ public function index(): View
         ->with('submission')
         ->withCount('votes')
         ->get()
-        ->filter(function ($projet) {
-            // Exclure les projets sans submission valide
-            if (!$projet->submission) {
-                Log::warning("Projet sans submission dans les statistiques", [
-                    'projet_id' => $projet->id,
-                    'nom_projet' => $projet->nom_projet
-                ]);
-                return false;
-            }
-            return true;
-        })
         ->groupBy(function ($projet) {
-            return $projet->submission->profile_type;
+            return $projet->submission->profile_type ?? 'unknown';
         })
         ->map(function ($projectsGroup) {
             return $projectsGroup->sum('votes_count');
@@ -109,20 +97,19 @@ public function index(): View
 
     $studentData = $secteurs->map(function ($s) {
         return $s->projets->filter(function ($p) {
-            return $p->submission && $p->submission->profile_type === 'student';
+            return (($p->submission->profile_type ?? 'other') === 'student');
         })->sum('votes_count');
     })->toArray();
 
     $startupData = $secteurs->map(function ($s) {
         return $s->projets->filter(function ($p) {
-            return $p->submission && $p->submission->profile_type === 'startup';
+            return (($p->submission->profile_type ?? 'other') === 'startup');
         })->sum('votes_count');
     })->toArray();
 
     $otherData = $secteurs->map(function ($s) {
         return $s->projets->filter(function ($p) {
-            if (!$p->submission) return false;
-            $type = $p->submission->profile_type;
+            $type = $p->submission->profile_type ?? 'other';
             return ($type !== 'student' && $type !== 'startup');
         })->sum('votes_count');
     })->toArray();
@@ -219,29 +206,15 @@ public function index(): View
 
     // Construire les tableaux où chaque projet attribue son total aux bons profile_type
     $studentData = $chartProjects->map(function ($p) {
-        if (!$p->submission) {
-            Log::warning("Projet sans submission détecté", [
-                'projet_id' => $p->id,
-                'nom_projet' => $p->nom_projet,
-                'submission_token' => $p->submission_token
-            ]);
-            return 0; // Exclure les projets sans submission
-        }
-        return $p->submission->profile_type === 'student' ? (int) $p->votes_count : 0;
+        return ($p->submission->profile_type ?? 'other') === 'student' ? (int) $p->votes_count : 0;
     })->toArray();
 
     $startupData = $chartProjects->map(function ($p) {
-        if (!$p->submission) {
-            return 0; // Exclure les projets sans submission
-        }
-        return $p->submission->profile_type === 'startup' ? (int) $p->votes_count : 0;
+        return ($p->submission->profile_type ?? 'other') === 'startup' ? (int) $p->votes_count : 0;
     })->toArray();
 
     $otherData = $chartProjects->map(function ($p) {
-        if (!$p->submission) {
-            return 0; // Exclure les projets sans submission
-        }
-        $type = $p->submission->profile_type;
+        $type = $p->submission->profile_type ?? 'other';
         return ($type !== 'student' && $type !== 'startup') ? (int) $p->votes_count : 0;
     })->toArray();
 
