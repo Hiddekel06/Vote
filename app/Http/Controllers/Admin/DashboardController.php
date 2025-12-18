@@ -200,7 +200,7 @@ public function index(): View
             $query->where('profile_type', 'student');
         })
         ->orderBy('votes_count', 'desc')
-        ->take(15)
+        ->take(12)
         ->get();
 
     $studentLabels = $studentProjects->map(function ($p) {
@@ -242,7 +242,7 @@ public function index(): View
             $query->where('profile_type', 'startup');
         })
         ->orderBy('votes_count', 'desc')
-        ->take(10)
+        ->take(7)
         ->get();
 
     $startupLabels = $startupProjects->map(function ($p) {
@@ -262,7 +262,7 @@ public function index(): View
         })
         ->orWhereDoesntHave('submission')
         ->orderBy('votes_count', 'desc')
-        ->take(10)
+        ->take(2)
         ->get();
 
     $otherLabels = $otherProjects->map(function ($p) {
