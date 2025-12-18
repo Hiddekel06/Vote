@@ -572,7 +572,7 @@
                        orient: 'vertical',
                        right: 10,
                        bottom: 10,
-                       inRange: { color: ['#e2e8f0', '#60a5fa', '#2563eb'] },
+                       inRange: { color: ['#fee2e2', '#f87171', '#b91c1c'] },
                        textStyle: { color: '#6B7280' }
                    },
                    series: [{
