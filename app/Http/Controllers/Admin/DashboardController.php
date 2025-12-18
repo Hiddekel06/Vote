@@ -190,9 +190,9 @@ public function index(): View
     $allLegendNames = array_merge(['Total Votes'], $top3ProjectNames);
     // --- FIN NOUVEAU ---
 
-    // --- Préparer un jeu de données par PROJET (labels 'Equipe — Projet')
+    // --- Préparer un jeu de données par PROJET (labels 'Equipe — Projet' + école si étudiant)
     $chartProjects = Projet::whereIn('id', $preselectedProjectIds)
-        ->with('submission')
+        ->with('submission', 'listePreselectionne')
         ->withCount('votes')
         ->orderBy('votes_count', 'desc')
         ->take(20)
@@ -201,7 +201,30 @@ public function index(): View
     $projectLabels = $chartProjects->map(function ($p) {
         $team = $p->nom_equipe ?? 'Équipe inconnue';
         $proj = $p->nom_projet ?? 'Projet inconnu';
-        return $team . ' — ' . $proj;
+        $label = $team . ' — ' . $proj;
+        
+        // Ajouter le nom de l'école si c'est un étudiant
+        if ($p->submission?->profile_type === 'student' && $p->listePreselectionne?->snapshot) {
+            $snapshot = json_decode($p->listePreselectionne->snapshot, true);
+            if (isset($snapshot['champs_personnalises'])) {
+                $champsPerso = is_string($snapshot['champs_personnalises'])
+                    ? json_decode($snapshot['champs_personnalises'], true)
+                    : $snapshot['champs_personnalises'];
+                
+                $schoolValue = $champsPerso['student_school'] ?? null;
+                if ($schoolValue === 'OTHER') {
+                    $school = $champsPerso['student_school_other'] ?? null;
+                } else {
+                    $school = $schoolValue;
+                }
+                
+                if ($school) {
+                    $label .= ' — ' . $school;
+                }
+            }
+        }
+        
+        return $label;
     })->toArray();
 
     // Construire les tableaux où chaque projet attribue son total aux bons profile_type
