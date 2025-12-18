@@ -506,6 +506,93 @@
            });
        </script>
 
+       {{-- Carte chaleur horaire des votes (jour x heure) --}}
+       <div class="row g-3 mb-4">
+           <div class="col-12">
+               <div class="card">
+                   <div class="card-header">
+                       <h5 class="mb-0">Carte chaleur horaire des votes</h5>
+                       <small class="text-muted">Visualise les pics de vote par jour et par heure</small>
+                   </div>
+                   <div class="card-body">
+                       <div id="chartVotesHeatmap" style="min-height: 360px;"></div>
+                   </div>
+               </div>
+           </div>
+       </div>
+
+       <script>
+           document.addEventListener('DOMContentLoaded', function () {
+               var dom = document.getElementById('chartVotesHeatmap');
+               if (!dom) return;
+               var chart = echarts.init(dom);
+
+               var heatmapHours = {!! json_encode($heatmapHours ?? []) !!};
+               var heatmapDays = {!! json_encode($heatmapDays ?? []) !!};
+               var rawHeatmapData = {!! json_encode($heatmapData ?? []) !!};
+               var heatmapMax = {!! json_encode($heatmapMax ?? 0) !!};
+
+               var formattedData = (rawHeatmapData || []).map(function (item) {
+                   return [item[0], item[1], item[2] || 0];
+               });
+
+               var maxValue = Math.max(heatmapMax || 0, 1);
+
+               var option = {
+                   tooltip: {
+                       position: 'top',
+                       backgroundColor: 'rgba(0,0,0,0.75)',
+                       textStyle: { color: '#fff' },
+                       formatter: function (params) {
+                           var day = heatmapDays[params.value[1]] || '';
+                           var hour = heatmapHours[params.value[0]] || '';
+                           var val = params.value[2] || 0;
+                           return day + ' ' + hour + '<br/>Votes: ' + val;
+                       }
+                   },
+                   grid: { left: 50, right: 20, bottom: 40, top: 30 },
+                   xAxis: {
+                       type: 'category',
+                       data: heatmapHours,
+                       splitArea: { show: true },
+                       axisLabel: { rotate: 45, color: '#6B7280' },
+                       axisLine: { lineStyle: { color: 'rgba(148,163,184,0.3)' } }
+                   },
+                   yAxis: {
+                       type: 'category',
+                       data: heatmapDays,
+                       splitArea: { show: true },
+                       axisLabel: { color: '#6B7280' },
+                       axisLine: { lineStyle: { color: 'rgba(148,163,184,0.3)' } }
+                   },
+                   visualMap: {
+                       min: 0,
+                       max: maxValue,
+                       calculable: true,
+                       orient: 'vertical',
+                       right: 10,
+                       bottom: 10,
+                       inRange: { color: ['#e2e8f0', '#60a5fa', '#2563eb'] },
+                       textStyle: { color: '#6B7280' }
+                   },
+                   series: [{
+                       name: 'Votes',
+                       type: 'heatmap',
+                       data: formattedData,
+                       emphasis: {
+                           itemStyle: {
+                               shadowBlur: 10,
+                               shadowColor: 'rgba(0, 0, 0, 0.3)'
+                           }
+                       }
+                   }]
+               };
+
+               chart.setOption(option);
+               window.addEventListener('resize', chart.resize);
+           });
+       </script>
+
        {{-- NOUVEAU : Top 3 Projets --}}
        <div class="row g-3 mb-4">
            <div class="col-12">

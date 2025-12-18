@@ -135,6 +135,21 @@ public function index(): View
         $dailyVoteData[] = $totalDailyVotesCollection->has($date) ? $totalDailyVotesCollection[$date]->total_votes_count : 0;
     }
 
+    // Heatmap horaire (jour/heure)
+    $heatmapBuckets = Vote::selectRaw('DAYOFWEEK(created_at) as weekday, HOUR(created_at) as hour, COUNT(*) as total')
+        ->groupBy('weekday', 'hour')
+        ->get();
+
+    $heatmapDays = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']; // DAYOFWEEK: 1=dimanche
+    $heatmapHours = array_map(fn ($h) => str_pad($h, 2, '0', STR_PAD_LEFT) . 'h', range(0, 23));
+    $heatmapData = [];
+    foreach ($heatmapBuckets as $row) {
+        $dayIndex = max(0, (int) $row->weekday - 1); // 0-6
+        $hourIndex = (int) $row->hour; // 0-23
+        $heatmapData[] = [$hourIndex, $dayIndex, (int) $row->total];
+    }
+    $heatmapMax = $heatmapBuckets->max('total') ?? 0;
+
     // Récupérer les 3 projets les plus votés
     $top3Projects = Projet::whereIn('id', $preselectedProjectIds)
         ->withCount('votes')
@@ -284,7 +299,8 @@ public function index(): View
         'categorieLabels', 'categorieData',
         'dailyVoteLabels', 'allSeriesData', 'allLegendNames', 'top3Projects',
         'secteurLabels', 'studentLabels', 'startupLabels', 'otherLabels',
-        'studentData', 'startupData', 'otherData'
+        'studentData', 'startupData', 'otherData',
+        'heatmapHours', 'heatmapDays', 'heatmapData', 'heatmapMax'
     ));
 }
 
