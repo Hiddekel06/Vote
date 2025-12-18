@@ -113,6 +113,8 @@ public function index(): View
             return ($type !== 'student' && $type !== 'startup');
         })->sum('votes_count');
     })->toArray();
+
+    // --- NOUVEAU : Données pour l'évolution des votes par jour ---
     // Récupérer toutes les dates où il y a eu des votes
     $allVoteDates = Vote::select(DB::raw('DATE(created_at) as vote_date'))
         ->distinct()
@@ -203,18 +205,21 @@ public function index(): View
     })->toArray();
 
     // Construire les tableaux où chaque projet attribue son total aux bons profile_type
-    $projectStudentData = $chartProjects->map(function ($p) {
+    $studentData = $chartProjects->map(function ($p) {
         return ($p->submission->profile_type ?? 'other') === 'student' ? (int) $p->votes_count : 0;
     })->toArray();
 
-    $projectStartupData = $chartProjects->map(function ($p) {
+    $startupData = $chartProjects->map(function ($p) {
         return ($p->submission->profile_type ?? 'other') === 'startup' ? (int) $p->votes_count : 0;
     })->toArray();
 
-    $projectOtherData = $chartProjects->map(function ($p) {
+    $otherData = $chartProjects->map(function ($p) {
         $type = $p->submission->profile_type ?? 'other';
         return ($type !== 'student' && $type !== 'startup') ? (int) $p->votes_count : 0;
     })->toArray();
+
+    // On réutilise les noms attendus dans la vue — mais ils correspondent maintenant aux projets
+    $secteurLabels = $projectLabels;
 
     // ✅ Envoi à la vue
     return view('admin.dashboard', compact(
@@ -223,10 +228,11 @@ public function index(): View
         'profileTypeLabels', 'profileTypeData',
         'categorieLabels', 'categorieData',
         'dailyVoteLabels', 'allSeriesData', 'allLegendNames', 'top3Projects',
-        'secteurLabels', 'studentData', 'startupData', 'otherData',
-        'projectLabels', 'projectStudentData', 'projectStartupData', 'projectOtherData'
+        'secteurLabels', 'studentData', 'startupData', 'otherData'
     ));
 }
+
+
 
     /**
      * Affiche la page des statistiques de vote.
