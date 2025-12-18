@@ -223,12 +223,10 @@ public function index(): View
         'profileTypeLabels', 'profileTypeData',
         'categorieLabels', 'categorieData',
         'dailyVoteLabels', 'allSeriesData', 'allLegendNames', 'top3Projects',
-        'secteurLabels', 'studentData', 'startupData', 'otherData'
+        'secteurLabels', 'studentData', 'startupData', 'otherData',
+        'projectLabels', 'projectStudentData', 'projectStartupData', 'projectOtherData'
     ));
 }
-,
-        'projectLabels', 'projectStudentData', 'projectStartupData', 'projectOtherData'
-
 
     /**
      * Affiche la page des statistiques de vote.
