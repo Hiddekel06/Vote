@@ -265,12 +265,17 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        var labels = {!! json_encode($secteurLabels ?? []) !!};
+        // Labels spécifiques pour chaque profil
+        var studentLabels = {!! json_encode($studentLabels ?? []) !!};
+        var startupLabels = {!! json_encode($startupLabels ?? []) !!};
+        var otherLabels = {!! json_encode($otherLabels ?? []) !!};
+        
+        // Données de votes pour chaque profil
         var studentData = {!! json_encode($studentData ?? []) !!};
         var startupData = {!! json_encode($startupData ?? []) !!};
         var otherData = {!! json_encode($otherData ?? []) !!};
 
-        function renderBar(id, title, data, color) {
+        function renderBar(id, title, data, color, labels) {
             var dom = document.getElementById(id);
             if (!dom) return;
             var chart = echarts.init(dom);
@@ -317,10 +322,10 @@
             window.addEventListener('resize', chart.resize);
         }
 
-        // use a modern palette and render three bar charts
-        renderBar('chartVotesCategorieStudent', 'Étudiants', studentData, '#60a5fa'); // bleu
-        renderBar('chartVotesCategorieStartup', 'Startups', startupData, '#34d399'); // vert
-        renderBar('chartVotesCategorieOther', 'Citoyens', otherData, '#f59e0b'); // jaune/orange
+        // use a modern palette and render three bar charts with their specific labels
+        renderBar('chartVotesCategorieStudent', 'Étudiants', studentData, '#60a5fa', studentLabels); // bleu
+        renderBar('chartVotesCategorieStartup', 'Startups', startupData, '#34d399', startupLabels); // vert
+        renderBar('chartVotesCategorieOther', 'Citoyens', otherData, '#f59e0b', otherLabels); // jaune/orange
 
         // Compact mode toggle behaviour
         var compactToggle = document.getElementById('compactModeToggle');

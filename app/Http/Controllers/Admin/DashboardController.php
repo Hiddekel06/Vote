@@ -190,21 +190,26 @@ public function index(): View
     $allLegendNames = array_merge(['Total Votes'], $top3ProjectNames);
     // --- FIN NOUVEAU ---
 
-    // --- Préparer un jeu de données par PROJET (labels 'Equipe — Projet' + école si étudiant)
-    $chartProjects = Projet::whereIn('id', $preselectedProjectIds)
+    // --- Préparer 3 jeux de données séparés PAR PROFIL (étudiants, startup, citoyens)
+    
+    // 1. ÉTUDIANTS : Filtrer uniquement les projets étudiants
+    $studentProjects = Projet::whereIn('id', $preselectedProjectIds)
         ->with('submission', 'listePreselectionne')
         ->withCount('votes')
+        ->whereHas('submission', function ($query) {
+            $query->where('profile_type', 'student');
+        })
         ->orderBy('votes_count', 'desc')
-        ->take(20)
+        ->take(15)
         ->get();
 
-    $projectLabels = $chartProjects->map(function ($p) {
+    $studentLabels = $studentProjects->map(function ($p) {
         $team = $p->nom_equipe ?? 'Équipe inconnue';
         $proj = $p->nom_projet ?? 'Projet inconnu';
         $label = $team . ' — ' . $proj;
         
-        // Ajouter le nom de l'école si c'est un étudiant
-        if ($p->submission?->profile_type === 'student' && $p->listePreselectionne?->snapshot) {
+        // Ajouter le nom de l'école
+        if ($p->listePreselectionne?->snapshot) {
             $snapshot = json_decode($p->listePreselectionne->snapshot, true);
             if (isset($snapshot['champs_personnalises'])) {
                 $champsPerso = is_string($snapshot['champs_personnalises'])
@@ -227,22 +232,49 @@ public function index(): View
         return $label;
     })->toArray();
 
-    // Construire les tableaux où chaque projet attribue son total aux bons profile_type
-    $studentData = $chartProjects->map(function ($p) {
-        return ($p->submission->profile_type ?? 'other') === 'student' ? (int) $p->votes_count : 0;
+    $studentData = $studentProjects->pluck('votes_count')->toArray();
+
+    // 2. STARTUPS : Filtrer uniquement les projets startup
+    $startupProjects = Projet::whereIn('id', $preselectedProjectIds)
+        ->with('submission', 'listePreselectionne')
+        ->withCount('votes')
+        ->whereHas('submission', function ($query) {
+            $query->where('profile_type', 'startup');
+        })
+        ->orderBy('votes_count', 'desc')
+        ->take(10)
+        ->get();
+
+    $startupLabels = $startupProjects->map(function ($p) {
+        $team = $p->nom_equipe ?? 'Équipe inconnue';
+        $proj = $p->nom_projet ?? 'Projet inconnu';
+        return $team . ' — ' . $proj;
     })->toArray();
 
-    $startupData = $chartProjects->map(function ($p) {
-        return ($p->submission->profile_type ?? 'other') === 'startup' ? (int) $p->votes_count : 0;
+    $startupData = $startupProjects->pluck('votes_count')->toArray();
+
+    // 3. CITOYENS (autres) : Filtrer les projets qui ne sont ni student ni startup
+    $otherProjects = Projet::whereIn('id', $preselectedProjectIds)
+        ->with('submission', 'listePreselectionne')
+        ->withCount('votes')
+        ->whereHas('submission', function ($query) {
+            $query->whereNotIn('profile_type', ['student', 'startup']);
+        })
+        ->orWhereDoesntHave('submission')
+        ->orderBy('votes_count', 'desc')
+        ->take(10)
+        ->get();
+
+    $otherLabels = $otherProjects->map(function ($p) {
+        $team = $p->nom_equipe ?? 'Équipe inconnue';
+        $proj = $p->nom_projet ?? 'Projet inconnu';
+        return $team . ' — ' . $proj;
     })->toArray();
 
-    $otherData = $chartProjects->map(function ($p) {
-        $type = $p->submission->profile_type ?? 'other';
-        return ($type !== 'student' && $type !== 'startup') ? (int) $p->votes_count : 0;
-    })->toArray();
+    $otherData = $otherProjects->pluck('votes_count')->toArray();
 
-    // On réutilise les noms attendus dans la vue — mais ils correspondent maintenant aux projets
-    $secteurLabels = $projectLabels;
+    // Variable utilisée dans la vue (on garde le nom générique)
+    $secteurLabels = $studentLabels; // Par défaut affiche les étudiants
 
     // ✅ Envoi à la vue
     return view('admin.dashboard', compact(
@@ -251,7 +283,8 @@ public function index(): View
         'profileTypeLabels', 'profileTypeData',
         'categorieLabels', 'categorieData',
         'dailyVoteLabels', 'allSeriesData', 'allLegendNames', 'top3Projects',
-        'secteurLabels', 'studentData', 'startupData', 'otherData'
+        'secteurLabels', 'studentLabels', 'startupLabels', 'otherLabels',
+        'studentData', 'startupData', 'otherData'
     ));
 }
 
