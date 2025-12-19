@@ -42,6 +42,13 @@ Route::middleware(['auth', 'verified', 'role.admin:admin,super_admin'])->prefix(
     Route::get('/statistiques', [DashboardController::class, 'statistiques'])->name('statistiques');
     // Route pour mettre à jour le statut et la période du vote
     Route::patch('/vote-status', [VoteStatusController::class, 'update'])->name('vote.status.update');
+    
+    // --- Gestion des événements Vote Jour J ---
+    Route::get('/vote-events', [\App\Http\Controllers\VoteJourJController::class, 'indexEvents'])->name('vote-events.index');
+    Route::get('/vote-events/create', [\App\Http\Controllers\VoteJourJController::class, 'createEvent'])->name('vote-events.create');
+    Route::post('/vote-events', [\App\Http\Controllers\VoteJourJController::class, 'storeEvent'])->name('vote-events.store');
+    Route::post('/vote-events/{id}/toggle', [\App\Http\Controllers\VoteJourJController::class, 'toggleEvent'])->name('vote-events.toggle');
+    Route::get('/vote-events/{id}/qr-code', [\App\Http\Controllers\VoteJourJController::class, 'showQrCode'])->name('vote-events.qr-code');
 });
 
 Route::middleware('auth')->group(function () {
@@ -85,6 +92,13 @@ Route::get('/check-assets', function() {
 //Route::post('/send-otp', [OrangeSmsController::class, 'sendOtp']);
 
 Route::get('/apropos', [App\Http\Controllers\PageController::class, 'apropos'])->name('apropos');
+
+// --- Section Vote Jour J ---
+// Page de vote Jour J (accès direct)
+Route::get('/vote-jour-j', [\App\Http\Controllers\VoteJourJController::class, 'show'])->name('vote-jour-j.show');
+
+// Traitement du vote Jour J (sans middleware)
+Route::post('/vote-jour-j/vote', [\App\Http\Controllers\VoteJourJController::class, 'store'])->name('vote-jour-j.store');
 
 require __DIR__.'/auth.php';
 

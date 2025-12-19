@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // 👇 C'est ici qu'il faut ajouter l'alias
         $middleware->alias([
             'role.admin' => \App\Http\Middleware\CheckAdminRole::class,
+            'check.qr.token' => \App\Http\Middleware\CheckQrToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
