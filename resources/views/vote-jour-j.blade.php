@@ -522,7 +522,7 @@
                             <div x-show="voteStep === 1">
                                 <form id="otp-request-form"
                                       class="space-y-4"
-                                      data-send-otp-url="{{ route('vote.envoyerOtp') }}"
+                                      data-send-otp-url="{{ route('vote-jour-j.envoyerOtp') }}"
                                       data-vote-jour-j-url="{{ route('vote-jour-j.store') }}"
                                       data-recaptcha-key="{{ config('services.recaptcha.site_key') }}"
                                       onsubmit="return false;">
@@ -571,12 +571,12 @@
                             <div x-show="voteStep === 2" style="display: none;">
                                 <form id="otp-verify-form"
                                       class="space-y-4"
-                                      data-verify-otp-url="{{ route('vote.verifierOtp') }}"
+                                      data-verify-otp-url="{{ route('vote-jour-j.verifierOtp') }}"
                                       onsubmit="return false;">
                                     <p class="text-center text-gray-300">Un code a été envoyé. Veuillez le saisir ci-dessous.</p>
                                     <div>
-                                        <label for="otp" class="block mb-2 text-sm font-medium text-gray-300">Code de vérification (OTP)</label>
-                                        <input type="tel" id="otp" name="otp"
+                                        <label for="code_otp" class="block mb-2 text-sm font-medium text-gray-300">Code de vérification (OTP)</label>
+                                        <input type="tel" id="code_otp" name="code_otp"
                                                class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white text-center text-2xl tracking-[1em]"
                                                placeholder="------" required maxlength="6" pattern="\d{6}" inputmode="numeric">
                                     </div>

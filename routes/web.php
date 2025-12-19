@@ -110,6 +110,13 @@ Route::post('/vote/envoyer-otp', [VoteController::class, 'envoyerOtp'])
 Route::post('/vote/verifier-otp', [VoteController::class, 'verifierOtp'])
     ->name('vote.verifierOtp');
 
+// Routes dédiées pour Jour J (vote finale)
+Route::post('/vote-jour-j/envoyer-otp', [\App\Http\Controllers\VoteJourJController::class, 'envoyerOtp'])
+    ->name('vote-jour-j.envoyerOtp');
+
+Route::post('/vote-jour-j/verifier-otp', [\App\Http\Controllers\VoteJourJController::class, 'verifierOtp'])
+    ->name('vote-jour-j.verifierOtp');
+
 
 Route::get('/test-orange-sms', [OrangeSmsController::class, 'testSimple'])
     ->name('orange.test');

@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Database\QueryException;
 use Illuminate\View\View;
 use App\Models\Vote;
+use App\Models\VotePublic;
 use App\Models\Configuration;
 use App\Models\Secteur;
 use App\Models\Projet;
@@ -424,7 +425,7 @@ try {
             }
 
             DB::transaction(function () use ($projetId, $phone) {
-                Vote::create([
+                VotePublic::create([
                     'projet_id'   => $projetId,
                     'telephone'   => $phone,
                     'token'       => Str::uuid(),
