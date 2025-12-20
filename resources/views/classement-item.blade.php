@@ -22,7 +22,7 @@
 
 @php
     // Format votes: affiche le nombre complet sans notation K
-    $votes = (int) ($projet->votes_count ?? 0);
+    $votes = (int) ($projet->vote_publics_count ?? 0);
     $displayVotes = number_format($votes, 0, ',', ' ');
 @endphp
 
@@ -30,7 +30,7 @@
     <div class="hidden list-meta">
         <span class="product">{{ $projet->nom_projet }}</span>
         <span class="customer">Équipe: {{ $projet->nom_equipe }}</span>
-        <span class="rating">{{ $projet->votes_count }}</span>
+        <span class="rating">{{ $projet->vote_publics_count }}</span>
     </div>
     {{-- Rang --}}
     <div class="flex-none w-16 text-center pr-4">
@@ -83,7 +83,7 @@
 
     {{-- Nombre de votes --}}
     <div class="flex-none w-full sm:w-28 text-left sm:text-right pl-0 sm:pl-4">
-        <p class="text-xl sm:text-2xl font-bold text-emerald-400" style="text-shadow: 0 0 8px rgba(52, 211, 153, 0.4);" title="{{ number_format($projet->votes_count, 0, ',', ' ') }} votes">{{ $displayVotes }}</p>
+        <p class="text-xl sm:text-2xl font-bold text-emerald-400" style="text-shadow: 0 0 8px rgba(52, 211, 153, 0.4);" title="{{ number_format($projet->vote_publics_count, 0, ',', ' ') }} votes">{{ $displayVotes }}</p>
         <p class="text-xs text-gray-500 uppercase tracking-wider">Votes</p>
     </div>
 </div>

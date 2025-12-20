@@ -38,9 +38,9 @@ class ProjetController extends Controller
     $projets = Projet::whereIn('id', $preselectedProjectIds)      // 🔹 seulement présélectionnés
         // ->where('validation_admin', 1)                         // 
         ->whereHas('submission', fn($q) => $q->where('profile_type', $profileType))
-        ->withCount('votes')
+        ->withCount('votePublics') // 🔹 Utilise vote_publics pour le classement public
         ->with('secteur')
-        ->orderBy('votes_count', 'desc')
+        ->orderBy('vote_publics_count', 'desc') // 🔹 Tri par vote_publics_count
         ->orderBy('nom_projet', 'asc')
         ->paginate(20);
 

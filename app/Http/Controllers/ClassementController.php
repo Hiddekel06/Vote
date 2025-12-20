@@ -47,9 +47,9 @@ class ClassementController extends Controller
                         ->orWhere('nom_equipe', 'like', "%{$search}%");
                 });
             })
-            ->withCount('votes')
+            ->withCount('votePublics') // 🔹 Utilise vote_publics pour le classement public
             ->with('secteur', 'submission', 'listePreselectionne')
-            ->orderBy('votes_count', 'desc')
+            ->orderBy('vote_publics_count', 'desc') // 🔹 Tri par vote_publics_count
             ->orderBy('nom_projet', 'asc')
             ->paginate($perPage, ['*'], 'page_general')
             ->withQueryString();
@@ -66,9 +66,9 @@ class ClassementController extends Controller
                             ->orWhere('nom_equipe', 'like', "%{$search}%");
                     });
                 })
-                ->withCount('votes')
+                ->withCount('votePublics') // 🔹 Utilise vote_publics pour le classement public
                 ->with('secteur', 'submission', 'listePreselectionne')
-                ->orderBy('votes_count', 'desc')
+                ->orderBy('vote_publics_count', 'desc') // 🔹 Tri par vote_publics_count
                 ->orderBy('nom_projet', 'asc')
                 ->paginate($perPage, ['*'], $pageName)
                 ->withQueryString();

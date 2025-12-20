@@ -42,12 +42,70 @@
 
             <!-- Titre Grande Finale Jour J -->
             <div class="text-center mb-4 px-2">
-                <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-2">🏆 GRANDE FINALE JOUR J</h1>
+                <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-2">🏆 GRANDE FINALeeE JOUR J</h1>
                 @if(!$event)
                     <div class="mt-2 px-4 py-2 bg-yellow-900/30 border border-yellow-700 rounded-lg inline-block">
                         <p class="text-yellow-300 text-xs">⚠️ Aucun événement GPS actif</p>
                     </div>
                 @endif
+            </div>
+
+            <!-- 🌍 Indicateur GPS en temps réel -->
+            <div class="mb-6 px-2">
+                <div class="max-w-2xl mx-auto">
+                    <!-- Status GPS Loading -->
+                    <div x-show="gpsStatus === 'loading'" 
+                         class="flex items-center justify-center gap-3 bg-blue-900/30 border border-blue-600/50 rounded-lg px-4 py-3">
+                        <svg class="animate-spin h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-blue-300 text-sm font-medium" x-text="gpsMessage"></span>
+                    </div>
+
+                    <!-- Status GPS Success (dans le rayon) -->
+                    <div x-show="gpsStatus === 'success' && isInRange" 
+                         class="flex items-center justify-center gap-3 bg-green-900/30 border border-green-500/50 rounded-lg px-4 py-3">
+                        <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="text-green-300 text-sm font-medium" x-text="gpsMessage"></span>
+                    </div>
+
+                    <!-- Status GPS Error (hors du rayon) -->
+                    <div x-show="gpsStatus === 'error'" 
+                         class="flex flex-col items-center justify-center gap-2 bg-red-900/30 border border-red-500/50 rounded-lg px-4 py-3">
+                        <div class="flex items-center gap-3">
+                            <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="text-red-300 text-sm font-medium" x-text="gpsMessage"></span>
+                        </div>
+                        <button @click="captureGPS()" class="text-xs text-red-200 hover:text-white underline">Réessayer</button>
+                    </div>
+
+                    <!-- Status GPS Denied (permission refusée) -->
+                    <div x-show="gpsStatus === 'denied'" 
+                         class="flex flex-col items-center justify-center gap-2 bg-orange-900/30 border border-orange-500/50 rounded-lg px-4 py-3">
+                        <div class="flex items-center gap-3">
+                            <svg class="h-5 w-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            <span class="text-orange-300 text-sm font-medium" x-text="gpsMessage"></span>
+                        </div>
+                        <p class="text-xs text-orange-200 text-center">Cliquez sur l'icône 🔒 dans votre navigateur pour autoriser la géolocalisation</p>
+                        <button @click="captureGPS()" class="text-xs text-orange-200 hover:text-white underline">Réessayer</button>
+                    </div>
+
+                    <!-- Status GPS Unavailable (pas de support) -->
+                    <div x-show="gpsStatus === 'unavailable'" 
+                         class="flex items-center justify-center gap-3 bg-gray-800/50 border border-gray-600/50 rounded-lg px-4 py-3">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"></path>
+                        </svg>
+                        <span class="text-gray-300 text-sm font-medium" x-text="gpsMessage"></span>
+                    </div>
+                </div>
             </div>
 
             <!-- Dropdown de catégories (filtrage visuel uniquement) -->
@@ -142,17 +200,125 @@
         open: false,
         selectedCategory: '{{ request('profile_type', 'all') }}',
 
+        // 🌍 Variables GPS
+        gpsStatus: 'loading', // 'loading' | 'success' | 'error' | 'denied' | 'unavailable'
+        gpsMessage: 'Recherche de votre position...',
+        userLatitude: null,
+        userLongitude: null,
+        distanceToEvent: null,
+        isInRange: false,
+        @if($event)
+        eventLat: {{ $event->latitude }},
+        eventLon: {{ $event->longitude }},
+        eventRadius: {{ $event->rayon_metres }},
+        hasEvent: true,
+        @else
+        eventLat: null,
+        eventLon: null,
+        eventRadius: null,
+        hasEvent: false,
+        @endif
+
         // Notification temporaire lorsque le vote est inactif
         inactiveNoticeVisible: false,
         showInactiveNotice() {
             this.inactiveNoticeVisible = true;
             setTimeout(() => { this.inactiveNoticeVisible = false }, 1000);
+        },
+
+        // 🌍 Fonction de calcul de distance (Haversine)
+        calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // Rayon de la Terre en mètres
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c; // Distance en mètres
+        },
+
+        // 🌍 Fonction de capture GPS
+        captureGPS() {
+            if (!navigator.geolocation) {
+                this.gpsStatus = 'unavailable';
+                this.gpsMessage = 'Votre navigateur ne supporte pas la géolocalisation.';
+                return;
+            }
+
+            this.gpsStatus = 'loading';
+            this.gpsMessage = 'Recherche de votre position...';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    this.userLatitude = position.coords.latitude;
+                    this.userLongitude = position.coords.longitude;
+                    
+                    if (this.hasEvent) {
+                        // Calculer la distance
+                        this.distanceToEvent = this.calculateDistance(
+                            this.userLatitude, 
+                            this.userLongitude,
+                            this.eventLat,
+                            this.eventLon
+                        );
+
+                        this.isInRange = this.distanceToEvent <= this.eventRadius;
+
+                        if (this.isInRange) {
+                            this.gpsStatus = 'success';
+                            this.gpsMessage = `✓ Vous êtes dans la zone (${Math.round(this.distanceToEvent)}m)`;
+                        } else {
+                            this.gpsStatus = 'error';
+                            this.gpsMessage = `✗ Vous êtes trop loin (${Math.round(this.distanceToEvent)}m / ${this.eventRadius}m max)`;
+                        }
+                    } else {
+                        // Pas d'événement GPS actif
+                        this.gpsStatus = 'success';
+                        this.gpsMessage = '✓ Position détectée (aucun événement GPS actif)';
+                        this.isInRange = true;
+                    }
+                },
+                (error) => {
+                    console.error('Erreur GPS:', error);
+                    
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            this.gpsStatus = 'denied';
+                            this.gpsMessage = '✗ Permission GPS refusée. Veuillez autoriser la géolocalisation.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            this.gpsStatus = 'error';
+                            this.gpsMessage = '✗ Position GPS indisponible.';
+                            break;
+                        case error.TIMEOUT:
+                            this.gpsStatus = 'error';
+                            this.gpsMessage = '✗ Délai de géolocalisation dépassé.';
+                            break;
+                        default:
+                            this.gpsStatus = 'error';
+                            this.gpsMessage = '✗ Erreur de géolocalisation.';
+                    }
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
         }
     }"
 
     x-init="
         // Capturer le contexte Alpine pour les event listeners
         const self = this;
+
+        // 🌍 Lancer la capture GPS automatiquement au chargement
+        this.captureGPS();
 
         // Si le vote est inactif, on initialise la modale
         if (!isVoteActive) {
@@ -377,11 +543,12 @@
                                                            type="button"
                                                            class="group flex items-center justify-center gap-2 md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
                                                            :class="{
-                                                               'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black': isVoteActive,
-                                                               'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive
+                                                               'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black': isVoteActive && isInRange && gpsStatus === 'success',
+                                                               'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive || !isInRange || gpsStatus !== 'success'
                                                            }"
-                                                           :disabled="!isVoteActive"
-                                                           @click="voteProjet = @js($projet); showVoteModal = true; voteStep = isVoteActive ? 1 : 3; errorMessage = isVoteActive ? '' : inactiveMessage; successMessage = '';">
+                                                           :disabled="!isVoteActive || !isInRange || gpsStatus !== 'success'"
+                                                           @click="if(isInRange && gpsStatus === 'success') { voteProjet = @js($projet); showVoteModal = true; voteStep = isVoteActive ? 1 : 3; errorMessage = isVoteActive ? '' : inactiveMessage; successMessage = ''; } else if (gpsStatus !== 'success') { alert('⚠️ Attendez que votre position GPS soit détectée'); } else { alert('❌ Vous devez être sur place pour voter'); }"
+                                                           :title="!isInRange ? 'Vous devez être sur place pour voter' : (gpsStatus !== 'success' ? 'Position GPS en attente' : 'Cliquez pour voter')">
                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                            </svg>
@@ -389,7 +556,7 @@
                                                        </button>
 
                                                        <!-- Overlay pour capter le clic quand le vote est INactif (au-dessus du bouton Voter) -->
-                                                       <button x-show="!isVoteActive" @click.prevent="showInactiveNotice()" class="absolute inset-0 w-full h-full z-20 bg-transparent" aria-hidden="true"></button>
+                                                       <button x-show="!isVoteActive || !isInRange || gpsStatus !== 'success'" @click.prevent="if (gpsStatus !== 'success') { alert('⚠️ Attendez que votre position GPS soit détectée'); } else if (!isInRange) { alert('❌ Vous devez être sur place pour voter (distance: ' + Math.round(distanceToEvent) + 'm)'); } else { showInactiveNotice(); }" class="absolute inset-0 w-full h-full z-20 bg-transparent" aria-hidden="true"></button>
                                                    </div>
                                         </td>
                                     </tr>
@@ -529,6 +696,10 @@
                                     <input type="hidden" name="projet_id" :value="voteProjet?.id">
                                     <input type="hidden" name="telephone" id="telephone_full">
                                     <input type="hidden" name="recaptcha_token" id="recaptcha-token">
+                                    <!-- 🌍 Champs GPS cachés -->
+                                    <input type="hidden" name="latitude" id="latitude" :value="userLatitude">
+                                    <input type="hidden" name="longitude" id="longitude" :value="userLongitude">
+                                    
                                     <div>
                                         <label for="nom_votant" class="block mb-2 text-sm font-medium text-gray-300">Votre nom (Optionnel)</label>
                                         <input type="text" id="nom_votant" name="nom_votant"

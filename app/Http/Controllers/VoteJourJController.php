@@ -304,8 +304,8 @@ class VoteJourJController extends Controller
     {
         $event = VoteEvent::findOrFail($id);
         
-        // Générer l'URL de validation du QR
-        $qrUrl = route('vote-jour-j.validate-qr') . '?qr_secret=' . $event->qr_secret;
+        // Générer l'URL vers la page de vote Jour J
+        $qrUrl = route('vote-jour-j.show');
 
         return view('admin.vote-events.qr-code', compact('event', 'qrUrl'));
     }

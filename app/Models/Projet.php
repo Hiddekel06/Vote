@@ -17,12 +17,21 @@ class Projet extends Model
     }
 
     /**
-     * Définit la relation "un projet a plusieurs votes".
+     * Définit la relation "un projet a plusieurs votes du Jour J".
+     * Ces votes sont enregistrés lors de l'événement final.
      */
     public function votes(): HasMany
     {
-        // On ne compte que les votes qui ont été vérifiés par OTP
         return $this->hasMany(Vote::class);
+    }
+
+    /**
+     * Définit la relation "un projet a plusieurs votes publics".
+     * Ces votes sont enregistrés pendant la période de votation publique normale.
+     */
+    public function votePublics(): HasMany
+    {
+        return $this->hasMany(VotePublic::class);
     }
 
     /**
