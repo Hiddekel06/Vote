@@ -42,7 +42,7 @@
 
             <!-- Titre Grande Finale Jour J -->
             <div class="text-center mb-4 px-2">
-                <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-2">🏆 GRANDE FINALeeE JOUR J</h1>
+                <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-2">🏆 GRANDE FINALE JOUR J</h1>
                 @if(!$event)
                     <div class="mt-2 px-4 py-2 bg-yellow-900/30 border border-yellow-700 rounded-lg inline-block">
                         <p class="text-yellow-300 text-xs">⚠️ Aucun événement GPS actif</p>
