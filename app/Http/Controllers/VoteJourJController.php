@@ -2,42 +2,38 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\VoteEvent;
-use App\Models\VoteJourJ;
-use App\Models\Vote;
+use App\Helpers\GeoHelper;
 use App\Models\Projet;
 use App\Models\Secteur;
-use App\Helpers\GeoHelper;
+use App\Models\Vote;
+use App\Models\VoteEvent;
+use App\Models\VoteJourJ;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Illuminate\Database\QueryException;
-use libphonenumber\PhoneNumberUtil;
 use libphonenumber\PhoneNumberFormat;
+use libphonenumber\PhoneNumberUtil;
 use libphonenumber\NumberParseException;
-use Illuminate\Support\Facades\Http;
+use App\Http\Controllers\OrangeSmsController;
 
 class VoteJourJController extends Controller
 {
     /**
      * Affiche la page de vote Jour J
-     * Accès direct - affiche toujours les projets comme les pages de vote normales
+     * (similaire aux pages de vote normales, mais dédiée à l’événement physique)
      */
     public function show(Request $request)
     {
-        // Récupérer un événement actif pour la validation GPS (optionnel)
-        $event = VoteEvent::where('is_active', true)
-            ->where('date_debut', '<=', now())
-            ->where('date_fin', '>=', now())
-            ->latest('created_at')
-            ->first();
+        // Évent actif (optionnel côté vue, mais utile pour affichage d’infos)
+        $event = $this->getActiveEvent();
 
         // Filtres URL
         $profileType = $request->query('profile_type'); // 'student' | 'startup' | 'other' | null
-        $search = trim($request->query('search', ''));
+        $search      = trim($request->query('search', ''));
 
         // IDs des projets finalistes
         $preselectedProjectIds = DB::table('liste_preselectionnes')
@@ -50,6 +46,7 @@ class VoteJourJController extends Controller
         // N'afficher que les secteurs qui ont des projets finalistes (et éventuellement du bon profil)
         $secteurQuery->whereHas('projets', function ($projetQuery) use ($preselectedProjectIds, $profileType) {
             $projetQuery->whereIn('id', $preselectedProjectIds);
+
             if (in_array($profileType, ['student', 'startup', 'other'])) {
                 $projetQuery->whereHas('submission', function ($submissionQuery) use ($profileType) {
                     $submissionQuery->where('profile_type', $profileType);
@@ -57,30 +54,37 @@ class VoteJourJController extends Controller
             }
         });
 
-        // Filtre de recherche sur le nom du secteur ou les projets
+        // Filtre recherche sur secteur / projet / équipe
         if ($search !== '') {
             $secteurQuery->where(function ($q) use ($search, $preselectedProjectIds, $profileType) {
                 $q->where('nom', 'like', '%' . $search . '%')
-                  ->orWhereHas('projets', function ($subQuery) use ($search, $preselectedProjectIds, $profileType) {
-                      $subQuery->whereIn('id', $preselectedProjectIds)
-                          ->when(in_array($profileType, ['student', 'startup', 'other']), function ($qq) use ($profileType) {
-                              $qq->whereHas('submission', fn($s) => $s->where('profile_type', $profileType));
-                          })
-                          ->where(function ($subSubQuery) use ($search) {
-                              $subSubQuery->where('nom_projet', 'like', '%' . $search . '%')
-                                          ->orWhere('nom_equipe', 'like', '%' . $search . '%');
-                          });
-                  });
+                    ->orWhereHas('projets', function ($subQuery) use ($search, $preselectedProjectIds, $profileType) {
+                        $subQuery->whereIn('id', $preselectedProjectIds)
+                            ->when(
+                                in_array($profileType, ['student', 'startup', 'other']),
+                                function ($qq) use ($profileType) {
+                                    $qq->whereHas('submission', fn($s) => $s->where('profile_type', $profileType));
+                                }
+                            )
+                            ->where(function ($subSubQuery) use ($search) {
+                                $subSubQuery->where('nom_projet', 'like', '%' . $search . '%')
+                                    ->orWhere('nom_equipe', 'like', '%' . $search . '%');
+                            });
+                    });
             });
         }
 
-        // Charger les projets des secteurs, avec les mêmes filtres
+        // Charger les projets des secteurs avec les mêmes filtres
         $secteurQuery->with(['projets' => function ($projetQuery) use ($preselectedProjectIds, $profileType, $search) {
-            $projetQuery->whereIn('projets.id', $preselectedProjectIds)
+            $projetQuery
+                ->whereIn('projets.id', $preselectedProjectIds)
                 ->with(['submission', 'listePreselectionne'])
-                ->when(in_array($profileType, ['student', 'startup', 'other']), function ($qq) use ($profileType) {
-                    $qq->whereHas('submission', fn($s) => $s->where('profile_type', $profileType));
-                })
+                ->when(
+                    in_array($profileType, ['student', 'startup', 'other']),
+                    function ($qq) use ($profileType) {
+                        $qq->whereHas('submission', fn($s) => $s->where('profile_type', $profileType));
+                    }
+                )
                 ->when($search !== '', function ($qq) use ($search) {
                     $qq->where(function ($sub) use ($search) {
                         $sub->where('nom_projet', 'like', '%' . $search . '%')
@@ -96,118 +100,37 @@ class VoteJourJController extends Controller
     }
 
     /**
-     * Traite le vote Jour J (avec vérification GPS + OTP)
-     * Sécurité : OTP valide + localisation dans le rayon
+     * Compat REST : si jamais un form POST /vote-jour-j
+     * on délègue à la logique principale OTP + géoloc.
+     *
+     * Ce store NE TOUCHE PAS vote_publics.
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'projet_id' => 'required|exists:projets,id',
-            'telephone' => 'required|string',
-            'code_otp' => 'required|string',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
-        ]);
-
-        // Récupérer l'événement actif
-        $event = VoteEvent::where('is_active', true)
-            ->where('date_debut', '<=', now())
-            ->where('date_fin', '>=', now())
-            ->latest('created_at')
-            ->first();
-
-        if (!$event) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Aucun événement actif pour le moment.'
-            ], 403);
-        }
-
-        // Vérifier l'OTP (réutilisation du code existant)
-        $otpController = new \App\Http\Controllers\OrangeSmsController();
-        $otpValidation = $otpController->verifyOtp($request->telephone, $request->code_otp);
-
-        if (!$otpValidation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Code OTP invalide ou expiré.'
-            ], 422);
-        }
-
-        // Si un événement existe, vérifier la géolocalisation
-        $distance = null;
-        if ($event) {
-            // Calculer la distance avec Haversine
-            $distance = GeoHelper::haversineDistance(
-                $event->latitude,
-                $event->longitude,
-                $request->latitude,
-                $request->longitude
-            );
-
-            // Vérifier que l'utilisateur est dans la zone
-            if ($distance > $event->rayon_metres) {
-                // Créer un enregistrement avec statut 'outside_zone' pour audit
-                VoteJourJ::create([
-                    'vote_id' => null,
-                    'vote_event_id' => $event->id,
-                    'latitude_user' => $request->latitude,
-                    'longitude_user' => $request->longitude,
-                    'distance_metres' => $distance,
-                    'qr_token_used' => null,
-                    'qr_token_expires_at' => null,
-                    'validation_status' => 'outside_zone',
-                ]);
-
+        // Si le téléphone et le projet sont envoyés ici,
+        // on initialise la session OTP comme le ferait envoyerOtp()
+        if ($request->filled('telephone') && $request->filled('projet_id')) {
+            $normalized = $this->normalizePhone($request->input('telephone'));
+            if (! $normalized) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Vous devez être dans le périmètre de la salle pour voter. Distance: {$distance}m (maximum: {$event->rayon_metres}m)"
-                ], 403);
+                    'message' => 'Numéro de téléphone invalide.',
+                ], 422);
             }
-        }
 
-        // Vérifier que l'utilisateur n'a pas déjà voté pour ce projet
-        $existingVote = Vote::where('telephone', $request->telephone)
-            ->where('projet_id', $request->projet_id)
-            ->first();
-
-        if ($existingVote) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous avez déjà voté pour ce projet.'
-            ], 422);
-        }
-
-        // Créer le vote
-        $vote = Vote::create([
-            'projet_id' => $request->projet_id,
-            'telephone' => $request->telephone,
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
-
-        // Créer l'enregistrement VoteJourJ avec validation success (seulement si un événement existe)
-        if ($event) {
-            VoteJourJ::create([
-                'vote_id' => $vote->id,
-                'vote_event_id' => $event->id,
-                'latitude_user' => $request->latitude,
-                'longitude_user' => $request->longitude,
-                'distance_metres' => $distance,
-                'qr_token_used' => null,
-                'qr_token_expires_at' => null,
-                'validation_status' => 'success',
+            $request->session()->put('otp_data_jour_j', [
+                'telephone'  => $normalized,
+                'projet_id'  => (int) $request->input('projet_id'),
+                'created_at' => now(),
             ]);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Vote enregistré avec succès ! La délibération aura lieu dans quelques instants.'
-        ]);
+        // On laisse verifierOtp gérer le reste (OTP + géoloc + création du vote)
+        return $this->verifierOtp($request);
     }
 
     /**
-     * ADMIN : Affiche le formulaire de création d'événement Jour J
+     * ADMIN : Formulaire de création d'événement Jour J
      */
     public function createEvent()
     {
@@ -215,7 +138,7 @@ class VoteJourJController extends Controller
     }
 
     /**
-     * ADMIN : Page de gestion des événements Jour J
+     * ADMIN : Liste / gestion des événements Jour J + classement des projets
      */
     public function indexEvents()
     {
@@ -223,31 +146,30 @@ class VoteJourJController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($event) {
-                // Compter les votes Jour J réussis pour cet événement
+                // Votes Jour J validés pour cet événement
                 $successfulVotes = $event->voteJourJ()
                     ->where('validation_status', 'success')
                     ->with('vote.projet')
                     ->get();
 
-                // Créer le classement des projets pour cet événement
+                // Classement par projet
                 $ranking = $successfulVotes
                     ->groupBy('vote.projet_id')
                     ->map(function ($votes) {
                         return [
-                            'projet' => $votes->first()->vote->projet,
-                            'vote_count' => $votes->count()
+                            'projet'     => $votes->first()->vote->projet,
+                            'vote_count' => $votes->count(),
                         ];
                     })
                     ->sortByDesc('vote_count')
                     ->values();
 
-                // Total votes pour cet événement
                 $totalVotes = $successfulVotes->count();
 
                 return [
-                    'event' => $event,
+                    'event'       => $event,
                     'total_votes' => $totalVotes,
-                    'ranking' => $ranking
+                    'ranking'     => $ranking,
                 ];
             });
 
@@ -260,24 +182,23 @@ class VoteJourJController extends Controller
     public function storeEvent(Request $request)
     {
         $request->validate([
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
+            'latitude'     => 'required|numeric|between:-90,90',
+            'longitude'    => 'required|numeric|between:-180,180',
             'rayon_metres' => 'required|integer|min:10|max:1000',
-            'date_debut' => 'required|date_format:Y-m-d\TH:i',
-            'date_fin' => 'required|date_format:Y-m-d\TH:i|after:date_debut',
+            'date_debut'   => 'required|date_format:Y-m-d\TH:i',
+            'date_fin'     => 'required|date_format:Y-m-d\TH:i|after:date_debut',
         ]);
 
-        // Générer un secret unique pour le QR code
         $qrSecret = bin2hex(random_bytes(32));
 
-        $event = VoteEvent::create([
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
+        VoteEvent::create([
+            'latitude'     => $request->latitude,
+            'longitude'    => $request->longitude,
             'rayon_metres' => $request->rayon_metres,
-            'qr_secret' => $qrSecret,
-            'is_active' => true, // Actif par défaut
-            'date_debut' => Carbon::createFromFormat('Y-m-d\TH:i', $request->date_debut),
-            'date_fin' => Carbon::createFromFormat('Y-m-d\TH:i', $request->date_fin),
+            'qr_secret'    => $qrSecret,
+            'is_active'    => true,
+            'date_debut'   => Carbon::createFromFormat('Y-m-d\TH:i', $request->date_debut),
+            'date_fin'     => Carbon::createFromFormat('Y-m-d\TH:i', $request->date_fin),
         ]);
 
         return redirect()->route('admin.vote-events.index')
@@ -285,12 +206,12 @@ class VoteJourJController extends Controller
     }
 
     /**
-     * ADMIN : Activer/Désactiver un événement
+     * ADMIN : Activer / désactiver un événement Jour J
      */
     public function toggleEvent($id)
     {
         $event = VoteEvent::findOrFail($id);
-        $event->is_active = !$event->is_active;
+        $event->is_active = ! $event->is_active;
         $event->save();
 
         return redirect()->route('admin.vote-events.index')
@@ -298,155 +219,407 @@ class VoteJourJController extends Controller
     }
 
     /**
-     * ADMIN : Afficher le QR Code pour un événement
+     * ADMIN : Afficher le QR Code (URL d’accès au vote Jour J)
      */
     public function showQrCode($id)
     {
         $event = VoteEvent::findOrFail($id);
-        
-        // Générer l'URL vers la page de vote Jour J
+
+        // URL de la page de vote Jour J
         $qrUrl = route('vote-jour-j.show');
 
         return view('admin.vote-events.qr-code', compact('event', 'qrUrl'));
     }
 
     /**
-     * Envoyer OTP pour Jour J
-     * Vérifie uniquement dans la table votes (Jour J)
+     * ENVOI OTP Jour J
+     * ----------------
+     * - Normalise le téléphone (E.164)
+     * - Vérifie uniquement dans la table `votes` (Jour J)
+     * - Génère un OTP stocké dans `otp_codes`
+     * - Envoie le SMS via OrangeSmsController::sendSmsInternal()
+     * - Sauvegarde (téléphone, projet) en session pour la suite
      */
     public function envoyerOtp(Request $request)
     {
         $validated = $request->validate([
             'projet_id' => 'required|integer|exists:projets,id',
-            'telephone' => 'required|string',
+            'telephone' => 'required|string|min:6|max:20',
         ]);
 
-        $util = PhoneNumberUtil::getInstance();
-
-        try {
-            $phone = $util->parse($validated['telephone'], 'SN');
-            if (!$util->isValidNumber($phone)) {
-                return response()->json(['success' => false, 'message' => 'Numéro invalide'], 400);
-            }
-            $e164 = $util->format($phone, PhoneNumberFormat::E164);
-        } catch (NumberParseException $e) {
-            return response()->json(['success' => false, 'message' => 'Erreur parsing téléphone'], 400);
+        // Événement actif obligatoire pour Jour J
+        $event = $this->getActiveEvent();
+        if (! $event) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun événement de vote Jour J n\'est actif pour le moment.',
+            ], 403);
         }
 
-        // ✅ CRITIQUE: Vérifier UNIQUEMENT dans la table votes (Jour J)
-        try {
-            $alreadyVoted = DB::table('votes')
-                ->where('telephone', $e164)
-                ->exists();
-
-            if ($alreadyVoted) {
-                return response()->json(['success' => false, 'message' => 'Vous avez déjà voté pour ce projet.'], 409);
-            }
-        } catch (\Throwable $e) {
-            Log::warning('Erreur vérification vote Jour J', ['error' => $e->getMessage()]);
+        $normalizedPhone = $this->normalizePhone($validated['telephone']);
+        if (! $normalizedPhone) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Numéro de téléphone invalide.',
+            ], 422);
         }
 
-        // Générer et envoyer l'OTP
-        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $hash = Hash::make($otp);
+        $projetId = (int) $validated['projet_id'];
+
+        // Option : un seul vote par téléphone & projet
+        $alreadyVoted = Vote::where('telephone', $normalizedPhone)
+            ->where('projet_id', $projetId)
+            ->exists();
+
+        if ($alreadyVoted) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous avez déjà voté pour ce projet.',
+            ], 409);
+        }
+
+        // Rate limiting simple (IP + téléphone) pour éviter les abus
+        $ip = $request->ip();
+
+        $ipKey   = 'jourj_otp_ip:' . $ip;
+        $ipCount = Cache::get($ipKey, 0) + 1;
+        Cache::put($ipKey, $ipCount, now()->addMinutes(10));
+
+        if ($ipCount > 30) { // 30 OTP / 10 min / IP
+            Log::warning('Rate limit OTP Jour J (IP)', ['ip' => $ip, 'count' => $ipCount]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Trop de demandes depuis cette adresse IP. Réessayez plus tard.',
+            ], 429);
+        }
+
+        $phoneKey   = 'jourj_otp_phone:' . $normalizedPhone;
+        $phoneCount = Cache::get($phoneKey, 0) + 1;
+        Cache::put($phoneKey, $phoneCount, now()->addHour());
+
+        if ($phoneCount > 5) { // 5 OTP / heure / téléphone
+            Log::warning('Rate limit OTP Jour J (phone)', [
+                'phone_last4' => substr(preg_replace('/\D+/', '', $normalizedPhone), -4),
+                'count'       => $phoneCount,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Trop de demandes de code pour ce numéro. Réessayez plus tard.',
+            ], 429);
+        }
+
+        // Générer OTP
+        $otp  = random_int(100000, 999999);
+        $hash = Hash::make((string) $otp);
 
         try {
+            // On peut nettoyer d’anciens OTP pour ce couple (phone, projet)
+            DB::table('otp_codes')
+                ->where('phone', $normalizedPhone)
+                ->where('projet_id', $projetId)
+                ->delete();
+
             DB::table('otp_codes')->insert([
-                'phone' => $e164,
-                'projet_id' => $validated['projet_id'],
-                'code_hash' => $hash,
-                'expires_at' => now()->addMinutes(5),
-                'ip_address' => $request->ip(),
-                'created_at' => now(),
-                'updated_at' => now(),
+                'phone'       => $normalizedPhone,
+                'projet_id'   => $projetId,
+                'code_hash'   => $hash,
+                'expires_at'  => now()->addMinutes(5),
+                'attempts'    => 0,
+                'consumed_at' => null,
+                'ip_address'  => $ip,
+                'created_at'  => now(),
+                'updated_at'  => now(),
             ]);
         } catch (QueryException $e) {
-            Log::warning('Erreur insertion OTP', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Erreur serveur'], 500);
+            Log::warning('Erreur insertion OTP Jour J', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur lors de la génération du code.',
+            ], 500);
         }
 
-        // Envoyer SMS via Orange
+        // Envoi SMS via Orange
         $smsController = new OrangeSmsController();
-        $message = "Votre code OTP est de : {$otp}";
-        $smsResult = $smsController->sendSmsInternal($e164, $message);
+        $message       = "Votre code de vote Jour J est : {$otp}";
 
-        if (!$smsResult['ok']) {
-            return response()->json(['success' => false, 'message' => 'Erreur envoi SMS'], 500);
+        $smsResult = $smsController->sendSmsInternal($normalizedPhone, $message);
+
+        if (! $smsResult['ok']) {
+            Log::error('Erreur envoi SMS OTP Jour J', [
+                'status' => $smsResult['status'],
+                'body'   => $smsResult['body'] ?? null,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'envoi du SMS. Veuillez réessayer.',
+            ], 500);
         }
 
-        // Stocker en session
+        // Stocker en session pour la phase suivante (OTP + GPS)
         $request->session()->put('otp_data_jour_j', [
-            'telephone' => $e164,
-            'projet_id' => $validated['projet_id'],
+            'telephone'  => $normalizedPhone,
+            'projet_id'  => $projetId,
             'created_at' => now(),
         ]);
 
-        return response()->json(['success' => true, 'message' => 'Code OTP envoyé']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Code OTP envoyé. Veuillez le saisir et autoriser la géolocalisation pour valider votre vote.',
+        ]);
     }
 
     /**
-     * Vérifier OTP pour Jour J
-     * Crée le vote dans la table votes (Jour J)
+     * VÉRIFICATION OTP + GÉOLOCALISATION Jour J
+     * ----------------------------------------
+     * - Lit téléphone & projet dans la session (envoyerOtp)
+     *   OU optionnellement depuis la requête (compat).
+     * - Vérifie le code OTP dans otp_codes (sans toucher vote_publics)
+     * - Valide la position GPS par rapport à l’événement Jour J
+     * - Enregistre le vote dans `votes`
+     * - Logue le détail dans `vote_jour_j`
      */
     public function verifierOtp(Request $request)
     {
         $validated = $request->validate([
-            'code_otp' => 'required|string|size:6',
+            'code_otp'  => 'required|string|size:6',
+            'latitude'  => 'required|numeric',
+            'longitude' => 'required|numeric',
         ]);
 
+        // Récupérer les données OTP de la session (flow normal)
         $otpData = $request->session()->get('otp_data_jour_j');
-        if (!$otpData) {
-            return response()->json(['success' => false, 'message' => 'Session expirée'], 401);
+
+        // Compat : si la session est vide mais que téléphone/projet arrivent dans la requête,
+        // on les utilise (ex: form direct POST /store).
+        if (! $otpData && $request->filled('telephone') && $request->filled('projet_id')) {
+            $normalized = $this->normalizePhone($request->input('telephone'));
+
+            if (! $normalized) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Numéro de téléphone invalide.',
+                ], 422);
+            }
+
+            $otpData = [
+                'telephone'  => $normalized,
+                'projet_id'  => (int) $request->input('projet_id'),
+                'created_at' => now(),
+            ];
         }
 
-        $phone = $otpData['telephone'];
-        $projetId = $otpData['projet_id'];
+        if (! $otpData) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Session OTP expirée ou invalide. Merci de recommencer.',
+            ], 401);
+        }
 
+        $telephone = $otpData['telephone'];
+        $projetId  = (int) $otpData['projet_id'];
+
+        // Événement actif obligatoire
+        $event = $this->getActiveEvent();
+        if (! $event) {
+            $request->session()->forget('otp_data_jour_j');
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun événement de vote Jour J n\'est actif.',
+            ], 403);
+        }
+
+        // Vérification de l’OTP pour ce couple (phone, projet)
+        if (! $this->verifyOtpCode($telephone, $projetId, $validated['code_otp'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Code OTP invalide ou expiré.',
+            ], 422);
+        }
+
+        // Vérification de la géolocalisation (distance en mètres)
+        $distance = GeoHelper::haversineDistance(
+            $event->latitude,
+            $event->longitude,
+            $validated['latitude'],
+            $validated['longitude']
+        );
+
+        if ($distance > $event->rayon_metres) {
+            // Loguer l’essai hors zone
+            VoteJourJ::create([
+                'vote_id'            => null,
+                'vote_event_id'      => $event->id,
+                'latitude_user'      => $validated['latitude'],
+                'longitude_user'     => $validated['longitude'],
+                'distance_metres'    => $distance,
+                'qr_token_used'      => null,
+                'qr_token_expires_at'=> null,
+                'validation_status'  => 'outside_zone',
+            ]);
+
+            $request->session()->forget('otp_data_jour_j');
+
+            return response()->json([
+                'success' => false,
+                'message' => "Vous devez être dans le périmètre de la salle pour voter. Distance: {$distance} m (maximum: {$event->rayon_metres} m).",
+            ], 403);
+        }
+
+        // Vérifier si ce téléphone a déjà voté pour ce projet dans la table `votes`
+        $existingVote = Vote::where('telephone', $telephone)
+            ->where('projet_id', $projetId)
+            ->first();
+
+        if ($existingVote) {
+            $request->session()->forget('otp_data_jour_j');
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous avez déjà voté pour ce projet.',
+            ], 422);
+        }
+
+        // Tout est OK : on enregistre le vote + le log Jour J
         try {
-            // Chercher l'OTP dans la BD
-            $otpRecord = DB::table('otp_codes')
-                ->where('phone', $phone)
-                ->where('projet_id', $projetId)
-                ->where('consumed_at', null)
-                ->where('expires_at', '>', now())
-                ->latest('created_at')
-                ->first();
-
-            if (!$otpRecord || !Hash::check($validated['code_otp'], $otpRecord->code_hash)) {
-                return response()->json(['success' => false, 'message' => 'Code OTP invalide'], 422);
-            }
-
-            // Marquer comme consommé
-            DB::table('otp_codes')->where('id', $otpRecord->id)->update(['consumed_at' => now()]);
-
-            // ✅ Vérifier si le vote existe UNIQUEMENT dans votes (Jour J)
-            $existingVote = Vote::where('telephone', $phone)
-                ->where('projet_id', $projetId)
-                ->first();
-
-            if ($existingVote) {
-                $request->session()->forget('otp_data_jour_j');
-                return response()->json(['success' => false, 'message' => 'Vous avez déjà voté pour ce projet.'], 422);
-            }
-
-            // Créer le vote dans la table votes (Jour J)
-            DB::transaction(function () use ($projetId, $phone, $request) {
-                Vote::create([
-                    'projet_id' => $projetId,
-                    'telephone' => $phone,
+            DB::transaction(function () use (
+                $projetId,
+                $telephone,
+                $event,
+                $distance,
+                $validated,
+                $request
+            ) {
+                $vote = Vote::create([
+                    'projet_id'  => $projetId,
+                    'telephone'  => $telephone,
                     'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
+                    'user_agent' => substr($request->userAgent() ?? 'unknown', 0, 1000),
+                ]);
+
+                VoteJourJ::create([
+                    'vote_id'            => $vote->id,
+                    'vote_event_id'      => $event->id,
+                    'latitude_user'      => $validated['latitude'],
+                    'longitude_user'     => $validated['longitude'],
+                    'distance_metres'    => $distance,
+                    'qr_token_used'      => null,
+                    'qr_token_expires_at'=> null,
+                    'validation_status'  => 'success',
                 ]);
             });
-
-            $request->session()->forget('otp_data_jour_j');
-
-            return response()->json(['success' => true, 'message' => 'Vote enregistré ! Merci de votre participation.']);
-
         } catch (QueryException $e) {
-            Log::warning('QueryException vérification OTP Jour J', ['code' => $e->getCode(), 'message' => $e->getMessage()]);
+            Log::warning('Erreur enregistrement vote Jour J', [
+                'code'    => $e->getCode(),
+                'message' => $e->getMessage(),
+            ]);
+
             $request->session()->forget('otp_data_jour_j');
-            return response()->json(['success' => false, 'message' => 'Erreur serveur'], 500);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur lors de l\'enregistrement du vote.',
+            ], 500);
         }
+
+        $request->session()->forget('otp_data_jour_j');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Vote enregistré avec succès ! La délibération aura lieu dans quelques instants.',
+        ]);
+    }
+
+    /* ============================================================
+     | Helpers privés
+     * ============================================================*/
+
+    /**
+     * Récupère l’événement actif (date + is_active).
+     */
+    private function getActiveEvent(): ?VoteEvent
+    {
+        return VoteEvent::where('is_active', true)
+            ->where('date_debut', '<=', now())
+            ->where('date_fin', '>=', now())
+            ->latest('created_at')
+            ->first();
+    }
+
+    /**
+     * Normalise un numéro au format E.164 pour le Sénégal
+     * (via libphonenumber, retour null si invalide).
+     */
+    private function normalizePhone(string $rawPhone): ?string
+    {
+        $util = PhoneNumberUtil::getInstance();
+
+        try {
+            $phone = $util->parse($rawPhone, 'SN');
+            if (! $util->isValidNumber($phone)) {
+                return null;
+            }
+
+            return $util->format($phone, PhoneNumberFormat::E164);
+        } catch (NumberParseException $e) {
+            Log::warning('Erreur parsing téléphone Jour J', [
+                'raw'     => $rawPhone,
+                'message' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Vérifie un OTP pour un couple (téléphone, projet)
+     * dans la table otp_codes, sans toucher vote_publics.
+     */
+    private function verifyOtpCode(string $telephone, int $projetId, string $code): bool
+    {
+        $otpRow = DB::table('otp_codes')
+            ->where('phone', $telephone)
+            ->where('projet_id', $projetId)
+            ->whereNull('consumed_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $otpRow) {
+            return false;
+        }
+
+        // Expiration
+        if (isset($otpRow->expires_at) && now()->greaterThan($otpRow->expires_at)) {
+            return false;
+        }
+
+        // Limite d’essais (facultatif)
+        if (isset($otpRow->attempts) && $otpRow->attempts >= 5) {
+            return false;
+        }
+
+        if (! Hash::check($code, $otpRow->code_hash)) {
+            DB::table('otp_codes')
+                ->where('id', $otpRow->id)
+                ->update([
+                    'attempts'   => ($otpRow->attempts ?? 0) + 1,
+                    'updated_at' => now(),
+                ]);
+
+            return false;
+        }
+
+        // OTP valide : on marque comme consommé
+        DB::table('otp_codes')
+            ->where('id', $otpRow->id)
+            ->update([
+                'consumed_at' => now(),
+                'updated_at'  => now(),
+            ]);
+
+        return true;
     }
 }
