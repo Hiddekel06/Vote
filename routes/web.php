@@ -104,6 +104,11 @@ require __DIR__.'/auth.php';
 
 
 
+Route::post('/vote/envoyer-otp', [VoteController::class, 'envoyerOtp'])
+    ->name('vote.envoyerOtp');
+
+Route::post('/vote/verifier-otp', [VoteController::class, 'verifierOtp'])
+    ->name('vote.verifierOtp');
 
 // Routes dédiées pour Jour J (vote finale)
 Route::post('/vote-jour-j/envoyer-otp', [\App\Http\Controllers\VoteJourJController::class, 'envoyerOtp'])
@@ -129,7 +134,3 @@ Route::post('/vote/verifier-otp', [VoteController::class, 'verifierOtp'])
     ->name('vote.verifierOtp')
     ->middleware('throttle:10,1');  // 10 tentatives / minute / IP
 
-// routes/web.php
-Route::post('/vote/envoyer-otp', [VoteController::class, 'envoyerOtp'])
-    ->name('vote.envoyer-otp')
-    ->middleware('throttle:10,1'); // 10 requêtes / minute / IP
