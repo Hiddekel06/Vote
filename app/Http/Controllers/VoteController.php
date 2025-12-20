@@ -239,7 +239,7 @@ class VoteController extends Controller
                 // 10 minutes de fenêtre
                 Cache::put($ipKey, $ipCount, now()->addMinutes(10));
 
-                if ($ipCount > 20) { // > 20 OTP en 10 minutes = très suspect
+                if ($ipCount > 10) { // > 10 OTP en 10 minutes = très suspect
                     Log::warning('Rate limit OTP par IP dépassé', [
                         'ip' => $ip,
                         'count' => $ipCount,
