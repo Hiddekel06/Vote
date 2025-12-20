@@ -9,26 +9,29 @@ use libphonenumber\NumberParseException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use App\Http\Controllers\OrangeSmsController;
-use Illuminate\Support\Str;
-use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
-use App\Models\Vote;
+use App\Http\Controllers\OrangeSmsController;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Str;
 use App\Models\VotePublic;
 use App\Models\Configuration;
 use App\Models\Secteur;
 use App\Models\Projet;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;   // pour le rate limiting
-
 
 class VoteController extends Controller
 {
+    /* ==========================================
+     * Pages d’affichage
+     * ========================================== */
+
     public function choixCategorie(): View
     {
         $categories = collect([
             (object) ['nom' => 'Étudiant', 'slug' => 'student'],
-            (object) ['nom' => 'Startup', 'slug' => 'startup'],
+            (object) ['nom' => 'Startup',  'slug' => 'startup'],
             (object) ['nom' => 'Porteurs de projet', 'slug' => 'other'],
         ]);
 
@@ -54,7 +57,7 @@ class VoteController extends Controller
 
         $query = Secteur::query();
 
-        // Always filter to only sectors that have projects matching the profile
+        // Secteurs qui ont vraiment des projets finalistes pour ce profil
         $query->whereHas('projets', function ($projetQuery) use ($profileType, $preselectedProjectIds) {
             $projetQuery
                 ->whereHas('submission', function ($submissionQuery) use ($profileType) {
@@ -63,7 +66,7 @@ class VoteController extends Controller
                 ->whereIn('id', $preselectedProjectIds);
         });
 
-        // Vérifier si la recherche correspond exactement à un projet ou une équipe
+        // Recherche exacte projet/équipe
         $hasExact = false;
         if ($search !== '') {
             $hasExact = Projet::whereIn('id', $preselectedProjectIds)
@@ -73,7 +76,6 @@ class VoteController extends Controller
                       ->orWhere('nom_equipe', $search);
                 })->exists();
 
-            // Afficher un secteur si son nom correspond, ou s'il contient des projets correspondant (exact si possible)
             $query->where(function ($q) use ($search, $preselectedProjectIds, $hasExact) {
                 $q->where('nom', 'like', $search . '%')
                     ->orWhereHas('projets', function ($subQuery) use ($search, $preselectedProjectIds, $hasExact) {
@@ -125,7 +127,7 @@ class VoteController extends Controller
 
         $allCategories = collect([
             (object) ['nom' => 'Étudiant', 'slug' => 'student'],
-            (object) ['nom' => 'Startup', 'slug' => 'startup'],
+            (object) ['nom' => 'Startup',  'slug' => 'startup'],
             (object) ['nom' => 'Porteurs de projet', 'slug' => 'other'],
         ]);
 
@@ -153,7 +155,14 @@ class VoteController extends Controller
 
         $projets = $projetsQuery->paginate($perPage)->withQueryString();
 
-        return view('vote_secteurs', compact('secteurs', 'projets', 'countries', 'voteStatusDetails', 'categorie', 'allCategories'));
+        return view('vote_secteurs', compact(
+            'secteurs',
+            'projets',
+            'countries',
+            'voteStatusDetails',
+            'categorie',
+            'allCategories'
+        ));
     }
 
     public function rechercheAjax(Request $request): \Illuminate\Http\JsonResponse
@@ -207,15 +216,19 @@ class VoteController extends Controller
         return response()->json($secteurs);
     }
 
+    /* ==========================================
+     *  PROCESSUS OTP – VOTE EN LIGNE
+     * ========================================== */
+
     public function envoyerOtp(Request $request): \Illuminate\Http\JsonResponse
     {
         $validated = $request->validate(
             [
-                'projet_id'        => 'required|exists:projets,id',
-                'country_code'     => 'required|string',
-                'telephone_display'=> 'required|string',
-                'nom_votant'       => 'nullable|string|max:255',
-                'recaptcha_token'  => config('services.recaptcha.enabled', false) ? 'required|string' : 'nullable|string',
+                'projet_id'         => 'required|exists:projets,id',
+                'country_code'      => 'required|string',
+                'telephone_display' => 'required|string',
+                'nom_votant'        => 'nullable|string|max:255',
+                'recaptcha_token'   => config('services.recaptcha.enabled', false) ? 'required|string' : 'nullable|string',
             ],
             [
                 'projet_id.required'         => 'Le projet est obligatoire.',
@@ -231,43 +244,44 @@ class VoteController extends Controller
             ]
         );
 
+        // 1. Vérifier que le vote est ouvert
         $this->checkVoteStatus();
-                // 🔒 Rate limiting par IP (anti-bot brut)
-                $ip = $request->ip();
-                $ipKey = 'vote_otp_ip:' . $ip;
-                $ipCount = Cache::get($ipKey, 0) + 1;
-                // 10 minutes de fenêtre
-                Cache::put($ipKey, $ipCount, now()->addMinutes(10));
 
-                if ($ipCount > 10) { // > 10 OTP en 10 minutes = très suspect
-                    Log::warning('Rate limit OTP par IP dépassé', [
-                        'ip' => $ip,
-                        'count' => $ipCount,
-                    ]);
+        // 2. Rate limiting IP (en plus du middleware throttle)
+        $ip    = $request->ip();
+        $ipKey = 'vote_otp_ip:' . $ip;
+        $ipCount = Cache::get($ipKey, 0) + 1;
+        Cache::put($ipKey, $ipCount, now()->addMinutes(10));
 
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Trop de demandes de code ip enregistré',
-                    ], 429);
-                }
+        if ($ipCount > 10) {
+            Log::warning('Rate limit OTP par IP dépassé', [
+                'ip'    => $ip,
+                'count' => $ipCount,
+            ]);
 
+            return response()->json([
+                'success' => false,
+                'message' => 'Trop de demandes de code depuis cette connexion. Réessayez plus tard.',
+            ], 429);
+        }
 
-        $projetId   = $validated['projet_id'];
-        $nomVotant  = $validated['nom_votant'] ?? null;
-        $countryCode = $validated['country_code'];
+        $projetId         = $validated['projet_id'];
+        $nomVotant        = $validated['nom_votant'] ?? null;
+        $countryCode      = $validated['country_code'];
         $telephoneDisplay = $validated['telephone_display'];
 
+        // 3. Normaliser le numéro (E.164)
         $e164 = null;
 
         if (class_exists(PhoneNumberUtil::class)) {
             try {
-                $phoneUtil = PhoneNumberUtil::getInstance();
+                $phoneUtil     = PhoneNumberUtil::getInstance();
                 $digitsCountry = preg_replace('/\D+/', '', $countryCode);
-                $digitsLocal = preg_replace('/\D+/', '', $telephoneDisplay);
-                $raw = '+' . $digitsCountry . $digitsLocal;
-                $proto = $phoneUtil->parse($raw, null);
+                $digitsLocal   = preg_replace('/\D+/', '', $telephoneDisplay);
+                $raw           = '+' . $digitsCountry . $digitsLocal;
+                $proto         = $phoneUtil->parse($raw, null);
 
-                if (!$phoneUtil->isValidNumber($proto)) {
+                if (! $phoneUtil->isValidNumber($proto)) {
                     return response()->json(['success' => false, 'message' => 'Numéro de téléphone invalide.'], 422);
                 }
 
@@ -279,47 +293,53 @@ class VoteController extends Controller
             }
         }
 
-        if (!$e164) {
+        if (! $e164) {
             $digitsCountry = preg_replace('/\D+/', '', $countryCode);
-            $digitsLocal = preg_replace('/\D+/', '', $telephoneDisplay);
+            $digitsLocal   = preg_replace('/\D+/', '', $telephoneDisplay);
+
             if (empty($digitsCountry) || empty($digitsLocal)) {
                 return response()->json(['success' => false, 'message' => 'Numéro de téléphone invalide.'], 422);
             }
+
             $e164 = '+' . $digitsCountry . $digitsLocal;
         }
 
         $telephone = $e164;
 
-                $phoneKey   = 'vote_otp_phone:' . $telephone;
-                $phoneCount = Cache::get($phoneKey, 0) + 1;
-                Cache::put($phoneKey, $phoneCount, now()->addHour());
+        // 4. Rate limiting téléphone
+        $phoneKey   = 'vote_otp_phone:' . $telephone;
+        $phoneCount = Cache::get($phoneKey, 0) + 1;
+        Cache::put($phoneKey, $phoneCount, now()->addHour());
 
-                if ($phoneCount > 5) {
-                    Log::warning('Rate limit OTP par téléphone dépassé', [
-                        'phone_last4' => substr(preg_replace('/\D+/', '', $telephone), -4),
-                        'count'       => $phoneCount,
-                    ]);
+        if ($phoneCount > 5) {
+            Log::warning('Rate limit OTP par téléphone dépassé', [
+                'phone_last4' => substr(preg_replace('/\D+/', '', $telephone), -4),
+                'count'       => $phoneCount,
+            ]);
 
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Trop de demandes de code pour ce numéro. Réessayez plus tard.',
-                    ], 429);
-                }
+            return response()->json([
+                'success' => false,
+                'message' => 'Trop de demandes de code pour ce numéro. Réessayez plus tard.',
+            ], 429);
+        }
 
-
+        // 5. Vérifier que ce téléphone n’a pas déjà voté
         try {
-            $alreadyVoted = DB::table('vote_publics')
-                ->where('telephone', $telephone)
+            $alreadyVoted = VotePublic::where('telephone', $telephone)
                 ->where('est_verifie', true)
                 ->exists();
 
             if ($alreadyVoted) {
-                return response()->json(['success' => false, 'message' => 'Vous avez déjà voté. Un seul vote est autorisé.'], 409);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Vous avez déjà voté. Un seul vote est autorisé.',
+                ], 409);
             }
         } catch (\Throwable $e) {
             Log::warning('Erreur lors des vérifications pré-OTP', ['error' => $e->getMessage()]);
         }
 
+        // 6. reCAPTCHA (optionnel)
         if (config('services.recaptcha.enabled', false)) {
             $recaptchaToken = $validated['recaptcha_token'];
 
@@ -334,61 +354,93 @@ class VoteController extends Controller
             $body = $response->json();
 
             if (!isset($body['success']) || !$body['success'] || (isset($body['score']) && $body['score'] < 0.7)) {
-                return response()->json(['success' => false, 'message' => 'La vérification de sécurité a échoué. Veuillez réessayer.'], 422);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La vérification de sécurité a échoué. Veuillez réessayer.',
+                ], 422);
             }
         }
 
-        $otp = random_int(100000, 999999);
+        // 7. Générer OTP et le stocker HASHÉ en base
+        $otp  = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $hash = Hash::make($otp);
 
+        try {
+            // On supprime les OTP non consommés précédents pour ce téléphone/projet
+            DB::table('otp_codes')
+                ->where('phone', $telephone)
+                ->where('projet_id', $projetId)
+                ->whereNull('consumed_at')
+                ->delete();
+
+            DB::table('otp_codes')->insert([
+                'phone'       => $telephone,
+                'projet_id'   => $projetId,
+                'code_hash'   => $hash,
+                'attempts'    => 0,
+                'expires_at'  => now()->addMinutes(10),
+                'consumed_at' => null,
+                'ip_address'  => $ip,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+        } catch (QueryException $e) {
+            Log::warning('Erreur insertion OTP public', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur lors de la préparation du code.',
+            ], 500);
+        }
+
+        // 8. Enregistrer les métadonnées en session (sans stocker le code)
         $request->session()->put('otp_data', [
             'projet_id'   => $projetId,
             'telephone'   => $telephone,
             'nom_votant'  => $nomVotant,
-            'otp'         => $otp,
             'expires_at'  => now()->addMinutes(10),
             'attempts'    => 0,
-            // 🔒 on lie la session OTP à la machine
-            'ip'          => $request->ip(),
+            'ip'          => $ip,
             'user_agent'  => substr($request->userAgent() ?? 'unknown', 0, 1000),
         ]);
 
+        // 9. Envoyer le SMS via Orange
+        try {
+            $orangeSms = new OrangeSmsController();
 
-        // 3. Envoyer le code via Orange SMS (couche bas niveau)
-try {
-    $orangeSms = new OrangeSmsController();
+            $message = "Votre code de vote GovAthon est : {$otp}";
+            $result  = $orangeSms->sendSmsInternal($telephone, $message);
 
-    $message = "Votre code de vote GovAthon est : {$otp}";
-    $result  = $orangeSms->sendSmsInternal($telephone, $message);
+            if (! $result['ok']) {
+                Log::error('Échec de l\'envoi de l\'OTP via Orange SMS', [
+                    'status' => $result['status'],
+                    'body'   => $result['body'],
+                ]);
 
-    if (! $result['ok']) {
-        Log::error('Échec de l\'envoi de l\'OTP via Orange SMS', [
-            'status' => $result['status'],
-            'body'   => $result['body'],
-        ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de l\'envoi du code. Veuillez réessayer.',
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur Orange SMS: ' . $e->getMessage());
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Erreur lors de l\'envoi du code. Veuillez réessayer.',
-        ], 500);
-    }
-} catch (\Exception $e) {
-    Log::error('Erreur Orange SMS: ' . $e->getMessage());
-
-    return response()->json([
-        'success' => false,
-        'message' => 'Erreur lors de l\'envoi du code. Veuillez vérifier le numéro de téléphone et réessayer.',
-    ], 500);
-}
-
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'envoi du code. Veuillez vérifier le numéro de téléphone et réessayer.',
+            ], 500);
+        }
 
         try {
             $digitsOnly = preg_replace('/\D+/', '', $telephone);
-            $last4 = substr($digitsOnly, -4);
+            $last4      = substr($digitsOnly, -4);
         } catch (\Throwable $e) {
             $last4 = null;
         }
 
-        Log::info('OTP généré et envoyé (valeur non enregistrée)', ['phone_last4' => $last4]);
+        Log::info('OTP généré et envoyé (hashé en base, valeur non stockée en clair)', [
+            'phone_last4' => $last4,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -412,79 +464,148 @@ try {
         $this->checkVoteStatus();
 
         $submittedOtp = $validated['otp'];
-        $otpData = $request->session()->get('otp_data');
+        $otpData      = $request->session()->get('otp_data');
 
-        if (!$otpData) {
+        if (! $otpData) {
             return response()->json([
                 'success' => false,
                 'message' => 'Session OTP expirée ou invalide. Veuillez recommencer le processus de vote.',
             ], 400);
         }
-                // 🔒 Vérifier que l’IP et le user_agent n’ont pas changé entre l’envoi et la vérification
-                if (($otpData['ip'] ?? null) !== $request->ip()) {
-                    Log::warning('OTP IP mismatch', [
-                        'stored_ip' => $otpData['ip'] ?? null,
-                        'current_ip' => $request->ip(),
-                    ]);
 
-                    $request->session()->forget('otp_data');
+        // Vérifier que l’IP n’a pas changé
+        if (($otpData['ip'] ?? null) !== $request->ip()) {
+            Log::warning('OTP IP mismatch (vote public)', [
+                'stored_ip'  => $otpData['ip'] ?? null,
+                'current_ip' => $request->ip(),
+            ]);
 
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Votre session de vote n’est plus valide. Merci de recommencer le processus de vote.',
-                    ], 400);
-                }
+            $request->session()->forget('otp_data');
 
+            return response()->json([
+                'success' => false,
+                'message' => 'Votre session de vote n’est plus valide. Merci de recommencer le processus de vote.',
+            ], 400);
+        }
 
+        // TTL côté session
         if (now()->greaterThan($otpData['expires_at'])) {
             $request->session()->forget('otp_data');
+
             return response()->json([
                 'success' => false,
                 'message' => 'Le code OTP a expiré. Veuillez demander un nouveau code.',
             ], 400);
         }
 
+        // Limite de tentatives (session)
         $maxAttempts = 10;
-
         if (isset($otpData['attempts']) && $otpData['attempts'] >= $maxAttempts) {
             $request->session()->forget('otp_data');
+
             return response()->json([
                 'success' => false,
                 'message' => 'Trop de tentatives incorrectes. Veuillez recommencer le processus de vote.',
             ], 429);
         }
 
-        if ($submittedOtp !== (string) $otpData['otp']) {
-            $otpData['attempts'] = ($otpData['attempts'] ?? 0) + 1;
-            $request->session()->put('otp_data', $otpData);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Code OTP incorrect. Veuillez réessayer.',
-            ], 401);
-        }
         $phone    = $otpData['telephone'];
         $projetId = $otpData['projet_id'];
 
         try {
-            $alreadyVoted = DB::table('vote_publics')
-                ->where('telephone', $phone)
+            // Récupérer le dernier OTP valide
+            $otpRecord = DB::table('otp_codes')
+                ->where('phone', $phone)
+                ->where('projet_id', $projetId)
+                ->whereNull('consumed_at')
+                ->where('expires_at', '>', now())
+                ->latest('created_at')
+                ->first();
+
+            // Si pas de record → OTP invalide ou expiré
+            if (! $otpRecord) {
+                $otpData['attempts'] = ($otpData['attempts'] ?? 0) + 1;
+                $request->session()->put('otp_data', $otpData);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Code OTP incorrect ou expiré. Veuillez recommencer.',
+                ], 401);
+            }
+
+            // Protection supplémentaire : trop de tentatives pour ce code en BDD ?
+            if (($otpRecord->attempts ?? 0) >= $maxAttempts) {
+                $request->session()->forget('otp_data');
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Trop de tentatives pour ce code. Veuillez redemander un nouveau code.',
+                ], 429);
+            }
+
+            // Comparaison du code hashé
+            if (! Hash::check($submittedOtp, $otpRecord->code_hash)) {
+                // Incrémenter les tentatives en BDD
+                DB::table('otp_codes')
+                    ->where('id', $otpRecord->id)
+                    ->increment('attempts');
+
+                // Et côté session
+                $otpData['attempts'] = ($otpData['attempts'] ?? 0) + 1;
+                $request->session()->put('otp_data', $otpData);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Code OTP incorrect. Veuillez réessayer.',
+                ], 401);
+            }
+
+            // Marquer l’OTP comme consommé
+            DB::table('otp_codes')
+                ->where('id', $otpRecord->id)
+                ->update([
+                    'consumed_at' => now(),
+                    'updated_at'  => now(),
+                ]);
+
+            // Double vérification : ce téléphone n’a toujours pas voté
+            $alreadyVoted = VotePublic::where('telephone', $phone)
                 ->where('est_verifie', true)
                 ->exists();
 
             if ($alreadyVoted) {
                 $request->session()->forget('otp_data');
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Vous avez déjà voté. Un seul vote est autorisé.',
                 ], 409);
             }
 
-            // 🔒 infos techniques sur le vote
+            // Métadonnées techniques
             $ip         = $request->ip();
             $userAgent  = substr($request->userAgent() ?? 'unknown', 0, 1000);
             $geoCountry = null;
             $geoCity    = null;
+
+            // Anti-flood : limiter le nombre de votes depuis la même IP
+            $recentVotesFromIp = VotePublic::where('ip_address', $ip)
+                ->where('created_at', '>=', now()->subMinutes(5))
+                ->count();
+
+            if ($recentVotesFromIp >= 15) {
+                Log::warning('Blocage flood de votes depuis une même IP (vote public)', [
+                    'ip'    => $ip,
+                    'count' => $recentVotesFromIp,
+                ]);
+
+                $request->session()->forget('otp_data');
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Trop de votes ont été enregistrés depuis cette connexion. Réessayez plus tard.',
+                ], 429);
+            }
 
             try {
                 if (function_exists('geoip')) {
@@ -499,6 +620,7 @@ try {
                 ]);
             }
 
+            // Enregistrer le vote
             DB::transaction(function () use ($projetId, $phone, $ip, $userAgent, $geoCountry, $geoCity) {
                 VotePublic::create([
                     'projet_id'   => $projetId,
@@ -520,9 +642,8 @@ try {
             ]);
 
         } catch (QueryException $e) {
-            $sqlState = $e->getCode();
             Log::warning('QueryException lors de la création du vote', [
-                'code'    => $sqlState,
+                'code'    => $e->getCode(),
                 'message' => $e->getMessage(),
             ]);
 
@@ -543,9 +664,13 @@ try {
         }
     }
 
+    /* ==========================================
+     * Autres méthodes (affichage projet, helpers)
+     * ========================================== */
+
     public function afficherProjet($id)
     {
-        $projet = Projet::with('secteur')->findOrFail($id);
+        $projet   = Projet::with('secteur')->findOrFail($id);
         $secteurs = Secteur::with('projets')->get();
 
         $countriesData = json_decode(File::get(public_path('data/countries.json')), true);
@@ -568,13 +693,20 @@ try {
 
         $allCategories = collect([
             (object) ['nom' => 'Étudiant', 'slug' => 'student'],
-            (object) ['nom' => 'Startup', 'slug' => 'startup'],
+            (object) ['nom' => 'Startup',  'slug' => 'startup'],
             (object) ['nom' => 'Porteurs de projet', 'slug' => 'other'],
         ]);
 
         $voteStatusDetails = $this->getVoteStatusDetails();
 
-        return view('vote_secteurs', compact('secteurs', 'projet', 'countries', 'categorie', 'allCategories', 'voteStatusDetails'));
+        return view('vote_secteurs', compact(
+            'secteurs',
+            'projet',
+            'countries',
+            'categorie',
+            'allCategories',
+            'voteStatusDetails'
+        ));
     }
 
     public function projectData($id)
@@ -587,14 +719,14 @@ try {
             ->value('video_demonstration');
 
         $payload = [
-            'id'                 => $projet->id,
-            'nom_projet'         => $projet->nom_projet,
-            'nom_equipe'         => $projet->nom_equipe,
-            'resume'             => $projet->resume,
-            'description'        => $projet->description,
-            'lien_prototype'     => $projet->lien_prototype,
-            'secteur'            => $projet->secteur?->nom ?? null,
-            'video_demonstration'=> $video,
+            'id'                  => $projet->id,
+            'nom_projet'          => $projet->nom_projet,
+            'nom_equipe'          => $projet->nom_equipe,
+            'resume'              => $projet->resume,
+            'description'         => $projet->description,
+            'lien_prototype'      => $projet->lien_prototype,
+            'secteur'             => $projet->secteur?->nom ?? null,
+            'video_demonstration' => $video,
         ];
 
         return response()->json($payload);
@@ -606,9 +738,9 @@ try {
         $startTimeConfig = Configuration::where('cle', 'vote_start_time')->first();
         $endTimeConfig   = Configuration::where('cle', 'vote_end_time')->first();
 
-        $isGloballyInactive = !$globalStatus || $globalStatus->valeur === 'inactive';
-        $hasStartTime       = $startTimeConfig && !empty($startTimeConfig->valeur);
-        $hasEndTime         = $endTimeConfig && !empty($endTimeConfig->valeur);
+        $isGloballyInactive = ! $globalStatus || $globalStatus->valeur === 'inactive';
+        $hasStartTime       = $startTimeConfig && ! empty($startTimeConfig->valeur);
+        $hasEndTime         = $endTimeConfig && ! empty($endTimeConfig->valeur);
 
         $now = now();
 
@@ -646,16 +778,16 @@ try {
         $startTimeConfig = Configuration::where('cle', 'vote_start_time')->first();
         $endTimeConfig   = Configuration::where('cle', 'vote_end_time')->first();
 
-        $isGloballyInactive = !$globalStatus || $globalStatus->valeur === 'inactive';
-        $hasStartTime       = $startTimeConfig && !empty($startTimeConfig->valeur);
-        $hasEndTime         = $endTimeConfig && !empty($endTimeConfig->valeur);
+        $isGloballyInactive = ! $globalStatus || $globalStatus->valeur === 'inactive';
+        $hasStartTime       = $startTimeConfig && ! empty($startTimeConfig->valeur);
+        $hasEndTime         = $endTimeConfig && ! empty($endTimeConfig->valeur);
 
         $now = now();
 
         if ($isGloballyInactive) {
             return [
-                'isVoteActive'   => false,
-                'inactiveMessage'=> 'Le vote est actuellement fermé.',
+                'isVoteActive'    => false,
+                'inactiveMessage' => 'Le vote est actuellement fermé.',
             ];
         }
 
@@ -663,8 +795,8 @@ try {
             $startTime = \Carbon\Carbon::parse($startTimeConfig->valeur);
             if ($now->lessThan($startTime)) {
                 return [
-                    'isVoteActive'   => false,
-                    'inactiveMessage'=> 'Le vote ouvrira le ' . $startTime->format('d/m/Y à H:i') . '.',
+                    'isVoteActive'    => false,
+                    'inactiveMessage' => 'Le vote ouvrira le ' . $startTime->format('d/m/Y à H:i') . '.',
                 ];
             }
         }
@@ -673,15 +805,15 @@ try {
             $endTime = \Carbon\Carbon::parse($endTimeConfig->valeur);
             if ($now->greaterThan($endTime)) {
                 return [
-                    'isVoteActive'   => false,
-                    'inactiveMessage'=> 'Le vote est terminé.',
+                    'isVoteActive'    => false,
+                    'inactiveMessage' => 'Le vote est terminé.',
                 ];
             }
         }
 
         return [
-            'isVoteActive'   => true,
-            'inactiveMessage'=> '',
+            'isVoteActive'    => true,
+            'inactiveMessage' => '',
         ];
     }
 
