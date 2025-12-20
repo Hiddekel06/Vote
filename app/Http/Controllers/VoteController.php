@@ -19,6 +19,8 @@ use App\Models\Configuration;
 use App\Models\Secteur;
 use App\Models\Projet;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;   // pour le rate limiting
+
 
 class VoteController extends Controller
 {
@@ -230,6 +232,25 @@ class VoteController extends Controller
         );
 
         $this->checkVoteStatus();
+                // 🔒 Rate limiting par IP (anti-bot brut)
+                $ip = $request->ip();
+                $ipKey = 'vote_otp_ip:' . $ip;
+                $ipCount = Cache::get($ipKey, 0) + 1;
+                // 10 minutes de fenêtre
+                Cache::put($ipKey, $ipCount, now()->addMinutes(10));
+
+                if ($ipCount > 20) { // > 20 OTP en 10 minutes = très suspect
+                    Log::warning('Rate limit OTP par IP dépassé', [
+                        'ip' => $ip,
+                        'count' => $ipCount,
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Trop de demandes de code ip enregistré',
+                    ], 429);
+                }
+
 
         $projetId   = $validated['projet_id'];
         $nomVotant  = $validated['nom_votant'] ?? null;
@@ -268,6 +289,23 @@ class VoteController extends Controller
         }
 
         $telephone = $e164;
+
+                $phoneKey   = 'vote_otp_phone:' . $telephone;
+                $phoneCount = Cache::get($phoneKey, 0) + 1;
+                Cache::put($phoneKey, $phoneCount, now()->addHour());
+
+                if ($phoneCount > 5) {
+                    Log::warning('Rate limit OTP par téléphone dépassé', [
+                        'phone_last4' => substr(preg_replace('/\D+/', '', $telephone), -4),
+                        'count'       => $phoneCount,
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Trop de demandes de code pour ce numéro. Réessayez plus tard.',
+                    ], 429);
+                }
+
 
         try {
             $alreadyVoted = DB::table('vote_publics')
@@ -309,7 +347,11 @@ class VoteController extends Controller
             'otp'         => $otp,
             'expires_at'  => now()->addMinutes(10),
             'attempts'    => 0,
+            // 🔒 on lie la session OTP à la machine
+            'ip'          => $request->ip(),
+            'user_agent'  => substr($request->userAgent() ?? 'unknown', 0, 1000),
         ]);
+
 
         // 3. Envoyer le code via Orange SMS (couche bas niveau)
 try {
@@ -378,6 +420,21 @@ try {
                 'message' => 'Session OTP expirée ou invalide. Veuillez recommencer le processus de vote.',
             ], 400);
         }
+                // 🔒 Vérifier que l’IP et le user_agent n’ont pas changé entre l’envoi et la vérification
+                if (($otpData['ip'] ?? null) !== $request->ip()) {
+                    Log::warning('OTP IP mismatch', [
+                        'stored_ip' => $otpData['ip'] ?? null,
+                        'current_ip' => $request->ip(),
+                    ]);
+
+                    $request->session()->forget('otp_data');
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Votre session de vote n’est plus valide. Merci de recommencer le processus de vote.',
+                    ], 400);
+                }
+
 
         if (now()->greaterThan($otpData['expires_at'])) {
             $request->session()->forget('otp_data');
@@ -406,7 +463,6 @@ try {
                 'message' => 'Code OTP incorrect. Veuillez réessayer.',
             ], 401);
         }
-
         $phone    = $otpData['telephone'];
         $projetId = $otpData['projet_id'];
 
@@ -424,12 +480,35 @@ try {
                 ], 409);
             }
 
-            DB::transaction(function () use ($projetId, $phone) {
+            // 🔒 infos techniques sur le vote
+            $ip         = $request->ip();
+            $userAgent  = substr($request->userAgent() ?? 'unknown', 0, 1000);
+            $geoCountry = null;
+            $geoCity    = null;
+
+            try {
+                if (function_exists('geoip')) {
+                    $geo = geoip()->getLocation($ip);
+                    $geoCountry = $geo->iso_code ?? $geo->country ?? null;
+                    $geoCity    = $geo->city ?? null;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('GeoIP lookup failed (VoteController)', [
+                    'ip'      => $ip,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+
+            DB::transaction(function () use ($projetId, $phone, $ip, $userAgent, $geoCountry, $geoCity) {
                 VotePublic::create([
                     'projet_id'   => $projetId,
                     'telephone'   => $phone,
                     'token'       => Str::uuid(),
                     'est_verifie' => true,
+                    'ip_address'  => $ip,
+                    'user_agent'  => $userAgent,
+                    'geo_country' => $geoCountry,
+                    'geo_city'    => $geoCity,
                 ]);
             });
 
@@ -439,6 +518,7 @@ try {
                 'success' => true,
                 'message' => 'Votre vote a été enregistré avec succès ! Merci de votre participation.',
             ]);
+
         } catch (QueryException $e) {
             $sqlState = $e->getCode();
             Log::warning('QueryException lors de la création du vote', [

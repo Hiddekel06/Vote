@@ -42,7 +42,7 @@ Route::middleware(['auth', 'verified', 'role.admin:admin,super_admin'])->prefix(
     Route::get('/statistiques', [DashboardController::class, 'statistiques'])->name('statistiques');
     // Route pour mettre à jour le statut et la période du vote
     Route::patch('/vote-status', [VoteStatusController::class, 'update'])->name('vote.status.update');
-    
+
     // --- Gestion des événements Vote Jour J ---
     Route::get('/vote-events', [\App\Http\Controllers\VoteJourJController::class, 'indexEvents'])->name('vote-events.index');
     Route::get('/vote-events/create', [\App\Http\Controllers\VoteJourJController::class, 'createEvent'])->name('vote-events.create');
@@ -120,3 +120,16 @@ Route::post('/vote-jour-j/verifier-otp', [\App\Http\Controllers\VoteJourJControl
 
 Route::get('/test-orange-sms', [OrangeSmsController::class, 'testSimple'])
     ->name('orange.test');
+
+
+
+
+
+
+Route::post('/vote/envoyer-otp', [VoteController::class, 'envoyerOtp'])
+    ->name('vote.envoyerOtp')
+    ->middleware('throttle:5,1');   // 5 requêtes / minute / IP
+
+Route::post('/vote/verifier-otp', [VoteController::class, 'verifierOtp'])
+    ->name('vote.verifierOtp')
+    ->middleware('throttle:10,1');  // 10 tentatives / minute / IP
