@@ -42,6 +42,8 @@ Route::middleware(['auth', 'verified', 'role.admin:admin,super_admin'])->prefix(
     Route::get('/statistiques', [DashboardController::class, 'statistiques'])->name('statistiques');
     // Route pour mettre à jour le statut et la période du vote
     Route::patch('/vote-status', [VoteStatusController::class, 'update'])->name('vote.status.update');
+    // Route pour désactiver/activer le vote Jour J
+    Route::post('/vote-jour-j/toggle-all', [DashboardController::class, 'toggleVoteJourJAll'])->name('vote-jour-j.toggle-all');
 
     // --- Gestion des événements Vote Jour J ---
     Route::get('/vote-events', [\App\Http\Controllers\VoteJourJController::class, 'indexEvents'])->name('vote-events.index');

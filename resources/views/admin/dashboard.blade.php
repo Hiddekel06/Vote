@@ -129,10 +129,10 @@
 
        {{-- NOUVEAU : Contrôle du système de vote --}}
        <div class="row g-3 mb-4">
-           <div class="col-12">
+           <div class="col-12 col-lg-6">
                <div class="card">
                    <div class="card-header">
-                       <h5 class="mb-0">Contrôle du système de vote</h5>
+                       <h5 class="mb-0">Contrôle du vote public</h5>
                    </div>
                    <div class="card-body">
                        <div class="form-check form-switch">
@@ -149,10 +149,32 @@
                    </div>
                </div>
            </div>
+
+           <div class="col-12 col-lg-6">
+               <div class="card">
+                   <div class="card-header">
+                       <h5 class="mb-0">Contrôle du vote Jour J</h5>
+                   </div>
+                   <div class="card-body">
+                       <div class="form-check form-switch">
+                           <input class="form-check-input" type="checkbox" id="voteJourJToggle"
+                               data-url="{{ route('admin.vote-jour-j.toggle-all') }}"
+                               {{ $voteJourJEnabled ? 'checked' : '' }}>
+                           <label class="form-check-label" for="voteJourJToggle">
+                               <span id="voteJourJLabel">{{ $voteJourJEnabled ? 'Vote Jour J Actif' : 'Vote Jour J Inactif' }}</span>
+                           </label>
+                       </div>
+                       <p class="text-muted mt-2" id="voteJourJMessage">
+                           Le vote Jour J est actuellement {{ $voteJourJEnabled ? 'activé' : 'désactivé' }}.
+                       </p>
+                   </div>
+               </div>
+           </div>
        </div>
 
        <script>
            document.addEventListener('DOMContentLoaded', function() {
+               // ===== VOTE PUBLIC =====
                const voteStatusToggle = document.getElementById('voteStatusToggle');
                const voteStatusLabel = document.getElementById('voteStatusLabel');
                const voteStatusMessage = document.getElementById('voteStatusMessage');
@@ -211,6 +233,58 @@
                        alert('Une erreur est survenue lors de la communication avec le serveur.');
                    });
                });
+
+               // ===== VOTE JOUR J =====
+               const voteJourJToggle = document.getElementById('voteJourJToggle');
+               const voteJourJLabel = document.getElementById('voteJourJLabel');
+               const voteJourJMessage = document.getElementById('voteJourJMessage');
+
+               if (voteJourJToggle) {
+                   voteJourJToggle.addEventListener('change', function() {
+                       const newStatus = this.checked ? 'enable' : 'disable';
+                       const url = this.dataset.url;
+
+                       fetch(url, {
+                           method: 'POST',
+                           credentials: 'same-origin',
+                           headers: {
+                               'Content-Type': 'application/json',
+                               'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                               'Accept': 'application/json'
+                           },
+                           body: JSON.stringify({ status: newStatus })
+                       })
+                       .then(async response => {
+                           let payload;
+                           const text = await response.text();
+                           try {
+                               payload = JSON.parse(text || '{}');
+                           } catch (e) {
+                               payload = { message: text };
+                           }
+
+                           if (!response.ok) {
+                               this.checked = !this.checked;
+                               console.error('Server error:', response.status, payload);
+                               alert('Erreur: ' + (payload.message || 'Erreur serveur'));
+                               return;
+                           }
+
+                           if (payload.success || response.status === 200) {
+                               voteJourJMessage.textContent = `Le vote Jour J est actuellement ${newStatus === 'enable' ? 'activé' : 'désactivé'}.`;
+                               voteJourJLabel.textContent = newStatus === 'enable' ? 'Vote Jour J Actif' : 'Vote Jour J Inactif';
+                           } else {
+                               this.checked = !this.checked;
+                               alert('La mise à jour a échoué: ' + (payload.message || 'Réponse inattendue'));
+                           }
+                       })
+                       .catch(error => {
+                           console.error('Network error:', error);
+                           this.checked = !this.checked;
+                           alert('Une erreur est survenue lors de la communication avec le serveur.');
+                       });
+                   });
+               }
            });
        </script>
 

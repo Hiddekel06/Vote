@@ -9,6 +9,7 @@ use App\Models\Secteur;
 use App\Models\Projet;
 use App\Models\Submission;
 use App\Models\Vote;
+use App\Models\VoteEvent;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -36,6 +37,9 @@ public function index(): View
     // Statut du vote
     $voteStatus = Configuration::where('cle', 'vote_status')->first();
     $currentStatus = $voteStatus ? $voteStatus->valeur : 'inactive';
+
+    // Statut du vote Jour J - Vérifier s'il y a des événements actifs
+    $voteJourJEnabled = VoteEvent::where('is_active', true)->exists();
 
     // Statistiques générales
    $totalProjets = Projet::whereIn('id', $preselectedProjectIds)->count();
@@ -293,7 +297,7 @@ public function index(): View
 
     // ✅ Envoi à la vue
     return view('admin.dashboard', compact(
-        'projets', 'currentStatus',
+        'projets', 'currentStatus', 'voteJourJEnabled',
         'totalProjets', 'totalVotes', 'totalVotants', 'projetEnTete',
         'profileTypeLabels', 'profileTypeData',
         'categorieLabels', 'categorieData',
@@ -451,5 +455,29 @@ public function index(): View
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Toggle all Vote Jour J events (enable/disable)
+     */
+    public function toggleVoteJourJAll(Request $request)
+    {
+        $status = $request->input('status', 'disable');
+        $isEnable = $status === 'enable';
+
+        try {
+            // Mettre à jour tous les événements
+            VoteEvent::query()->update(['is_active' => $isEnable]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $isEnable ? 'Vote Jour J activé' : 'Vote Jour J désactivé'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

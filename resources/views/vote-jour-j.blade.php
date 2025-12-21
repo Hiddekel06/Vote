@@ -34,6 +34,7 @@
         class="bg-black bg-opacity-60 p-8 rounded-lg shadow-2xl max-w-6xl mx-auto w-full"
         x-data="{
             showModal: false,
+            showWelcomeModal: false,
             modalProjet: null,
             showVoteModal: false,
             voteProjet: null,
@@ -165,8 +166,19 @@
         x-init="
             const self = this;
 
-            // Lancer la capture GPS automatiquement
-            this.captureGPS();
+            // Afficher la modale d'accueil UNE SEULE FOIS
+            if (!sessionStorage.getItem('welcome_modal_shown')) {
+                this.showWelcomeModal = true;
+                sessionStorage.setItem('welcome_modal_shown', 'true');
+            }
+
+            // Lancer la capture GPS automatiquement SEULEMENT si le vote Jour J est actif
+            if (this.hasEvent) {
+                this.captureGPS();
+            } else {
+                this.gpsStatus = 'unavailable';
+                this.gpsMessage = 'Vote Jour J désactivé ';
+            }
 
             if (!isVoteActive) {
                 voteStep = 3;
@@ -193,6 +205,62 @@
         "
         @keydown.escape.window="showModal = false; showVoteModal = false"
     >
+        <!-- Modale d'accueil - Étapes du vote -->
+        <div class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4"
+             x-show="showWelcomeModal"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100">
+            <div class="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-yellow-500/20 p-8 text-center"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="scale-95 opacity-0"
+                 x-transition:enter-end="scale-100 opacity-100">
+                
+                <!-- Titre -->
+                <h1 class="text-3xl font-bold text-yellow-400 mb-8">🏆 GRANDE FINALE<br>GOV'ATHON</h1>
+
+                <!-- Étapes -->
+                <div class="space-y-4 mb-8 text-left">
+                    <div class="flex items-start gap-4">
+                        <div class="flex-shrink-0 w-8 h-8 bg-yellow-500 text-black rounded-full font-bold flex items-center justify-center">1</div>
+                        <div>
+                            <p class="text-white font-semibold">Activer la localisation</p>
+                            <p class="text-gray-400 text-sm">Nous aurons besoin de votre position GPS</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start gap-4">
+                        <div class="flex-shrink-0 w-8 h-8 bg-yellow-500 text-black rounded-full font-bold flex items-center justify-center">2</div>
+                        <div>
+                            <p class="text-white font-semibold">Sélectionner un projet</p>
+                            <p class="text-gray-400 text-sm">Parcourez et choisissez votre favori</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-4">
+                        <div class="flex-shrink-0 w-8 h-8 bg-yellow-500 text-black rounded-full font-bold flex items-center justify-center">3</div>
+                        <div>
+                            <p class="text-white font-semibold">Entrer votre numéro</p>
+                            <p class="text-gray-400 text-sm">Pour vérifier votre identité</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-4">
+                        <div class="flex-shrink-0 w-8 h-8 bg-yellow-500 text-black rounded-full font-bold flex items-center justify-center">4</div>
+                        <div>
+                            <p class="text-white font-semibold">Confirmer votre vote</p>
+                            <p class="text-gray-400 text-sm">Validez et c'est fait !</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bouton -->
+                <button @click="showWelcomeModal = false"
+                        class="w-full px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-black rounded-lg font-bold transition-colors">
+                    Commencer
+                </button>
+            </div>
+        </div>
 
         <!-- Bouton Retour -->
         <div class="mb-4">
@@ -216,8 +284,8 @@
                 🏆 GRANDE FINALE JOUR J
             </h1>
             @if(!$event)
-                <div class="mt-2 px-4 py-2 bg-yellow-900/30 border border-yellow-700 rounded-lg inline-block">
-                    <p class="text-yellow-300 text-xs">⚠️ Aucun événement GPS actif</p>
+                <div class="mt-2 px-4 py-2 bg-red-900/30 border border-red-700 rounded-lg inline-block">
+                    <p class="text-red-300 text-xs">❌ Le vote Jour J est actuellement désactivé</p>
                 </div>
             @endif
         </div>
@@ -486,6 +554,7 @@
                                 ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
                         @endphp
                         <tr
+                            :class="{ 'opacity-50 hover:bg-gray-800/20': !hasEvent }"
                             class="block md:table-row border-b border-gray-700 hover:bg-gray-900/30 transition-colors bg-gray-800/40 md:bg-transparent rounded-lg md:rounded-none mb-3 md:mb-0"
                             x-show="selectedCategory === 'all' || selectedCategory === '{{ $profileType }}'">
                             <td class="hidden md:table-cell p-4" data-label="Secteur : ">
@@ -605,13 +674,15 @@
                                             class="group flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
                                             :class="{
                                                 'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black':
-                                                    isVoteActive && isInRange && gpsStatus === 'success',
+                                                    hasEvent && isVoteActive && isInRange && gpsStatus === 'success',
                                                 'bg-gray-600 text-gray-300 cursor-not-allowed':
-                                                    !isVoteActive || !isInRange || gpsStatus !== 'success'
+                                                    !hasEvent || !isVoteActive || !isInRange || gpsStatus !== 'success'
                                             }"
-                                            :disabled="!isVoteActive || !isInRange || gpsStatus !== 'success'"
+                                            :disabled="!hasEvent || !isVoteActive || !isInRange || gpsStatus !== 'success'"
                                             @click="
-                                                if (isInRange && gpsStatus === 'success') {
+                                                if (!hasEvent) {
+                                                    alert('❌ Le système de vote Jour J est désactivé. Aucun événement actif');
+                                                } else if (isInRange && gpsStatus === 'success') {
                                                     voteProjet = @js($projet);
                                                     showVoteModal = true;
                                                     voteStep = isVoteActive ? 1 : 3;
@@ -742,13 +813,15 @@
                                         class="group flex items-center justify-center gap-2 md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
                                         :class="{
                                             'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black':
-                                                isVoteActive && isInRange && gpsStatus === 'success',
+                                                hasEvent && isVoteActive && isInRange && gpsStatus === 'success',
                                             'bg-gray-600 text-gray-300 cursor-not-allowed':
-                                                !isVoteActive || !isInRange || gpsStatus !== 'success'
+                                                !hasEvent || !isVoteActive || !isInRange || gpsStatus !== 'success'
                                         }"
-                                        :disabled="!isVoteActive || !isInRange || gpsStatus !== 'success'"
+                                        :disabled="!hasEvent || !isVoteActive || !isInRange || gpsStatus !== 'success'"
                                         @click="
-                                            if (isInRange && gpsStatus === 'success') {
+                                            if (!hasEvent) {
+                                                alert('❌ Le système de vote Jour J est désactivé. Aucun événement actif');
+                                            } else if (isInRange && gpsStatus === 'success') {
                                                 voteProjet = @js($projet);
                                                 showVoteModal = true;
                                                 voteStep = isVoteActive ? 1 : 3;
