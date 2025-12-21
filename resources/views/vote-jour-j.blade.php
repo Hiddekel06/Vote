@@ -75,7 +75,7 @@
             inactiveNoticeVisible: false,
             showInactiveNotice() {
                 this.inactiveNoticeVisible = true;
-                setTimeout(() => { this.inactiveNoticeVisible = false }, 1000);
+                setTimeout(() => { this.inactiveNoticeVisible = false }, 1200);
             },
 
             // 🌍 Fonction de calcul de distance (Haversine)
@@ -177,7 +177,7 @@
                 this.captureGPS();
             } else {
                 this.gpsStatus = 'unavailable';
-                this.gpsMessage = 'Vote Jour J désactivé ';
+                this.gpsMessage = 'Vote Jour J désactivé';
             }
 
             // Si le vote est globalement désactivé côté backend
@@ -206,6 +206,22 @@
         "
         @keydown.escape.window="showModal = false; showVoteModal = false"
     >
+        <!-- Toast rapide quand vote désactivé -->
+        <div
+            x-show="inactiveNoticeVisible"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 translate-y-2"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 translate-y-2"
+            class="fixed top-4 inset-x-0 flex justify-center z-50 px-4"
+        >
+            <div class="bg-red-900/90 border border-red-500/60 text-red-100 text-sm px-4 py-2 rounded-full shadow-lg">
+                Le vote Jour J est momentanément fermé.
+            </div>
+        </div>
+
         <!-- Modale d'accueil - Étapes du vote -->
         <div class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4"
              x-show="showWelcomeModal"
@@ -417,7 +433,7 @@
                     id="menu-button"
                     aria-haspopup="true"
                     :aria-expanded="categoryMenuOpen">
-                    <span class="whitespace-nowrap">Categorie :</span>
+                    <span class="whitespace-nowrap">Catégorie :</span>
                     <span class="text-white break-words"
                           x-text="selectedCategory === 'all'
                             ? 'Toutes'
@@ -700,7 +716,7 @@
                                                 } else if (gpsStatus !== 'success') {
                                                     alert('⚠️ Attendez que votre position GPS soit détectée');
                                                 } else {
-                                                    alert('❌ Vous devez être sur place pour voter');
+                                                    alert('❌ Vous devez être sur place pour voter' + (distanceToEvent ? ' (distance: ' + Math.round(distanceToEvent) + 'm)' : ''));
                                                 }
                                             ">
                                             <svg xmlns="http://www.w3.org/2000/svg"
@@ -994,19 +1010,6 @@
                 </div>
 
                 <div class="p-6 space-y-4">
-                    @csrf
-
-                    @if($errors->any())
-                        <div class="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg relative" role="alert">
-                            <strong class="font-bold">Oups ! Une erreur est survenue.</strong>
-                            <ul class="mt-2 list-disc list-inside text-sm">
-                                @foreach($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-
                     {{-- Étape 1 --}}
                     <div x-show="voteStep === 1">
                         <form id="otp-request-form"
@@ -1015,6 +1018,8 @@
                               data-vote-jour-j-url="{{ route('vote-jour-j.store') }}"
                               data-recaptcha-key="{{ config('services.recaptcha.site_key') }}"
                               onsubmit="return false;">
+                            @csrf
+
                             <input type="hidden" name="projet_id" :value="voteProjet?.id">
                             <input type="hidden" name="telephone" id="telephone_full">
                             <input type="hidden" name="recaptcha_token" id="recaptcha-token">
@@ -1082,6 +1087,8 @@
                               class="space-y-4"
                               data-verify-otp-url="{{ route('vote-jour-j.verifierOtp') }}"
                               onsubmit="return false;">
+                            @csrf
+
                             <p class="text-center text-gray-300">
                                 Un code a été envoyé. Veuillez le saisir ci-dessous.
                             </p>
