@@ -39,9 +39,9 @@
             showVoteModal: false,
             voteProjet: null,
 
-            // Vote Jour J : si un event existe, on considère que le vote est actif
-            isVoteActive: true,
-            inactiveMessage: '',
+            // Vote Jour J : valeur dynamique depuis le backend
+            isVoteActive: @json($isVoteActive ?? true),
+            inactiveMessage: @json($inactiveMessage ?? \"Le vote Jour J n'est pas ouvert pour le moment.\"),
 
             voteStep: 1,
             isLoading: false,
@@ -172,7 +172,7 @@
                 sessionStorage.setItem('welcome_modal_shown', 'true');
             }
 
-            // Lancer la capture GPS automatiquement SEULEMENT si le vote Jour J est actif
+            // Lancer la capture GPS automatiquement SEULEMENT si le vote Jour J est actif (événement)
             if (this.hasEvent) {
                 this.captureGPS();
             } else {
@@ -180,9 +180,10 @@
                 this.gpsMessage = 'Vote Jour J désactivé ';
             }
 
-            if (!isVoteActive) {
-                voteStep = 3;
-                errorMessage = inactiveMessage;
+            // Si le vote est globalement désactivé côté backend
+            if (!self.isVoteActive) {
+                self.voteStep = 3;
+                self.errorMessage = self.inactiveMessage;
             }
 
             window.addEventListener('project-data', function(e) {
@@ -197,8 +198,8 @@
                 self.voteProjet = e.detail;
                 self.showVoteModal = true;
                 console.log('🎯 Alpine: showVoteModal mis à true');
-                self.voteStep = isVoteActive ? 1 : 3;
-                self.errorMessage = isVoteActive ? '' : inactiveMessage;
+                self.voteStep = self.isVoteActive ? 1 : 3;
+                self.errorMessage = self.isVoteActive ? '' : self.inactiveMessage;
                 self.successMessage = '';
                 console.log('🎯 Alpine: voteStep =', self.voteStep, ', showVoteModal =', self.showVoteModal);
             });
@@ -215,7 +216,7 @@
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="scale-95 opacity-0"
                  x-transition:enter-end="scale-100 opacity-100">
-                
+
                 <!-- Titre -->
                 <h1 class="text-3xl font-bold text-yellow-400 mb-8">🏆 GRANDE FINALE<br>GOV'ATHON</h1>
 
@@ -228,7 +229,7 @@
                             <p class="text-gray-400 text-sm">Nous aurons besoin de votre position GPS</p>
                         </div>
                     </div>
-                    
+
                     <div class="flex items-start gap-4">
                         <div class="flex-shrink-0 w-8 h-8 bg-yellow-500 text-black rounded-full font-bold flex items-center justify-center">2</div>
                         <div>
@@ -255,10 +256,18 @@
                 </div>
 
                 <!-- Bouton -->
-                <button @click="showWelcomeModal = false"
-                        class="w-full px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-black rounded-lg font-bold transition-colors">
+                <button
+                    @click="
+                        showWelcomeModal = false;
+                        // Dès qu'il ferme la modale, on déclenche la demande de localisation
+                        if (hasEvent) {
+                            captureGPS();
+                        }
+                    "
+                    class="w-full px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-black rounded-lg font-bold transition-colors">
                     Commencer
                 </button>
+
             </div>
         </div>
 
