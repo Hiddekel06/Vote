@@ -22,15 +22,19 @@
 
     <!-- Police -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <!-- Si Alpine n'est pas déjà dans ton bundle Vite, décommente ceci -->
+    <!-- Alpine (si pas déjà dans Vite) -->
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
     <style>
         .bg-image-custom { background-image: url('{{ asset('assets/img/bg-vote.jpg') }}'); }
         [x-cloak] { display: none !important; }
+
+        /* Gate GPS (non Alpine) */
+        #gpsGate { display: none; }
+        #gpsGate.is-open { display: flex; }
     </style>
 </head>
 
@@ -39,7 +43,6 @@
 <x-header />
 
 @php
-    // Flags simples pour la vue
     $isVoteActive = $isVoteActive ?? true;
     $inactiveMessage = $inactiveMessage ?? "Le vote Jour J n'est pas ouvert pour le moment.";
 
@@ -51,10 +54,41 @@
     ] : null;
 
     $__projectsCount = 0;
-    foreach ($secteurs as $__s) {
-        $__projectsCount += $__s->projets->count();
-    }
+    foreach ($secteurs as $__s) { $__projectsCount += $__s->projets->count(); }
 @endphp
+
+{{-- ✅ GPS Gate (fiable iPhone / QR / navigateur interne) --}}
+<div id="gpsGate" class="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md p-4 items-center justify-center">
+    <div class="w-full max-w-md rounded-2xl bg-gray-900 border border-yellow-500/30 shadow-2xl p-6 text-center">
+        <h2 class="text-2xl font-bold text-yellow-400 mb-2">📍 Activer la localisation</h2>
+
+        <p id="gpsGateMsg" class="text-sm text-gray-300 mb-5">
+            Pour voter, vous devez autoriser la géolocalisation (sur place).
+        </p>
+
+        <div class="flex flex-col gap-3">
+            <button id="gpsGateBtn"
+                    class="w-full px-4 py-3 rounded-xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black">
+                Activer la localisation
+            </button>
+
+            <button id="gpsGateCopy"
+                    class="w-full px-4 py-3 rounded-xl font-semibold bg-gray-800 hover:bg-gray-700 text-white">
+                Copier le lien
+            </button>
+
+            <button id="gpsGateClose"
+                    class="text-xs text-gray-400 hover:text-gray-200 underline">
+                Fermer (je comprends)
+            </button>
+        </div>
+
+        <p class="mt-4 text-[11px] text-gray-500 leading-relaxed">
+            Si vous êtes dans un lecteur QR / navigateur interne et que le GPS ne s’active pas,
+            ouvrez le lien dans <strong>Safari</strong> ou <strong>Chrome</strong>.
+        </p>
+    </div>
+</div>
 
 <main class="flex-grow container mx-auto px-4 py-12 flex items-center overflow-x-hidden">
     <div
@@ -73,7 +107,7 @@
         @keydown.escape.window="closeAll()"
     >
 
-        <!-- Toast rapide quand vote désactivé -->
+        {{-- Toast vote désactivé --}}
         <div
             x-cloak
             x-show="inactiveNoticeVisible"
@@ -90,7 +124,7 @@
             </div>
         </div>
 
-        <!-- Modale d'accueil - Étapes du vote -->
+        {{-- Modale d’accueil (étapes) --}}
         <div
             x-cloak
             class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4"
@@ -147,7 +181,7 @@
             </div>
         </div>
 
-        <!-- Bouton Retour -->
+        {{-- Bouton Retour --}}
         <div class="mb-4">
             <a href="{{ route('vote.index') }}"
                class="inline-flex items-center gap-2 text-gray-400 hover:text-yellow-400 transition-colors text-sm">
@@ -160,7 +194,7 @@
             </a>
         </div>
 
-        <!-- Titre -->
+        {{-- Titre --}}
         <div class="text-center mb-4 px-2">
             <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-2">🏆 GRANDE FINALE JOUR J</h1>
 
@@ -175,33 +209,28 @@
             </div>
         </div>
 
-        <!-- 🌍 Indicateur GPS -->
+        {{-- 🌍 Indicateur GPS --}}
         <div class="mb-6 px-2">
             <div class="max-w-2xl mx-auto">
 
-                <!-- IDLE -->
-                <div
-                    x-cloak
-                    x-show="gpsStatus === 'idle'"
-                    class="flex flex-col items-center justify-center gap-2 bg-gray-800/50 border border-gray-600/50 rounded-lg px-4 py-3"
-                >
+                {{-- IDLE --}}
+                <div x-cloak x-show="gpsStatus === 'idle'"
+                     class="flex flex-col items-center justify-center gap-2 bg-gray-800/50 border border-gray-600/50 rounded-lg px-4 py-3">
                     <div class="flex items-center gap-3">
                         <svg class="h-5 w-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"></path>
                         </svg>
                         <span class="text-gray-200 text-sm font-medium" x-text="gpsMessage"></span>
                     </div>
-                    <button @click="captureGPS(true)" class="text-xs text-yellow-300 hover:text-yellow-200 underline">
+                    <button @click="captureGPS(true); window.showGpsGate?.('Recherche de votre position… Autorisez la localisation.');"
+                            class="text-xs text-yellow-300 hover:text-yellow-200 underline">
                         Activer la localisation
                     </button>
                 </div>
 
-                <!-- Loading -->
-                <div
-                    x-cloak
-                    x-show="gpsStatus === 'loading'"
-                    class="flex items-center justify-center gap-3 bg-blue-900/30 border border-blue-600/50 rounded-lg px-4 py-3"
-                >
+                {{-- Loading --}}
+                <div x-cloak x-show="gpsStatus === 'loading'"
+                     class="flex items-center justify-center gap-3 bg-blue-900/30 border border-blue-600/50 rounded-lg px-4 py-3">
                     <svg class="animate-spin h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor"
@@ -210,12 +239,9 @@
                     <span class="text-blue-300 text-sm font-medium" x-text="gpsMessage"></span>
                 </div>
 
-                <!-- Succès -->
-                <div
-                    x-cloak
-                    x-show="gpsStatus === 'success' && isInRange"
-                    class="flex items-center justify-center gap-3 bg-green-900/30 border border-green-500/50 rounded-lg px-4 py-3"
-                >
+                {{-- Succès --}}
+                <div x-cloak x-show="gpsStatus === 'success' && isInRange"
+                     class="flex items-center justify-center gap-3 bg-green-900/30 border border-green-500/50 rounded-lg px-4 py-3">
                     <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -223,12 +249,9 @@
                     <span class="text-green-300 text-sm font-medium" x-text="gpsMessage"></span>
                 </div>
 
-                <!-- Hors du rayon / Erreur -->
-                <div
-                    x-cloak
-                    x-show="gpsStatus === 'error'"
-                    class="flex flex-col items-center justify-center gap-2 bg-red-900/30 border border-red-500/50 rounded-lg px-4 py-3"
-                >
+                {{-- Hors zone / Erreur --}}
+                <div x-cloak x-show="gpsStatus === 'error'"
+                     class="flex flex-col items-center justify-center gap-2 bg-red-900/30 border border-red-500/50 rounded-lg px-4 py-3">
                     <div class="flex items-center gap-3">
                         <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -236,17 +259,15 @@
                         </svg>
                         <span class="text-red-300 text-sm font-medium" x-text="gpsMessage"></span>
                     </div>
-                    <button @click="captureGPS(true)" class="text-xs text-red-200 hover:text-white underline">
+                    <button @click="captureGPS(true); window.showGpsGate?.('Réessai… Autorisez la localisation.');"
+                            class="text-xs text-red-200 hover:text-white underline">
                         Réessayer
                     </button>
                 </div>
 
-                <!-- Permission refusée -->
-                <div
-                    x-cloak
-                    x-show="gpsStatus === 'denied'"
-                    class="flex flex-col items-center justify-center gap-2 bg-orange-900/30 border border-orange-500/50 rounded-lg px-4 py-3"
-                >
+                {{-- Permission refusée --}}
+                <div x-cloak x-show="gpsStatus === 'denied'"
+                     class="flex flex-col items-center justify-center gap-2 bg-orange-900/30 border border-orange-500/50 rounded-lg px-4 py-3">
                     <div class="flex items-center gap-3">
                         <svg class="h-5 w-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -255,19 +276,17 @@
                         <span class="text-orange-300 text-sm font-medium" x-text="gpsMessage"></span>
                     </div>
                     <p class="text-xs text-orange-200 text-center">
-                        Cliquez sur l'icône 🔒 dans votre navigateur pour autoriser la géolocalisation
+                        Cliquez sur l’icône 🔒 du navigateur, puis autorisez “Localisation”.
                     </p>
-                    <button @click="captureGPS(true)" class="text-xs text-orange-200 hover:text-white underline">
+                    <button @click="captureGPS(true); window.showGpsGate?.('Essayez à nouveau après avoir autorisé la localisation.');"
+                            class="text-xs text-orange-200 hover:text-white underline">
                         Réessayer
                     </button>
                 </div>
 
-                <!-- Non disponible -->
-                <div
-                    x-cloak
-                    x-show="gpsStatus === 'unavailable'"
-                    class="flex items-center justify-center gap-3 bg-gray-800/50 border border-gray-600/50 rounded-lg px-4 py-3"
-                >
+                {{-- Non disponible --}}
+                <div x-cloak x-show="gpsStatus === 'unavailable'"
+                     class="flex items-center justify-center gap-3 bg-gray-800/50 border border-gray-600/50 rounded-lg px-4 py-3">
                     <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"></path>
@@ -278,7 +297,7 @@
             </div>
         </div>
 
-        <!-- Dropdown catégories -->
+        {{-- Dropdown catégories --}}
         <div class="text-center mb-4 px-2">
             <div class="relative inline-block text-left max-w-full">
                 <button
@@ -354,7 +373,7 @@
             <span class="text-gray-500">({{ $__projectsCount }} projet(s))</span>
         </p>
 
-        <!-- Barre de recherche -->
+        {{-- Recherche --}}
         <div class="mb-8">
             <form action="{{ route('vote-jour-j.show') }}" method="GET" class="w-full">
                 <div class="flex flex-col sm:flex-row gap-2 w-full">
@@ -387,7 +406,7 @@
             </form>
         </div>
 
-        <!-- Tableau des projets -->
+        {{-- Tableau projets --}}
         <div class="overflow-x-visible md:overflow-x-auto">
             <table class="w-full text-left border-collapse md:max-w-4xl md:mx-auto">
                 <thead class="bg-gray-800 hidden md:table-header-group">
@@ -431,16 +450,16 @@
                             :class="{ 'opacity-50 hover:bg-gray-800/20': !hasEvent }"
                             x-show="selectedCategory === 'all' || selectedCategory === '{{ $profileType }}'"
                         >
-                            <td class="hidden md:table-cell p-4" data-label="Secteur : ">{{ $secteur->nom }}</td>
+                            <td class="hidden md:table-cell p-4">{{ $secteur->nom }}</td>
 
-                            <td class="hidden md:table-cell p-4" data-label="Équipe : ">
+                            <td class="hidden md:table-cell p-4">
                                 <div>{{ $projet->nom_equipe }}</div>
                                 @if($school)
                                     <div class="text-sm text-yellow-300 font-semibold mt-1">{{ $school }}</div>
                                 @endif
                             </td>
 
-                            <td class="block md:table-cell p-3 md:p-4 font-semibold" data-label="Projet : ">
+                            <td class="block md:table-cell p-3 md:p-4 font-semibold">
                                 <div class="flex flex-col gap-1">
                                     <div class="md:hidden">
                                         <div class="text-[10px] text-gray-400 font-medium tracking-tight mb-1">Nom Équipe :</div>
@@ -456,16 +475,13 @@
                             </td>
 
                             <td class="block md:table-cell p-3 md:p-4 text-center align-middle">
-                                <!-- Mobile -->
+                                {{-- Mobile --}}
                                 <div class="md:hidden flex flex-col gap-3">
                                     <div class="flex items-center justify-center gap-3">
-                                        <!-- Détails -->
-                                        <button
-                                            type="button"
-                                            class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                            title="Détails"
-                                            @click="openDetails(@js($projet))"
-                                        >
+                                        <button type="button"
+                                                class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                title="Détails"
+                                                @click="openDetails(@js($projet))">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
                                                  fill="none" stroke="currentColor" stroke-width="1.8">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -473,19 +489,15 @@
                                             </svg>
                                         </button>
 
-                                        <!-- Partager -->
-                                        <button
-                                            type="button"
-                                            class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                            title="Partager ce projet"
-                                            onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))"
-                                        >
+                                        <button type="button"
+                                                class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                title="Partager ce projet"
+                                                onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                 <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                                             </svg>
                                         </button>
 
-                                        <!-- Démo -->
                                         @if($demoUrl)
                                             <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
                                                class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
@@ -511,15 +523,12 @@
                                         @endif
                                     </div>
 
-                                    <!-- Bouton voter (mobile) -->
                                     <div class="relative">
-                                        <button
-                                            type="button"
-                                            class="group flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
-                                            :class="voteButtonClass()"
-                                            :disabled="voteButtonDisabled()"
-                                            @click="openVote(@js($projet))"
-                                        >
+                                        <button type="button"
+                                                class="group flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
+                                                :class="voteButtonClass()"
+                                                :disabled="voteButtonDisabled()"
+                                                @click="openVote(@js($projet))">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                                  viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -528,24 +537,19 @@
                                             Voter
                                         </button>
 
-                                        <button
-                                            x-cloak
-                                            x-show="voteButtonDisabled()"
-                                            @click.prevent="explainWhyVoteDisabled()"
-                                            class="absolute inset-0 w-full h-full z-20 bg-transparent"
-                                            aria-hidden="true"
-                                        ></button>
+                                        <button x-cloak x-show="voteButtonDisabled()"
+                                                @click.prevent="explainWhyVoteDisabled()"
+                                                class="absolute inset-0 w-full h-full z-20 bg-transparent"
+                                                aria-hidden="true"></button>
                                     </div>
                                 </div>
 
-                                <!-- Desktop -->
+                                {{-- Desktop --}}
                                 <div class="hidden md:flex relative md:flex-row items-center justify-center gap-2">
-                                    <button
-                                        type="button"
-                                        class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                        title="Détails"
-                                        @click="openDetails(@js($projet))"
-                                    >
+                                    <button type="button"
+                                            class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                            title="Détails"
+                                            @click="openDetails(@js($projet))">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
                                              fill="none" stroke="currentColor" stroke-width="1.8">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -553,12 +557,10 @@
                                         </svg>
                                     </button>
 
-                                    <button
-                                        type="button"
-                                        class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                        title="Partager ce projet"
-                                        onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))"
-                                    >
+                                    <button type="button"
+                                            class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                            title="Partager ce projet"
+                                            onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                             <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                                         </svg>
@@ -588,13 +590,11 @@
                                         </span>
                                     @endif
 
-                                    <button
-                                        type="button"
-                                        class="group flex items-center justify-center gap-2 md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
-                                        :class="voteButtonClass()"
-                                        :disabled="voteButtonDisabled()"
-                                        @click="openVote(@js($projet))"
-                                    >
+                                    <button type="button"
+                                            class="group flex items-center justify-center gap-2 md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
+                                            :class="voteButtonClass()"
+                                            :disabled="voteButtonDisabled()"
+                                            @click="openVote(@js($projet))">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                              viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -603,13 +603,10 @@
                                         Voter
                                     </button>
 
-                                    <button
-                                        x-cloak
-                                        x-show="voteButtonDisabled()"
-                                        @click.prevent="explainWhyVoteDisabled()"
-                                        class="absolute inset-0 w-full h-full z-20 bg-transparent"
-                                        aria-hidden="true"
-                                    ></button>
+                                    <button x-cloak x-show="voteButtonDisabled()"
+                                            @click.prevent="explainWhyVoteDisabled()"
+                                            class="absolute inset-0 w-full h-full z-20 bg-transparent"
+                                            aria-hidden="true"></button>
                                 </div>
                             </td>
                         </tr>
@@ -621,28 +618,23 @@
         </div>
 
         {{-- Modale DÉTAILS --}}
-        <div
-            x-cloak
-            x-show="showModal"
-            class="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0"
-            x-transition:enter-end="opacity-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-        >
-            <div
-                @click.away="showModal = false"
-                class="bg-gray-900/95 border-yellow-400/30 rounded-lg shadow-2xl max-w-2xl w-full text-white relative flex flex-col"
-                style="max-height: 90vh;"
-                x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 transform scale-90"
-                x-transition:enter-end="opacity-100 transform scale-100"
-                x-transition:leave="transition ease-in duration-200"
-                x-transition:leave-start="opacity-100 transform scale-100"
-                x-transition:leave-end="opacity-0 transform scale-90"
-            >
+        <div x-cloak x-show="showModal"
+             class="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+            <div @click.away="showModal = false"
+                 class="bg-gray-900/95 border-yellow-400/30 rounded-lg shadow-2xl max-w-2xl w-full text-white relative flex flex-col"
+                 style="max-height: 90vh;"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 transform scale-90"
+                 x-transition:enter-end="opacity-100 transform scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 transform scale-100"
+                 x-transition:leave-end="opacity-0 transform scale-90">
                 <div class="p-6 border-b border-gray-700 flex-shrink-0">
                     <button @click="showModal = false" class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl leading-none">
                         &times;
@@ -661,19 +653,14 @@
 
                     <div>
                         <strong class="text-gray-300">Description :</strong>
-                        <div
-                            class="whitespace-pre-wrap"
-                            :class="{'max-h-24 overflow-hidden': !descriptionExpanded && (modalProjet?.description?.length || 0) > 250}"
-                        >
+                        <div class="whitespace-pre-wrap"
+                             :class="{'max-h-24 overflow-hidden': !descriptionExpanded && (modalProjet?.description?.length || 0) > 250}">
                             <span x-text="modalProjet?.description"></span>
                         </div>
 
-                        <button
-                            x-cloak
-                            x-show="(modalProjet?.description?.length || 0) > 250"
-                            @click="descriptionExpanded = !descriptionExpanded"
-                            class="text-yellow-400 hover:text-yellow-300 mt-2 text-sm"
-                        >
+                        <button x-cloak x-show="(modalProjet?.description?.length || 0) > 250"
+                                @click="descriptionExpanded = !descriptionExpanded"
+                                class="text-yellow-400 hover:text-yellow-300 mt-2 text-sm">
                             <span x-text="descriptionExpanded ? 'Voir moins' : 'Voir plus'"></span>
                         </button>
                     </div>
@@ -682,32 +669,26 @@
         </div>
 
         {{-- Modale VOTE --}}
-        <div
-            x-cloak
-            x-show="showVoteModal"
-            class="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0"
-            x-transition:enter-end="opacity-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-        >
-            <div
-                @click.away="if (!isLoading) showVoteModal = false"
-                class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-2xl max-w-lg w-full text-white relative flex flex-col"
-                x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 transform scale-90"
-                x-transition:enter-end="opacity-100 transform scale-100"
-                x-transition:leave="transition ease-in duration-200"
-                x-transition:leave-start="opacity-100 transform scale-100"
-                x-transition:leave-end="opacity-0 transform scale-90"
-            >
+        <div x-cloak x-show="showVoteModal"
+             class="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+            <div @click.away="if (!isLoading) showVoteModal = false"
+                 class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-2xl max-w-lg w-full text-white relative flex flex-col"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 transform scale-90"
+                 x-transition:enter-end="opacity-100 transform scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 transform scale-100"
+                 x-transition:leave-end="opacity-0 transform scale-90">
+
                 <div class="p-6 border-b border-gray-700 flex-shrink-0 relative">
-                    <button
-                        @click="if (!isLoading) showVoteModal = false"
-                        class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700"
-                    >
+                    <button @click="if (!isLoading) showVoteModal = false"
+                            class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
                              viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -721,11 +702,8 @@
                         Équipe : <span class="font-semibold" x-text="voteProjet?.nom_equipe"></span>
                     </p>
 
-                    <div
-                        x-cloak
-                        x-show="voteStep === 1 || voteStep === 2"
-                        class="absolute bottom-0 left-6 translate-y-1/2 bg-gray-800 px-3 py-1 rounded-full text-xs text-yellow-300 border border-gray-700"
-                    >
+                    <div x-cloak x-show="voteStep === 1 || voteStep === 2"
+                         class="absolute bottom-0 left-6 translate-y-1/2 bg-gray-800 px-3 py-1 rounded-full text-xs text-yellow-300 border border-gray-700">
                         <span x-text="`Étape ${voteStep} sur 2`"></span>
                     </div>
                 </div>
@@ -736,13 +714,10 @@
                         <div class="space-y-4">
                             <div>
                                 <label for="nom_votant" class="block mb-2 text-sm font-medium text-gray-300">Votre nom (Optionnel)</label>
-                                <input
-                                    type="text"
-                                    id="nom_votant"
-                                    class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                                    placeholder="Ex: Paul David Mbaye"
-                                    x-model="nomVotant"
-                                >
+                                <input type="text" id="nom_votant"
+                                       class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                                       placeholder="Ex: Paul David Mbaye"
+                                       x-model="nomVotant">
                             </div>
 
                             <div>
@@ -752,14 +727,11 @@
                                         🇸🇳 +221
                                     </div>
                                     <div class="relative w-full">
-                                        <input
-                                            type="tel"
-                                            id="telephone_display"
-                                            class="block p-2.5 w-full z-20 text-sm text-white bg-gray-700/50 rounded-r-lg border border-gray-600 border-l-0 focus:ring-2 focus:outline-none focus:ring-yellow-400"
-                                            placeholder="Ex: 77 123 45 67"
-                                            required
-                                            x-model="telephoneDisplay"
-                                        >
+                                        <input type="tel" id="telephone_display"
+                                               class="block p-2.5 w-full z-20 text-sm text-white bg-gray-700/50 rounded-r-lg border border-gray-600 border-l-0 focus:ring-2 focus:outline-none focus:ring-yellow-400"
+                                               placeholder="Ex: 77 123 45 67"
+                                               required
+                                               x-model="telephoneDisplay">
                                     </div>
                                 </div>
                                 <p class="mt-2 text-xs text-gray-400">
@@ -769,12 +741,10 @@
 
                             <div class="pt-4 flex justify-center">
                                 <div class="rainbow relative z-0 overflow-hidden p-0.5 flex items-center justify-center rounded-full hover:scale-105 transition duration-300 active:scale-100 w-full">
-                                    <button
-                                        type="button"
-                                        class="w-full px-8 text-sm py-3 text-white rounded-full font-medium bg-gray-900 flex items-center justify-center"
-                                        :disabled="isLoading"
-                                        @click="sendOtp()"
-                                    >
+                                    <button type="button"
+                                            class="w-full px-8 text-sm py-3 text-white rounded-full font-medium bg-gray-900 flex items-center justify-center"
+                                            :disabled="isLoading"
+                                            @click="sendOtp()">
                                         <span x-show="!isLoading">Cliquez pour recevoir le code de vote</span>
                                         <span x-show="isLoading">Envoi en cours...</span>
                                     </button>
@@ -790,26 +760,18 @@
 
                             <div>
                                 <label for="code_otp" class="block mb-2 text-sm font-medium text-gray-300">Code de vérification (OTP)</label>
-                                <input
-                                    type="tel"
-                                    id="code_otp"
-                                    class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white text-center text-2xl tracking-[1em]"
-                                    placeholder="------"
-                                    required
-                                    maxlength="6"
-                                    pattern="\d{6}"
-                                    inputmode="numeric"
-                                    x-model="otpCode"
-                                >
+                                <input type="tel" id="code_otp"
+                                       class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white text-center text-2xl tracking-[1em]"
+                                       placeholder="------"
+                                       required maxlength="6" pattern="\d{6}" inputmode="numeric"
+                                       x-model="otpCode">
                             </div>
 
                             <div class="pt-4">
-                                <button
-                                    type="button"
-                                    class="w-full skew-btn bg-emerald-600 text-white hover:text-white flex items-center justify-center"
-                                    :disabled="isLoading"
-                                    @click="verifyOtp()"
-                                >
+                                <button type="button"
+                                        class="w-full skew-btn bg-emerald-600 text-white hover:text-white flex items-center justify-center"
+                                        :disabled="isLoading"
+                                        @click="verifyOtp()">
                                     <span x-show="!isLoading">Valider le vote</span>
                                     <span x-show="isLoading">Validation...</span>
                                 </button>
@@ -868,16 +830,11 @@
                         </div>
                     </div>
 
-                    <!-- Erreur inline étape 1/2 -->
-                    <div
-                        x-cloak
-                        x-show="errorMessage && (voteStep === 1 || voteStep === 2)"
-                        class="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg relative mt-4"
-                        role="alert"
-                    >
+                    {{-- Erreur inline étape 1/2 --}}
+                    <div x-cloak x-show="errorMessage && (voteStep === 1 || voteStep === 2)"
+                         class="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg relative mt-4" role="alert">
                         <p x-text="errorMessage"></p>
                     </div>
-
                 </div>
             </div>
         </div>
@@ -887,12 +844,12 @@
 
 <x-footer />
 
-<!-- reCAPTCHA v3 -->
+{{-- reCAPTCHA v3 --}}
 <script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}"></script>
 
 <script>
 /**
- * Alpine component
+ * Alpine component (version fiable GPS Gate)
  */
 function voteJourJComponent(cfg) {
     return {
@@ -934,7 +891,7 @@ function voteJourJComponent(cfg) {
         // quick notice
         inactiveNoticeVisible: false,
 
-        // OTP form state
+        // OTP
         nomVotant: '',
         telephoneDisplay: '',
         otpCode: '',
@@ -944,15 +901,25 @@ function voteJourJComponent(cfg) {
         sendOtpUrl: cfg.sendOtpUrl,
         verifyOtpUrl: cfg.verifyOtpUrl,
 
+        // ---- Helpers
         isSecureContextOk() {
             const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-            return (window.location.protocol === 'https:' || isLocalhost) && window.isSecureContext;
+            return (window.location.protocol === 'https:' || isLocalhost) && !!window.isSecureContext;
+        },
+
+        isLikelyInAppBrowser() {
+            const ua = navigator.userAgent || '';
+            // Facebook/Instagram/Twitter/Line/WeChat + iOS webviews fréquents
+            return /FBAN|FBAV|Instagram|Line|MicroMessenger|Twitter|Tiktok|Snapchat/i.test(ua);
         },
 
         init() {
             const self = this;
 
-            // Toujours afficher la modale au chargement (pour forcer un clic utilisateur)
+            // ✅ Expose pour le Gate (très important)
+            window.__voteJourJ = self;
+
+            // Toujours afficher l’accueil (donne un bouton => gesture iOS)
             self.showWelcomeModal = true;
 
             // Event actif ?
@@ -969,7 +936,6 @@ function voteJourJComponent(cfg) {
                 self.errorMessage = self.inactiveMessage;
             }
 
-            // Écouteurs global (optionnels)
             window.addEventListener('project-data', function(e) {
                 self.modalProjet = e.detail;
                 self.showModal = true;
@@ -994,10 +960,15 @@ function voteJourJComponent(cfg) {
 
         startFromWelcome() {
             this.showWelcomeModal = false;
-            if (this.hasEvent) this.captureGPS(true);
+            if (this.hasEvent) {
+                // ✅ On ouvre aussi le Gate pour guider (et forcer le clic utilisateur)
+                window.showGpsGate?.("Autorisez la localisation pour voter (sur place).");
+                this.captureGPS(true);
+            }
         },
 
         async tryAutoGPS() {
+            // iOS/QR/in-app : ne pas forcer sans gesture, sauf si permission déjà accordée
             if (!navigator.geolocation) {
                 this.gpsStatus = 'unavailable';
                 this.gpsMessage = 'Votre navigateur ne supporte pas la géolocalisation.';
@@ -1010,6 +981,7 @@ function voteJourJComponent(cfg) {
                 return;
             }
 
+            // Permissions API n’est pas fiable sur iOS -> on tente, sinon idle
             if (navigator.permissions && navigator.permissions.query) {
                 try {
                     const p = await navigator.permissions.query({ name: 'geolocation' });
@@ -1019,17 +991,10 @@ function voteJourJComponent(cfg) {
                     }
                     if (p.state === 'denied') {
                         this.gpsStatus = 'denied';
-                        this.gpsMessage = '✗ Permission GPS refusée. Veuillez autoriser la géolocalisation.';
+                        this.gpsMessage = '✗ Permission GPS refusée. Autorisez la géolocalisation.';
                         return;
                     }
-                    this.gpsStatus = 'idle';
-                    this.gpsMessage = 'Veuillez activer la localisation pour voter.';
-                    return;
-                } catch (e) {
-                    this.gpsStatus = 'idle';
-                    this.gpsMessage = 'Veuillez activer la localisation pour voter.';
-                    return;
-                }
+                } catch (e) {}
             }
 
             this.gpsStatus = 'idle';
@@ -1085,14 +1050,17 @@ function voteJourJComponent(cfg) {
                         if (this.isInRange) {
                             this.gpsStatus = 'success';
                             this.gpsMessage = `✓ Vous êtes dans la zone (${Math.round(this.distanceToEvent)}m)`;
+                            window.hideGpsGate?.();
                         } else {
                             this.gpsStatus = 'error';
                             this.gpsMessage = `❌ Vous n’êtes pas dans une zone autorisée (${Math.round(this.distanceToEvent)}m / ${this.eventRadius}m max)`;
+                            window.showGpsGate?.(this.gpsMessage);
                         }
                     } else {
                         this.gpsStatus = 'success';
                         this.gpsMessage = '✓ Position détectée';
                         this.isInRange = true;
+                        window.hideGpsGate?.();
                     }
                 },
                 (error) => {
@@ -1100,22 +1068,31 @@ function voteJourJComponent(cfg) {
 
                     if (error.code === error.PERMISSION_DENIED) {
                         this.gpsStatus = 'denied';
-                        this.gpsMessage = '✗ Permission GPS refusée. Veuillez autoriser la géolocalisation.';
+                        this.gpsMessage = '✗ Permission GPS refusée. Autorisez la géolocalisation.';
+                        window.showGpsGate?.(this.gpsMessage + " (icône 🔒 du navigateur)");
                         return;
                     }
+
                     if (error.code === error.POSITION_UNAVAILABLE) {
-                        this.gpsStatus = 'error';
-                        this.gpsMessage = '✗ Position GPS indisponible.';
+                        // Souvent in-app browser/QR
+                        this.gpsStatus = this.isLikelyInAppBrowser() ? 'unavailable' : 'error';
+                        this.gpsMessage = this.isLikelyInAppBrowser()
+                            ? '⚠️ GPS bloqué dans ce navigateur (lecteur QR). Ouvrez le lien dans Safari/Chrome.'
+                            : '✗ Position GPS indisponible.';
+                        window.showGpsGate?.(this.gpsMessage);
                         return;
                     }
+
                     if (error.code === error.TIMEOUT) {
                         this.gpsStatus = 'error';
-                        this.gpsMessage = '✗ Délai de géolocalisation dépassé.';
+                        this.gpsMessage = '✗ Délai de géolocalisation dépassé. Réessayez.';
+                        window.showGpsGate?.(this.gpsMessage);
                         return;
                     }
 
                     this.gpsStatus = 'error';
                     this.gpsMessage = '✗ Erreur de géolocalisation.';
+                    window.showGpsGate?.(this.gpsMessage);
                 },
                 {
                     enableHighAccuracy: !!forceHighAccuracy,
@@ -1158,17 +1135,19 @@ function voteJourJComponent(cfg) {
                 return;
             }
             if (this.gpsStatus !== 'success') {
-                alert('⚠️ Activez la localisation puis attendez la détection GPS.');
+                window.showGpsGate?.('Pour voter, activez la localisation puis réessayez.');
                 return;
             }
             if (!this.isInRange) {
                 alert('❌ Vous devez être sur place pour voter' + (this.distanceToEvent ? ' (distance: ' + Math.round(this.distanceToEvent) + 'm)' : ''));
-                return;
             }
         },
 
         openVote(projet) {
+            // ✅ IMPORTANT : si GPS pas OK => on ouvre le Gate et on redemande GPS
             if (this.voteButtonDisabled()) {
+                window.showGpsGate?.("Pour voter, activez la localisation puis réessayez.");
+                this.captureGPS(true);
                 this.explainWhyVoteDisabled();
                 return;
             }
@@ -1198,6 +1177,8 @@ function voteJourJComponent(cfg) {
             this.successMessage = '';
 
             if (this.voteButtonDisabled()) {
+                window.showGpsGate?.("Activez la localisation avant d'envoyer le code.");
+                this.captureGPS(true);
                 this.explainWhyVoteDisabled();
                 return;
             }
@@ -1213,7 +1194,6 @@ function voteJourJComponent(cfg) {
                 return;
             }
 
-            // reCAPTCHA v3 (si clé dispo)
             let recaptchaToken = '';
             try {
                 if (this.recaptchaKey && window.grecaptcha && window.grecaptcha.execute) {
@@ -1267,6 +1247,8 @@ function voteJourJComponent(cfg) {
             }
 
             if (this.userLatitude == null || this.userLongitude == null) {
+                window.showGpsGate?.("Position GPS non disponible. Activez la localisation puis réessayez.");
+                this.captureGPS(true);
                 this.errorMessage = 'Position GPS non disponible. Activez la localisation puis réessayez.';
                 return;
             }
@@ -1309,7 +1291,81 @@ function voteJourJComponent(cfg) {
 }
 </script>
 
-<!-- Partage projet -->
+{{-- ✅ GPS Gate controller (hors Alpine, ultra fiable) --}}
+<script>
+(function () {
+    const gate  = document.getElementById('gpsGate');
+    const msg   = document.getElementById('gpsGateMsg');
+    const btn   = document.getElementById('gpsGateBtn');
+    const copy  = document.getElementById('gpsGateCopy');
+    const close = document.getElementById('gpsGateClose');
+
+    function showGate(text) {
+        if (text) msg.textContent = text;
+        gate.classList.add('is-open');
+    }
+    function hideGate() {
+        gate.classList.remove('is-open');
+    }
+
+    window.showGpsGate = showGate;
+    window.hideGpsGate = hideGate;
+
+    copy.addEventListener('click', async () => {
+        const url = window.location.href;
+        try {
+            await navigator.clipboard.writeText(url);
+            showGate("✅ Lien copié. Ouvrez-le dans Safari / Chrome si le GPS ne marche pas ici.");
+        } catch (e) {
+            prompt("Copiez ce lien :", url);
+        }
+    });
+
+    close.addEventListener('click', () => hideGate());
+
+    btn.addEventListener('click', () => {
+        const vm = window.__voteJourJ;
+        if (!vm) {
+            showGate("⚠️ Chargement… Rechargez la page si besoin.");
+            return;
+        }
+        vm.captureGPS(true);
+        showGate("Recherche de votre position… Autorisez la localisation.");
+    });
+
+    // ✅ On affiche le Gate dès l’arrivée (ça évite “je clique voter et ça bloque”)
+    showGate("Pour voter, activez la localisation.");
+
+    // ✅ Auto-hide dès que GPS OK + dans le rayon (sans bloquer la page)
+    const timer = setInterval(() => {
+        const vm = window.__voteJourJ;
+        if (!vm) return;
+
+        if (vm.hasEvent === false) {
+            showGate("❌ Vote Jour J désactivé (aucun événement actif).");
+            return;
+        }
+
+        if (vm.gpsStatus === 'success' && vm.isInRange) {
+            hideGate();
+            clearInterval(timer);
+            return;
+        }
+
+        if (vm.gpsStatus === 'denied') {
+            showGate("✗ Permission refusée. Autorisez la localisation (icône 🔒) puis réessayez.");
+            return;
+        }
+
+        if (vm.gpsStatus === 'unavailable') {
+            showGate("⚠️ GPS indisponible ici. Ouvrez dans Safari/Chrome puis réessayez.");
+            return;
+        }
+    }, 500);
+})();
+</script>
+
+{{-- Partage projet --}}
 <script>
 window.shareProjectForProject = function (id, projectName) {
     const urlObj = new URL(window.location.href);
@@ -1323,7 +1379,6 @@ window.shareProjectForProject = function (id, projectName) {
     }
 
     const finalUrl = urlObj.toString();
-
     const title = document.title || 'GovAthon – Découvrir un projet';
     const text  = 'Découvrez ce projet et votez pour lui :';
 
@@ -1348,7 +1403,7 @@ window.shareProjectForProject = function (id, projectName) {
 };
 </script>
 
-<!-- Deep link auto-vote -->
+{{-- Deep link auto-vote --}}
 <script>
 (function () {
     let voteDeepLinkHandled = false;
@@ -1377,6 +1432,10 @@ window.shareProjectForProject = function (id, projectName) {
                     cleanUrl.searchParams.delete('project_id');
                     history.replaceState({}, '', cleanUrl.toString());
                 }
+
+                // ✅ si deeplink => on force gate + GPS (sinon l’utilisateur tombe direct sur vote bloqué)
+                window.showGpsGate?.("Pour voter, activez la localisation puis continuez.");
+                setTimeout(() => window.__voteJourJ?.captureGPS(true), 50);
             })
             .catch(function (err) {
                 console.error('❌ Erreur auto-vote / fetch projet :', err);
@@ -1393,7 +1452,7 @@ window.shareProjectForProject = function (id, projectName) {
 })();
 </script>
 
-<!-- Recherche auto -->
+{{-- Recherche auto --}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const input = document.getElementById('search-input');
