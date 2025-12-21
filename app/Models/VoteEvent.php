@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class VoteEvent extends Model
 {
     protected $fillable = [
+        'nom',
         'latitude',
         'longitude',
         'rayon_metres',
@@ -30,6 +31,14 @@ class VoteEvent extends Model
     public function voteJourJ()
     {
         return $this->hasMany(VoteJourJ::class);
+    }
+
+    /**
+     * Relation : Un VoteEvent a plusieurs Vote (via VoteJourJ)
+     */
+    public function votes()
+    {
+        return $this->hasManyThrough(Vote::class, VoteJourJ::class, 'vote_event_id', 'id', 'id', 'vote_id');
     }
 
     /**

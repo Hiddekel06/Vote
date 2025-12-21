@@ -9,7 +9,9 @@ use App\Models\Secteur;
 use App\Models\Projet;
 use App\Models\Submission;
 use App\Models\Vote;
+use App\Models\VotePublic;
 use App\Models\VoteEvent;
+use App\Models\VoteJourJ;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -41,32 +43,32 @@ public function index(): View
     // Statut du vote Jour J - Vérifier s'il y a des événements actifs
     $voteJourJEnabled = VoteEvent::where('is_active', true)->exists();
 
-    // Statistiques générales
+    // Statistiques générales VOTE PUBLIC
    $totalProjets = Projet::whereIn('id', $preselectedProjectIds)->count();
-    $totalVotes = Vote::count();
-    $totalVotants = Vote::distinct('telephone')->count('telephone');
+    $totalVotes = VotePublic::count();
+    $totalVotants = VotePublic::distinct('telephone')->count('telephone');
     $projetEnTete = $projets->first();
 
-    // ✅ Votes par Projet (Top 20)
+    // ✅ Votes PUBLIC par Projet (Top 20)
     $projetsLesPlusVotes = Projet::whereIn('id', $preselectedProjectIds)
-        ->withCount('votes')
-        ->orderBy('votes_count', 'desc')
+        ->withCount('votePublics')
+        ->orderBy('vote_publics_count', 'desc')
         ->take(20)
         ->get();
 
     $projetLabels = $projetsLesPlusVotes->pluck('nom_projet');
-    $projetData = $projetsLesPlusVotes->pluck('votes_count');
+    $projetData = $projetsLesPlusVotes->pluck('vote_publics_count');
 
-    // ✅ Votes par type de profil (Étudiant, Startup, Citoyens)
+    // ✅ Votes PUBLIC par type de profil (Étudiant, Startup, Citoyens)
     $votesParProfileType = Projet::whereIn('id', $preselectedProjectIds)
         ->with('submission')
-        ->withCount('votes')
+        ->withCount('votePublics')
         ->get()
         ->groupBy(function ($projet) {
             return $projet->submission->profile_type ?? 'unknown';
         })
         ->map(function ($projectsGroup) {
-            return $projectsGroup->sum('votes_count');
+            return $projectsGroup->sum('vote_publics_count');
         });
 
     $profileTypeLabels = $votesParProfileType->keys()->map(function ($type) {
@@ -78,23 +80,23 @@ public function index(): View
     });
     $profileTypeData = $votesParProfileType->values();
 
-    // ✅ Votes par Catégorie (ou Secteur)
+    // ✅ Votes PUBLIC par Catégorie (ou Secteur)
    $votesParCategorie = Secteur::with(['projets' => function ($query) use ($preselectedProjectIds) {
-    $query->whereIn('id', $preselectedProjectIds)->withCount('votes');
+    $query->whereIn('id', $preselectedProjectIds)->withCount('votePublics');
     }])
     ->get()
     ->map(function ($secteur) {
-        $secteur->total_votes = $secteur->projets->sum('votes_count');
+        $secteur->total_votes = $secteur->projets->sum('vote_publics_count');
         return $secteur;
     });
 
     $categorieLabels = $votesParCategorie->pluck('nom');
     $categorieData = $votesParCategorie->pluck('total_votes');
 
-    // --- NOUVEAU : Répartition par secteur pour chaque profile_type (Étudiant, Startup, Citoyens)
+    // --- NOUVEAU : Répartition VOTE PUBLIC par secteur pour chaque profile_type (Étudiant, Startup, Citoyens)
     // On récupère tous les secteurs avec leurs projets validés et la soumission pour déterminer le profile_type
     $secteurs = Secteur::with(['projets' => function ($query) use ($preselectedProjectIds) {
-    $query->whereIn('id', $preselectedProjectIds)->with('submission')->withCount('votes');
+    $query->whereIn('id', $preselectedProjectIds)->with('submission')->withCount('votePublics');
     }])->get();
 
     $secteurLabels = $secteurs->pluck('nom')->toArray();
@@ -102,33 +104,33 @@ public function index(): View
     $studentData = $secteurs->map(function ($s) {
         return $s->projets->filter(function ($p) {
             return (($p->submission->profile_type ?? 'other') === 'student');
-        })->sum('votes_count');
+        })->sum('vote_publics_count');
     })->toArray();
 
     $startupData = $secteurs->map(function ($s) {
         return $s->projets->filter(function ($p) {
             return (($p->submission->profile_type ?? 'other') === 'startup');
-        })->sum('votes_count');
+        })->sum('vote_publics_count');
     })->toArray();
 
     $otherData = $secteurs->map(function ($s) {
         return $s->projets->filter(function ($p) {
             $type = $p->submission->profile_type ?? 'other';
             return ($type !== 'student' && $type !== 'startup');
-        })->sum('votes_count');
+        })->sum('vote_publics_count');
     })->toArray();
 
-    // --- NOUVEAU : Données pour l'évolution des votes par jour ---
-    // Récupérer toutes les dates où il y a eu des votes
-    $allVoteDates = Vote::select(DB::raw('DATE(created_at) as vote_date'))
+    // --- NOUVEAU : Données VOTE PUBLIC pour l'évolution des votes par jour ---
+    // Récupérer toutes les dates où il y a eu des votes publics
+    $allVoteDates = VotePublic::select(DB::raw('DATE(created_at) as vote_date'))
         ->distinct()
         ->orderBy('vote_date', 'asc')
         ->pluck('vote_date');
 
     $dailyVoteLabels = $allVoteDates->map(fn($date) => Carbon::parse($date)->format('d/m'))->toArray();
 
-    // Calculer le total des votes par jour
-    $totalDailyVotesCollection = Vote::select(DB::raw('DATE(created_at) as vote_date'), DB::raw('count(*) as total_votes_count'))
+    // Calculer le total des votes publics par jour
+    $totalDailyVotesCollection = VotePublic::select(DB::raw('DATE(created_at) as vote_date'), DB::raw('count(*) as total_votes_count'))
         ->groupBy('vote_date')
         ->orderBy('vote_date', 'asc')
         ->get()
@@ -139,8 +141,8 @@ public function index(): View
         $dailyVoteData[] = $totalDailyVotesCollection->has($date) ? $totalDailyVotesCollection[$date]->total_votes_count : 0;
     }
 
-    // Heatmap horaire (jour/heure)
-    $heatmapBuckets = Vote::selectRaw('DAYOFWEEK(created_at) as weekday, HOUR(created_at) as hour, COUNT(*) as total')
+    // Heatmap horaire VOTE PUBLIC (jour/heure)
+    $heatmapBuckets = VotePublic::selectRaw('DAYOFWEEK(created_at) as weekday, HOUR(created_at) as hour, COUNT(*) as total')
         ->groupBy('weekday', 'hour')
         ->get();
 
@@ -154,10 +156,10 @@ public function index(): View
     }
     $heatmapMax = $heatmapBuckets->max('total') ?? 0;
 
-    // Récupérer les 3 projets les plus votés
+    // Récupérer les 3 projets les plus votés (VOTE PUBLIC)
     $top3Projects = Projet::whereIn('id', $preselectedProjectIds)
-        ->withCount('votes')
-        ->orderBy('votes_count', 'desc')
+        ->withCount('votePublics')
+        ->orderBy('vote_publics_count', 'desc')
         ->take(3)
         ->get();
 
@@ -166,7 +168,7 @@ public function index(): View
     $colors = ['#5470C6', '#91CC75', '#EE6666']; // Couleurs pour les séries
 
     foreach ($top3Projects as $index => $project) {
-        $projectDailyVotes = Vote::where('projet_id', $project->id)
+        $projectDailyVotes = VotePublic::where('projet_id', $project->id)
             ->select(DB::raw('DATE(created_at) as vote_date'), DB::raw('count(*) as project_daily_votes'))
             ->groupBy('vote_date')
             ->orderBy('vote_date', 'asc')
@@ -211,18 +213,18 @@ public function index(): View
 
     // --- Préparer 3 jeux de données séparés PAR PROFIL (étudiants, startup, citoyens)
     
-    // 1. ÉTUDIANTS : Filtrer uniquement les projets étudiants
+    // 1. ÉTUDIANTS : Filtrer uniquement les projets étudiants (VOTE PUBLIC)
     $studentProjects = Projet::whereIn('id', $preselectedProjectIds)
         ->with('submission', 'listePreselectionne')
-        ->withCount('votes')
+        ->withCount('votePublics')
         ->whereHas('submission', function ($query) {
             $query->where('profile_type', 'student');
         })
-        ->orderBy('votes_count', 'desc')
+        ->orderBy('vote_publics_count', 'desc')
         ->take(12)
         ->get();
 
-    $studentLabels = $studentProjects->map(function ($p) {
+    $studentLabelsProjects = $studentProjects->map(function ($p) {
         $team = $p->nom_equipe ?? 'Équipe inconnue';
         $proj = $p->nom_projet ?? 'Projet inconnu';
         $label = $team . ' — ' . $proj;
@@ -251,49 +253,91 @@ public function index(): View
         return $label;
     })->toArray();
 
-    $studentData = $studentProjects->pluck('votes_count')->toArray();
+    $studentDataProjects = $studentProjects->pluck('vote_publics_count')->toArray();
 
-    // 2. STARTUPS : Filtrer uniquement les projets startup
+    // 2. STARTUPS : Filtrer uniquement les projets startup (VOTE PUBLIC)
     $startupProjects = Projet::whereIn('id', $preselectedProjectIds)
         ->with('submission', 'listePreselectionne')
-        ->withCount('votes')
+        ->withCount('votePublics')
         ->whereHas('submission', function ($query) {
             $query->where('profile_type', 'startup');
         })
-        ->orderBy('votes_count', 'desc')
+        ->orderBy('vote_publics_count', 'desc')
         ->take(7)
         ->get();
 
-    $startupLabels = $startupProjects->map(function ($p) {
+    $startupLabelsProjects = $startupProjects->map(function ($p) {
         $team = $p->nom_equipe ?? 'Équipe inconnue';
         $proj = $p->nom_projet ?? 'Projet inconnu';
         return $team . ' — ' . $proj;
     })->toArray();
 
-    $startupData = $startupProjects->pluck('votes_count')->toArray();
+    $startupDataProjects = $startupProjects->pluck('vote_publics_count')->toArray();
 
-    // 3. CITOYENS (autres) : Filtrer les projets qui ne sont ni student ni startup
+    // 3. CITOYENS (autres) : Filtrer les projets qui ne sont ni student ni startup (VOTE PUBLIC)
     $otherProjects = Projet::whereIn('id', $preselectedProjectIds)
         ->with('submission', 'listePreselectionne')
-        ->withCount('votes')
+        ->withCount('votePublics')
         ->whereHas('submission', function ($query) {
             $query->whereNotIn('profile_type', ['student', 'startup']);
         })
         ->orWhereDoesntHave('submission')
-        ->orderBy('votes_count', 'desc')
+        ->orderBy('vote_publics_count', 'desc')
         ->take(2)
         ->get();
 
-    $otherLabels = $otherProjects->map(function ($p) {
+    $otherLabelsProjects = $otherProjects->map(function ($p) {
         $team = $p->nom_equipe ?? 'Équipe inconnue';
         $proj = $p->nom_projet ?? 'Projet inconnu';
         return $team . ' — ' . $proj;
     })->toArray();
 
-    $otherData = $otherProjects->pluck('votes_count')->toArray();
+    $otherDataProjects = $otherProjects->pluck('vote_publics_count')->toArray();
 
     // Variable utilisée dans la vue (on garde le nom générique)
-    $secteurLabels = $studentLabels; // Par défaut affiche les étudiants
+    $secteurLabels = $studentLabelsProjects; // Par défaut affiche les étudiants
+
+    // ========== STATISTIQUES VOTE JOUR J ==========
+    // Statistiques générales Jour J
+    $totalVotesJourJ = Vote::count();
+    $totalVotantsJourJ = Vote::distinct('telephone')->count('telephone');
+    
+    // Votes Jour J validés vs hors zone
+    $votesJourJValides = VoteJourJ::where('validation_status', 'success')->count();
+    $votesJourJHorsZone = VoteJourJ::where('validation_status', 'outside_zone')->count();
+    
+    // Top 5 projets Jour J
+    $projetsTopJourJ = Projet::whereIn('id', $preselectedProjectIds)
+        ->whereHas('votes')
+        ->with('secteur')
+        ->withCount('votes')
+        ->orderBy('votes_count', 'desc')
+        ->take(5)
+        ->get();
+    
+    $projetLabelsJourJ = $projetsTopJourJ->pluck('nom_projet');
+    $projetDataJourJ = $projetsTopJourJ->pluck('votes_count');
+    
+    // Votes Jour J par événement
+    $votesParEvent = VoteEvent::with('votes')
+        ->get()
+        ->map(function ($event) {
+            return [
+                'nom' => $event->nom,
+                'total' => $event->votes->count(),
+                'valides' => $event->votes()->whereHas('voteJourJ', function ($q) {
+                    $q->where('validation_status', 'success');
+                })->count(),
+                'hors_zone' => $event->votes()->whereHas('voteJourJ', function ($q) {
+                    $q->where('validation_status', 'outside_zone');
+                })->count()
+            ];
+        });
+    
+    $eventLabels = $votesParEvent->pluck('nom');
+    $eventTotalData = $votesParEvent->pluck('total');
+    $eventValidesData = $votesParEvent->pluck('valides');
+    $eventHorsZoneData = $votesParEvent->pluck('hors_zone');
 
     // ✅ Envoi à la vue
     return view('admin.dashboard', compact(
@@ -302,9 +346,13 @@ public function index(): View
         'profileTypeLabels', 'profileTypeData',
         'categorieLabels', 'categorieData',
         'dailyVoteLabels', 'allSeriesData', 'allLegendNames', 'top3Projects',
-        'secteurLabels', 'studentLabels', 'startupLabels', 'otherLabels',
+        'secteurLabels', 'studentLabelsProjects', 'startupLabelsProjects', 'otherLabelsProjects',
         'studentData', 'startupData', 'otherData',
-        'heatmapHours', 'heatmapDays', 'heatmapData', 'heatmapMax'
+        'studentDataProjects', 'startupDataProjects', 'otherDataProjects',
+        'heatmapHours', 'heatmapDays', 'heatmapData', 'heatmapMax',
+        'totalVotesJourJ', 'totalVotantsJourJ', 'votesJourJValides', 'votesJourJHorsZone',
+        'projetsTopJourJ', 'projetLabelsJourJ', 'projetDataJourJ',
+        'votesParEvent', 'eventLabels', 'eventTotalData', 'eventValidesData', 'eventHorsZoneData'
     ));
 }
 
@@ -352,6 +400,63 @@ public function index(): View
             'votesParSecteur',
             'secteurLabels',
             'secteurData'
+        ));
+    }
+
+    /**
+     * Affiche la page des statistiques détaillées Vote Jour J
+     */
+    public function statistiquesJourJ(): View
+    {
+        $preselectedProjectIds = DB::table('liste_preselectionnes')
+            ->where('is_finaliste', 1)
+            ->select('projet_id');
+
+        // Statistiques générales Jour J
+        $totalVotesJourJ = Vote::count();
+        $totalVotantsJourJ = Vote::distinct('telephone')->count('telephone');
+        
+        // Votes Jour J validés vs hors zone
+        $votesJourJValides = VoteJourJ::where('validation_status', 'success')->count();
+        $votesJourJHorsZone = VoteJourJ::where('validation_status', 'outside_zone')->count();
+        
+        // Top 5 projets Jour J
+        $projetsTopJourJ = Projet::whereIn('id', $preselectedProjectIds)
+            ->whereHas('votes')
+            ->with('secteur')
+            ->withCount('votes')
+            ->orderBy('votes_count', 'desc')
+            ->take(5)
+            ->get();
+        
+        $projetLabelsJourJ = $projetsTopJourJ->pluck('nom_projet');
+        $projetDataJourJ = $projetsTopJourJ->pluck('votes_count');
+        
+        // Votes Jour J par événement
+        $votesParEvent = VoteEvent::with('votes')
+            ->get()
+            ->map(function ($event) {
+                return [
+                    'nom' => $event->nom ?? 'Événement ' . $event->id,
+                    'total' => $event->votes->count(),
+                    'valides' => $event->votes()->whereHas('voteJourJ', function ($q) {
+                        $q->where('validation_status', 'success');
+                    })->count(),
+                    'hors_zone' => $event->votes()->whereHas('voteJourJ', function ($q) {
+                        $q->where('validation_status', 'outside_zone');
+                    })->count()
+                ];
+            });
+        
+        $eventLabels = $votesParEvent->pluck('nom');
+        $eventTotalData = $votesParEvent->pluck('total');
+        $eventValidesData = $votesParEvent->pluck('valides');
+        $eventHorsZoneData = $votesParEvent->pluck('hors_zone');
+
+        return view('admin.statistiques-jour-j', compact(
+            'totalVotesJourJ', 'totalVotantsJourJ', 'votesJourJValides', 'votesJourJHorsZone',
+            'projetsTopJourJ', 'projetLabelsJourJ', 'projetDataJourJ',
+            'votesParEvent', 'eventLabels', 'eventTotalData', 'eventValidesData', 'eventHorsZoneData'
         ));
     }
 

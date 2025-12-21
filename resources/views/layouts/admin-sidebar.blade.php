@@ -12,6 +12,26 @@
                   </a>
                </li>
                <li class="nav-item">
+                  <a class="nav-link collapsed" href="#navbarVerticalStats" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="navbarVerticalStats">
+                     <div class="d-flex align-items-center">
+                        <span class="nav-link-icon"><span class="fas fa-chart-bar"></span></span>
+                        <span class="nav-link-text">Statistiques</span>
+                     </div>
+                  </a>
+                  <ul class="nav collapse" id="navbarVerticalStats">
+                     <li class="nav-item">
+                        <a class="nav-link" href="{{ route('admin.statistiques') }}">
+                           <span class="nav-link-text">📊 Vote Public</span>
+                        </a>
+                     </li>
+                     <li class="nav-item">
+                        <a class="nav-link" href="{{ route('admin.statistiques.jour-j') }}">
+                           <span class="nav-link-text">📍 Vote Jour J</span>
+                        </a>
+                     </li>
+                  </ul>
+               </li>
+               <li class="nav-item">
                   <a class="nav-link collapsed" href="#navbarVerticalVote" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="navbarVerticalVote">
                      <div class="d-flex align-items-center">
                         <span class="nav-link-icon"><span class="fas fa-vote-yea"></span></span>

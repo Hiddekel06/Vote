@@ -40,6 +40,8 @@ Route::middleware(['auth', 'verified', 'role.admin:admin,super_admin'])->prefix(
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     // Page des statistiques
     Route::get('/statistiques', [DashboardController::class, 'statistiques'])->name('statistiques');
+    // Page des statistiques Vote Jour J
+    Route::get('/statistiques-jour-j', [DashboardController::class, 'statistiquesJourJ'])->name('statistiques.jour-j');
     // Route pour mettre à jour le statut et la période du vote
     Route::patch('/vote-status', [VoteStatusController::class, 'update'])->name('vote.status.update');
     // Route pour désactiver/activer le vote Jour J

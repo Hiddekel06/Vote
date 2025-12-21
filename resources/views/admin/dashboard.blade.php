@@ -172,6 +172,71 @@
            </div>
        </div>
 
+       {{-- STATISTIQUES JOUR J --}}
+       <div class="row g-3 mb-4">
+           <h5 class="ps-2">Statistiques - Vote Jour J</h5>
+           <!-- Carte Total Votes Jour J -->
+           <div class="col-12 col-md-6 col-lg-3">
+               <div class="card h-100 stat-card">
+                   <div class="d-flex align-items-center">
+                       <div class="stat-icon me-3" style="background:#FEF3C7;color:#D97706;">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"></path><path d="M12 6v6l4 2"></path></svg>
+                       </div>
+                       <div class="flex-1">
+                           <div class="stat-label">Votes Jour J Total</div>
+                           <div class="stat-value">{{ $totalVotesJourJ }}</div>
+                           <div class="stat-sub">{{ $totalVotantsJourJ }} votants uniques</div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+           <!-- Carte Votes Validés -->
+           <div class="col-12 col-md-6 col-lg-3">
+               <div class="card h-100 stat-card">
+                   <div class="d-flex align-items-center">
+                       <div class="stat-icon me-3" style="background:#DBEAFE;color:#0284C7;">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                       </div>
+                       <div class="flex-1">
+                           <div class="stat-label">Votes Validés</div>
+                           <div class="stat-value">{{ $votesJourJValides }}</div>
+                           <div class="stat-sub text-success">{{ $totalVotesJourJ > 0 ? round(($votesJourJValides / $totalVotesJourJ) * 100) : 0 }}%</div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+           <!-- Carte Votes Hors Zone -->
+           <div class="col-12 col-md-6 col-lg-3">
+               <div class="card h-100 stat-card">
+                   <div class="d-flex align-items-center">
+                       <div class="stat-icon me-3" style="background:#FECACA;color:#DC2626;">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><path d="M12 8v-5m5 5a5 5 0 1 1-10 0m10 0a5 5 0 1 0-10 0"></path></svg>
+                       </div>
+                       <div class="flex-1">
+                           <div class="stat-label">Hors Zone GPS</div>
+                           <div class="stat-value">{{ $votesJourJHorsZone }}</div>
+                           <div class="stat-sub text-danger">{{ $totalVotesJourJ > 0 ? round(($votesJourJHorsZone / $totalVotesJourJ) * 100) : 0 }}%</div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+           <!-- Carte Événements -->
+           <div class="col-12 col-md-6 col-lg-3">
+               <div class="card h-100 stat-card">
+                   <div class="d-flex align-items-center">
+                       <div class="stat-icon me-3" style="background:#E9D5FF;color:#7C3AED;">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"></path><polyline points="16 2 16 6 8 6 8 2"></polyline><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                       </div>
+                       <div class="flex-1">
+                           <div class="stat-label">Événements GPS</div>
+                           <div class="stat-value">{{ $eventLabels->count() }}</div>
+                           <div class="stat-sub">{{ $eventLabels->count() }} événement(s)</div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+       </div>
+
        <script>
            document.addEventListener('DOMContentLoaded', function() {
                // ===== VOTE PUBLIC =====
@@ -691,12 +756,72 @@
                </div>
            </div>
        </div>
-         <div class="mb-4">
+
+       {{-- JOUR J : Statistiques résumées --}}
+       <div class="row g-3 mb-4">
+           <div class="col-12">
+               <div class="card">
+                   <div class="card-header d-flex justify-content-between align-items-center">
+                       <h5 class="mb-0">📍 Vote Jour J - Aperçu</h5>
+                       <a href="{{ route('admin.statistiques.jour-j') }}" class="btn btn-sm btn-primary">
+                           <i class="fas fa-chart-bar me-1"></i>Voir statistiques détaillées
+                       </a>
+                   </div>
+                   <div class="card-body">
+                       <div class="row g-3">
+                           <div class="col-6 col-md-3">
+                               <div class="text-center p-3" style="background: #F0F9FF; border-radius: 8px;">
+                                   <div class="text-muted small mb-1">Total Votes</div>
+                                   <div class="h4 mb-0 text-primary">{{ $totalVotesJourJ }}</div>
+                               </div>
+                           </div>
+                           <div class="col-6 col-md-3">
+                               <div class="text-center p-3" style="background: #FFFBEB; border-radius: 8px;">
+                                   <div class="text-muted small mb-1">Votants</div>
+                                   <div class="h4 mb-0 text-warning">{{ $totalVotantsJourJ }}</div>
+                               </div>
+                           </div>
+                           <div class="col-6 col-md-3">
+                               <div class="text-center p-3" style="background: #ECFDF5; border-radius: 8px;">
+                                   <div class="text-muted small mb-1">GPS Validés</div>
+                                   <div class="h4 mb-0 text-success">{{ $votesJourJValides }}</div>
+                               </div>
+                           </div>
+                           <div class="col-6 col-md-3">
+                               <div class="text-center p-3" style="background: #FEF2F2; border-radius: 8px;">
+                                   <div class="text-muted small mb-1">Hors Zone</div>
+                                   <div class="h4 mb-0 text-danger">{{ $votesJourJHorsZone }}</div>
+                               </div>
+                           </div>
+                       </div>
+                       @if($projetsTopJourJ->isNotEmpty())
+                           <div class="mt-4">
+                               <h6 class="text-muted mb-3">Top 3 Projets Jour J</h6>
+                               <div class="list-group list-group-flush">
+                                   @foreach($projetsTopJourJ->take(3) as $index => $projet)
+                                       <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                           <div class="d-flex align-items-center">
+                                               <span class="badge bg-primary me-2">{{ $index + 1 }}</span>
+                                               <strong>{{ $projet->nom_projet }}</strong>
+                                           </div>
+                                           <span class="badge bg-info">{{ $projet->votes_count }} votes</span>
+                                       </div>
+                                   @endforeach
+                               </div>
+                           </div>
+                       @endif
+                   </div>
+               </div>
+           </div>
+       </div>
+
+       <div class="mb-4">
 
 
 {{-- Script Chart.js --}}
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
  document.querySelectorAll(".structure-chart").forEach(canvas => {
