@@ -28,22 +28,17 @@ class VoteJourJController extends Controller
      */
     public function show(Request $request)
     {
-        // Évent actif (optionnel côté vue, mais utile pour affichage d’infos)
         $event = $this->getActiveEvent();
 
-        // Filtres URL
         $profileType = $request->query('profile_type'); // 'student' | 'startup' | 'other' | null
         $search      = trim($request->query('search', ''));
 
-        // IDs des projets finalistes
         $preselectedProjectIds = DB::table('liste_preselectionnes')
             ->where('is_finaliste', 1)
             ->pluck('projet_id');
 
-        // Construire la requête secteurs
         $secteurQuery = Secteur::query();
 
-        // N'afficher que les secteurs qui ont des projets finalistes (et éventuellement du bon profil)
         $secteurQuery->whereHas('projets', function ($projetQuery) use ($preselectedProjectIds, $profileType) {
             $projetQuery->whereIn('id', $preselectedProjectIds);
 
@@ -54,7 +49,6 @@ class VoteJourJController extends Controller
             }
         });
 
-        // Filtre recherche sur secteur / projet / équipe
         if ($search !== '') {
             $secteurQuery->where(function ($q) use ($search, $preselectedProjectIds, $profileType) {
                 $q->where('nom', 'like', '%' . $search . '%')
@@ -74,7 +68,6 @@ class VoteJourJController extends Controller
             });
         }
 
-        // Charger les projets des secteurs avec les mêmes filtres
         $secteurQuery->with(['projets' => function ($projetQuery) use ($preselectedProjectIds, $profileType, $search) {
             $projetQuery
                 ->whereIn('projets.id', $preselectedProjectIds)
@@ -98,24 +91,24 @@ class VoteJourJController extends Controller
 
         return view('vote-jour-j', compact('secteurs', 'event'));
     }
-
     /**
      * Compat REST : si jamais un form POST /vote-jour-j
      * on délègue à la logique principale OTP + géoloc.
      *
      * Ce store NE TOUCHE PAS vote_publics.
      */
-    public function store(Request $request)
+    public function projectData($id)
     {
-        // Si le téléphone et le projet sont envoyés ici,
-        // on initialise la session OTP comme le ferait envoyerOtp()
+        $projet = Projet::with(['submission', 'listePreselectionne'])->findOrFail($id);
+        return response()->json($projet);
+    }
+
+   public function store(Request $request)
+    {
         if ($request->filled('telephone') && $request->filled('projet_id')) {
             $normalized = $this->normalizePhone($request->input('telephone'));
             if (! $normalized) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Numéro de téléphone invalide.',
-                ], 422);
+                return response()->json(['success' => false,'message' => 'Numéro de téléphone invalide.'], 422);
             }
 
             $request->session()->put('otp_data_jour_j', [
@@ -125,7 +118,6 @@ class VoteJourJController extends Controller
             ]);
         }
 
-        // On laisse verifierOtp gérer le reste (OTP + géoloc + création du vote)
         return $this->verifierOtp($request);
     }
 
@@ -146,13 +138,11 @@ class VoteJourJController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($event) {
-                // Votes Jour J validés pour cet événement
                 $successfulVotes = $event->voteJourJ()
                     ->where('validation_status', 'success')
                     ->with('vote.projet')
                     ->get();
 
-                // Classement par projet
                 $ranking = $successfulVotes
                     ->groupBy('vote.projet_id')
                     ->map(function ($votes) {
@@ -164,18 +154,15 @@ class VoteJourJController extends Controller
                     ->sortByDesc('vote_count')
                     ->values();
 
-                $totalVotes = $successfulVotes->count();
-
                 return [
                     'event'       => $event,
-                    'total_votes' => $totalVotes,
+                    'total_votes' => $successfulVotes->count(),
                     'ranking'     => $ranking,
                 ];
             });
 
         return view('admin.vote-events.index', compact('events'));
     }
-
     /**
      * ADMIN : Créer un nouvel événement Jour J
      */
@@ -204,7 +191,6 @@ class VoteJourJController extends Controller
         return redirect()->route('admin.vote-events.index')
             ->with('success', '✅ Événement créé avec succès ! Secret QR: ' . substr($qrSecret, 0, 8) . '...');
     }
-
     /**
      * ADMIN : Activer / désactiver un événement Jour J
      */
@@ -557,23 +543,15 @@ class VoteJourJController extends Controller
     private function normalizePhone(string $rawPhone): ?string
     {
         $util = PhoneNumberUtil::getInstance();
-
         try {
             $phone = $util->parse($rawPhone, 'SN');
-            if (! $util->isValidNumber($phone)) {
-                return null;
-            }
-
+            if (! $util->isValidNumber($phone)) return null;
             return $util->format($phone, PhoneNumberFormat::E164);
         } catch (NumberParseException $e) {
-            Log::warning('Erreur parsing téléphone Jour J', [
-                'raw'     => $rawPhone,
-                'message' => $e->getMessage(),
-            ]);
+            Log::warning('Erreur parsing téléphone Jour J', ['raw' => $rawPhone,'message' => $e->getMessage()]);
             return null;
         }
     }
-
     /**
      * Vérifie un OTP pour un couple (téléphone, projet)
      * dans la table otp_codes, sans toucher vote_publics.
@@ -626,29 +604,27 @@ class VoteJourJController extends Controller
     /**
      * ADMIN : Supprime un événement Vote Jour J
      */
-    public function destroyEvent($id)
-    {
-        $event = VoteEvent::findOrFail($id);
 
-        try {
-            // Supprimer tous les votes associés via la relation VoteJourJ
-            VoteJourJ::where('vote_event_id', $event->id)->delete();
-            
-            // Supprimer l'événement
-            $event->delete();
+     public function destroyEvent($id)
+     {
+         $event = VoteEvent::findOrFail($id);
 
-            return redirect()
-                ->route('admin.vote-events.index')
-                ->with('success', "L'événement '{$event->nom}' a été supprimé avec succès.");
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de la suppression d\'un événement', [
-                'event_id' => $id,
-                'error'    => $e->getMessage(),
-            ]);
+         try {
+             VoteJourJ::where('vote_event_id', $event->id)->delete();
+             $event->delete();
 
-            return redirect()
-                ->route('admin.vote-events.index')
-                ->with('error', 'Une erreur est survenue lors de la suppression de l\'événement.');
-        }
-    }
+             return redirect()
+                 ->route('admin.vote-events.index')
+                 ->with('success', "L'événement #{$id} a été supprimé avec succès.");
+         } catch (\Exception $e) {
+             Log::error('Erreur lors de la suppression d\'un événement', [
+                 'event_id' => $id,
+                 'error'    => $e->getMessage(),
+             ]);
+
+             return redirect()
+                 ->route('admin.vote-events.index')
+                 ->with('error', 'Une erreur est survenue lors de la suppression de l\'événement.');
+         }
+     }
 }

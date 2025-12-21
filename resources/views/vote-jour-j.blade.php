@@ -580,13 +580,13 @@
                                     @else
                                         <span class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60"
                                               title="Aucune démonstration disponible" aria-hidden="true">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
-                                                 fill="none" stroke="currentColor" stroke-width="1.2">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
-                                            </svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
+                                                     fill="none" stroke="currentColor" stroke-width="1.2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                    <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
+                                                </svg>
                                         </span>
                                     @endif
 
@@ -844,12 +844,16 @@
 
 <x-footer />
 
-{{-- reCAPTCHA v3 --}}
+{{-- reCAPTCHA v3 (uniquement si key) --}}
+@if(config('services.recaptcha.site_key'))
 <script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}"></script>
+@endif
 
 <script>
 /**
  * Alpine component (version fiable GPS Gate)
+ * ✅ Fix majeur: quand on clique "Voter", on stocke le projet en pending,
+ * puis dès que le GPS est OK + dans le rayon => on ouvre automatiquement la modale vote.
  */
 function voteJourJComponent(cfg) {
     return {
@@ -901,6 +905,10 @@ function voteJourJComponent(cfg) {
         sendOtpUrl: cfg.sendOtpUrl,
         verifyOtpUrl: cfg.verifyOtpUrl,
 
+        // ✅ Pending vote (quand on clique "Voter" avant que le GPS soit OK)
+        pendingVoteProjet: null,
+        pendingOpenVote: false,
+
         // ---- Helpers
         isSecureContextOk() {
             const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
@@ -909,14 +917,13 @@ function voteJourJComponent(cfg) {
 
         isLikelyInAppBrowser() {
             const ua = navigator.userAgent || '';
-            // Facebook/Instagram/Twitter/Line/WeChat + iOS webviews fréquents
             return /FBAN|FBAV|Instagram|Line|MicroMessenger|Twitter|Tiktok|Snapchat/i.test(ua);
         },
 
         init() {
             const self = this;
 
-            // ✅ Expose pour le Gate (très important)
+            // ✅ Expose pour le Gate
             window.__voteJourJ = self;
 
             // Toujours afficher l’accueil (donne un bouton => gesture iOS)
@@ -961,14 +968,12 @@ function voteJourJComponent(cfg) {
         startFromWelcome() {
             this.showWelcomeModal = false;
             if (this.hasEvent) {
-                // ✅ On ouvre aussi le Gate pour guider (et forcer le clic utilisateur)
                 window.showGpsGate?.("Autorisez la localisation pour voter (sur place).");
                 this.captureGPS(true);
             }
         },
 
         async tryAutoGPS() {
-            // iOS/QR/in-app : ne pas forcer sans gesture, sauf si permission déjà accordée
             if (!navigator.geolocation) {
                 this.gpsStatus = 'unavailable';
                 this.gpsMessage = 'Votre navigateur ne supporte pas la géolocalisation.';
@@ -981,7 +986,7 @@ function voteJourJComponent(cfg) {
                 return;
             }
 
-            // Permissions API n’est pas fiable sur iOS -> on tente, sinon idle
+            // Permissions API pas fiable iOS -> on tente seulement si granted
             if (navigator.permissions && navigator.permissions.query) {
                 try {
                     const p = await navigator.permissions.query({ name: 'geolocation' });
@@ -1014,6 +1019,32 @@ function voteJourJComponent(cfg) {
 
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return R * c;
+        },
+
+        maybeOpenPendingVote() {
+            // ✅ ouverture auto de la modale vote si on attend un vote et que tout est OK
+            if (!this.pendingOpenVote) return;
+            if (!this.hasEvent) return;
+            if (!this.isVoteActive) return;
+            if (this.gpsStatus !== 'success' || !this.isInRange) return;
+            if (!this.pendingVoteProjet?.id) return;
+
+            this.voteProjet = this.pendingVoteProjet;
+            this.pendingVoteProjet = null;
+            this.pendingOpenVote = false;
+
+            this.resetVoteFlow();
+            this.showVoteModal = true;
+        },
+
+        resetVoteFlow() {
+            this.voteStep = 1;
+            this.isLoading = false;
+            this.errorMessage = '';
+            this.successMessage = '';
+            this.otpCode = '';
+            this.nomVotant = '';
+            this.telephoneDisplay = '';
         },
 
         captureGPS(forceHighAccuracy = false) {
@@ -1051,16 +1082,21 @@ function voteJourJComponent(cfg) {
                             this.gpsStatus = 'success';
                             this.gpsMessage = `✓ Vous êtes dans la zone (${Math.round(this.distanceToEvent)}m)`;
                             window.hideGpsGate?.();
+
+                            // ✅ si on attendait un vote, on ouvre maintenant
+                            this.maybeOpenPendingVote();
                         } else {
                             this.gpsStatus = 'error';
                             this.gpsMessage = `❌ Vous n’êtes pas dans une zone autorisée (${Math.round(this.distanceToEvent)}m / ${this.eventRadius}m max)`;
                             window.showGpsGate?.(this.gpsMessage);
                         }
                     } else {
+                        // fallback
                         this.gpsStatus = 'success';
                         this.gpsMessage = '✓ Position détectée';
                         this.isInRange = true;
                         window.hideGpsGate?.();
+                        this.maybeOpenPendingVote();
                     }
                 },
                 (error) => {
@@ -1074,7 +1110,6 @@ function voteJourJComponent(cfg) {
                     }
 
                     if (error.code === error.POSITION_UNAVAILABLE) {
-                        // Souvent in-app browser/QR
                         this.gpsStatus = this.isLikelyInAppBrowser() ? 'unavailable' : 'error';
                         this.gpsMessage = this.isLikelyInAppBrowser()
                             ? '⚠️ GPS bloqué dans ce navigateur (lecteur QR). Ouvrez le lien dans Safari/Chrome.'
@@ -1144,21 +1179,33 @@ function voteJourJComponent(cfg) {
         },
 
         openVote(projet) {
-            // ✅ IMPORTANT : si GPS pas OK => on ouvre le Gate et on redemande GPS
-            if (this.voteButtonDisabled()) {
-                window.showGpsGate?.("Pour voter, activez la localisation puis réessayez.");
-                this.captureGPS(true);
-                this.explainWhyVoteDisabled();
+            // Cas 1 : pas d’événement
+            if (!this.hasEvent) {
+                alert('❌ Aucun événement actif. Le vote Jour J est désactivé, mais la liste des projets reste visible.');
                 return;
             }
 
-            this.voteProjet = projet;
-            this.showVoteModal = true;
+            // Cas 2 : vote fermé
+            if (!this.isVoteActive) {
+                this.showInactiveNotice();
+                return;
+            }
 
-            this.voteStep = this.isVoteActive ? 1 : 3;
-            this.errorMessage = this.isVoteActive ? '' : this.inactiveMessage;
-            this.successMessage = '';
-            this.otpCode = '';
+            // ✅ Si GPS déjà OK + dans le rayon => ouvrir direct
+            if (this.gpsStatus === 'success' && this.isInRange) {
+                this.voteProjet = projet;
+                this.resetVoteFlow();
+                this.showVoteModal = true;
+                window.hideGpsGate?.();
+                return;
+            }
+
+            // Sinon on met en attente, et on déclenche GPS (gesture)
+            this.pendingVoteProjet = projet;
+            this.pendingOpenVote = true;
+
+            window.showGpsGate?.("Autorisez la localisation pour continuer.");
+            this.captureGPS(true);
         },
 
         normalizeSNPhone(raw) {
@@ -1333,10 +1380,7 @@ function voteJourJComponent(cfg) {
         showGate("Recherche de votre position… Autorisez la localisation.");
     });
 
-    // ✅ On affiche le Gate dès l’arrivée (ça évite “je clique voter et ça bloque”)
-    showGate("Pour voter, activez la localisation.");
-
-    // ✅ Auto-hide dès que GPS OK + dans le rayon (sans bloquer la page)
+    // ✅ Auto-hide dès que GPS OK + dans le rayon
     const timer = setInterval(() => {
         const vm = window.__voteJourJ;
         if (!vm) return;
@@ -1348,7 +1392,6 @@ function voteJourJComponent(cfg) {
 
         if (vm.gpsStatus === 'success' && vm.isInRange) {
             hideGate();
-            clearInterval(timer);
             return;
         }
 
@@ -1365,22 +1408,22 @@ function voteJourJComponent(cfg) {
 })();
 </script>
 
-{{-- Partage projet --}}
+{{-- Partage projet (✅ deep-link direct vote) --}}
 <script>
 window.shareProjectForProject = function (id, projectName) {
     const urlObj = new URL(window.location.href);
 
-    urlObj.searchParams.delete('vote');
-    urlObj.searchParams.delete('project_id');
+    // Nettoyage
     urlObj.searchParams.delete('page');
+    urlObj.searchParams.delete('search');
 
-    if (projectName && typeof projectName === 'string') {
-        urlObj.searchParams.set('search', projectName);
-    }
+    // ✅ deep-link: ouvre directement la modale vote après fetch projet
+    urlObj.searchParams.set('vote', '1');
+    urlObj.searchParams.set('project_id', String(id));
 
     const finalUrl = urlObj.toString();
-    const title = document.title || 'GovAthon – Découvrir un projet';
-    const text  = 'Découvrez ce projet et votez pour lui :';
+    const title = document.title || 'GovAthon – Vote Jour J';
+    const text  = 'Vote Jour J – découvrez ce projet et votez :';
 
     if (typeof window.shareProject === 'function') {
         window.shareProject(finalUrl);
@@ -1410,13 +1453,14 @@ window.shareProjectForProject = function (id, projectName) {
 
     function openVoteFromUrl() {
         if (voteDeepLinkHandled) return;
-        voteDeepLinkHandled = true;
 
         const params = new URLSearchParams(window.location.search);
         const wantVote  = params.get('vote') === '1';
         const projectId = params.get('project_id');
 
         if (!wantVote || !projectId) return;
+
+        voteDeepLinkHandled = true;
 
         fetch('/vote/project/' + projectId + '/data')
             .then(function (res) {
@@ -1433,7 +1477,6 @@ window.shareProjectForProject = function (id, projectName) {
                     history.replaceState({}, '', cleanUrl.toString());
                 }
 
-                // ✅ si deeplink => on force gate + GPS (sinon l’utilisateur tombe direct sur vote bloqué)
                 window.showGpsGate?.("Pour voter, activez la localisation puis continuez.");
                 setTimeout(() => window.__voteJourJ?.captureGPS(true), 50);
             })
@@ -1464,7 +1507,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let timer = null;
     input.addEventListener('input', function () {
         clearTimeout(timer);
-        timer = setTimeout(() => form.submit(), 400);
+        timer = setTimeout(() => form.submit(), 450);
     });
 });
 </script>
