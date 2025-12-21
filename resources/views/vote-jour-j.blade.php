@@ -23,13 +23,14 @@
     <!-- Police -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Si Alpine n'est pas déjà dans ton bundle Vite, décommente ceci -->
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
     <style>
-        /* Optionnel: ton background custom */
         .bg-image-custom { background-image: url('{{ asset('assets/img/bg-vote.jpg') }}'); }
+        [x-cloak] { display: none !important; }
     </style>
 </head>
 
@@ -38,7 +39,7 @@
 <x-header />
 
 @php
-    // Petits flags simples pour la vue
+    // Flags simples pour la vue
     $isVoteActive = $isVoteActive ?? true;
     $inactiveMessage = $inactiveMessage ?? "Le vote Jour J n'est pas ouvert pour le moment.";
 
@@ -71,8 +72,10 @@
         x-init="init()"
         @keydown.escape.window="closeAll()"
     >
+
         <!-- Toast rapide quand vote désactivé -->
         <div
+            x-cloak
             x-show="inactiveNoticeVisible"
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0 translate-y-2"
@@ -88,16 +91,20 @@
         </div>
 
         <!-- Modale d'accueil - Étapes du vote -->
-        <div class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4"
-             x-show="showWelcomeModal"
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100">
-            <div class="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-yellow-500/20 p-8 text-center"
-                 x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="scale-95 opacity-0"
-                 x-transition:enter-end="scale-100 opacity-100">
-
+        <div
+            x-cloak
+            class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4"
+            x-show="showWelcomeModal"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+        >
+            <div
+                class="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-yellow-500/20 p-8 text-center"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="scale-95 opacity-0"
+                x-transition:enter-end="scale-100 opacity-100"
+            >
                 <h1 class="text-3xl font-bold text-yellow-400 mb-8">🏆 GRANDE FINALE<br>GOV'ATHON</h1>
 
                 <div class="space-y-4 mb-8 text-left">
@@ -133,7 +140,8 @@
 
                 <button
                     @click="startFromWelcome()"
-                    class="w-full px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-black rounded-lg font-bold transition-colors">
+                    class="w-full px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-black rounded-lg font-bold transition-colors"
+                >
                     Commencer
                 </button>
             </div>
@@ -143,10 +151,7 @@
         <div class="mb-4">
             <a href="{{ route('vote.index') }}"
                class="inline-flex items-center gap-2 text-gray-400 hover:text-yellow-400 transition-colors text-sm">
-                <svg xmlns="http://www.w3.org/2000/svg"
-                     class="h-5 w-5"
-                     viewBox="0 0 20 20"
-                     fill="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd"
                           d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
                           clip-rule="evenodd" />
@@ -157,9 +162,7 @@
 
         <!-- Titre -->
         <div class="text-center mb-4 px-2">
-            <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-2">
-                🏆 GRANDE FINALE JOUR J
-            </h1>
+            <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-2">🏆 GRANDE FINALE JOUR J</h1>
 
             @if(!$event)
                 <div class="mt-2 px-4 py-2 bg-red-900/30 border border-red-700 rounded-lg inline-block">
@@ -167,7 +170,6 @@
                 </div>
             @endif
 
-            {{-- Info pratique: geoloc sur mobile --}}
             <div class="mt-2 text-[11px] text-gray-400">
                 ⚠️ La géolocalisation fonctionne uniquement sur <strong>HTTPS</strong> (ou <strong>localhost</strong>) et certains lecteurs QR ouvrent un navigateur interne sans GPS.
             </div>
@@ -177,103 +179,77 @@
         <div class="mb-6 px-2">
             <div class="max-w-2xl mx-auto">
 
-                <!-- IDLE (pas encore demandé) -->
+                <!-- IDLE -->
                 <div
+                    x-cloak
                     x-show="gpsStatus === 'idle'"
                     class="flex flex-col items-center justify-center gap-2 bg-gray-800/50 border border-gray-600/50 rounded-lg px-4 py-3"
                 >
                     <div class="flex items-center gap-3">
-                        <svg class="h-5 w-5 text-gray-300"
-                             fill="none"
-                             stroke="currentColor"
-                             viewBox="0 0 24 24">
-                            <path stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M12 6v6l4 2"></path>
+                        <svg class="h-5 w-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"></path>
                         </svg>
                         <span class="text-gray-200 text-sm font-medium" x-text="gpsMessage"></span>
                     </div>
-                    <button
-                        @click="captureGPS(true)"
-                        class="text-xs text-yellow-300 hover:text-yellow-200 underline">
+                    <button @click="captureGPS(true)" class="text-xs text-yellow-300 hover:text-yellow-200 underline">
                         Activer la localisation
                     </button>
                 </div>
 
                 <!-- Loading -->
                 <div
+                    x-cloak
                     x-show="gpsStatus === 'loading'"
-                    class="flex items-center justify-center gap-3 bg-blue-900/30 border border-blue-600/50 rounded-lg px-4 py-3">
-                    <svg class="animate-spin h-5 w-5 text-blue-400"
-                         xmlns="http://www.w3.org/2000/svg"
-                         fill="none"
-                         viewBox="0 0 24 24">
-                        <circle class="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                stroke-width="4"></circle>
-                        <path class="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                        </path>
+                    class="flex items-center justify-center gap-3 bg-blue-900/30 border border-blue-600/50 rounded-lg px-4 py-3"
+                >
+                    <svg class="animate-spin h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     <span class="text-blue-300 text-sm font-medium" x-text="gpsMessage"></span>
                 </div>
 
-                <!-- Succès dans le rayon -->
+                <!-- Succès -->
                 <div
+                    x-cloak
                     x-show="gpsStatus === 'success' && isInRange"
-                    class="flex items-center justify-center gap-3 bg-green-900/30 border border-green-500/50 rounded-lg px-4 py-3">
-                    <svg class="h-5 w-5 text-green-400"
-                         fill="none"
-                         stroke="currentColor"
-                         viewBox="0 0 24 24">
-                        <path stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
+                    class="flex items-center justify-center gap-3 bg-green-900/30 border border-green-500/50 rounded-lg px-4 py-3"
+                >
+                    <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     <span class="text-green-300 text-sm font-medium" x-text="gpsMessage"></span>
                 </div>
 
-                <!-- Hors du rayon -->
+                <!-- Hors du rayon / Erreur -->
                 <div
+                    x-cloak
                     x-show="gpsStatus === 'error'"
-                    class="flex flex-col items-center justify-center gap-2 bg-red-900/30 border border-red-500/50 rounded-lg px-4 py-3">
+                    class="flex flex-col items-center justify-center gap-2 bg-red-900/30 border border-red-500/50 rounded-lg px-4 py-3"
+                >
                     <div class="flex items-center gap-3">
-                        <svg class="h-5 w-5 text-red-400"
-                             fill="none"
-                             stroke="currentColor"
-                             viewBox="0 0 24 24">
-                            <path stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
+                        <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         <span class="text-red-300 text-sm font-medium" x-text="gpsMessage"></span>
                     </div>
-                    <button
-                        @click="captureGPS(true)"
-                        class="text-xs text-red-200 hover:text-white underline">
+                    <button @click="captureGPS(true)" class="text-xs text-red-200 hover:text-white underline">
                         Réessayer
                     </button>
                 </div>
 
                 <!-- Permission refusée -->
                 <div
+                    x-cloak
                     x-show="gpsStatus === 'denied'"
-                    class="flex flex-col items-center justify-center gap-2 bg-orange-900/30 border border-orange-500/50 rounded-lg px-4 py-3">
+                    class="flex flex-col items-center justify-center gap-2 bg-orange-900/30 border border-orange-500/50 rounded-lg px-4 py-3"
+                >
                     <div class="flex items-center gap-3">
-                        <svg class="h-5 w-5 text-orange-400"
-                             fill="none"
-                             stroke="currentColor"
-                             viewBox="0 0 24 24">
-                            <path stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
+                        <svg class="h-5 w-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                         </svg>
                         <span class="text-orange-300 text-sm font-medium" x-text="gpsMessage"></span>
@@ -281,41 +257,37 @@
                     <p class="text-xs text-orange-200 text-center">
                         Cliquez sur l'icône 🔒 dans votre navigateur pour autoriser la géolocalisation
                     </p>
-                    <button
-                        @click="captureGPS(true)"
-                        class="text-xs text-orange-200 hover:text-white underline">
+                    <button @click="captureGPS(true)" class="text-xs text-orange-200 hover:text-white underline">
                         Réessayer
                     </button>
                 </div>
 
                 <!-- Non disponible -->
                 <div
+                    x-cloak
                     x-show="gpsStatus === 'unavailable'"
-                    class="flex items-center justify-center gap-3 bg-gray-800/50 border border-gray-600/50 rounded-lg px-4 py-3">
-                    <svg class="h-5 w-5 text-gray-400"
-                         fill="none"
-                         stroke="currentColor"
-                         viewBox="0 0 24 24">
-                        <path stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
+                    class="flex items-center justify-center gap-3 bg-gray-800/50 border border-gray-600/50 rounded-lg px-4 py-3"
+                >
+                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"></path>
                     </svg>
                     <span class="text-gray-300 text-sm font-medium" x-text="gpsMessage"></span>
                 </div>
+
             </div>
         </div>
 
-        <!-- Dropdown de catégories -->
+        <!-- Dropdown catégories -->
         <div class="text-center mb-4 px-2">
             <div class="relative inline-block text-left max-w-full">
                 <button
                     @click="categoryMenuOpen = !categoryMenuOpen"
                     type="button"
                     class="inline-flex flex-wrap justify-center items-center w-full rounded-md px-3 py-2 text-sm sm:text-base md:text-xl lg:text-2xl font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none gap-1"
-                    id="menu-button"
                     aria-haspopup="true"
-                    :aria-expanded="categoryMenuOpen">
+                    :aria-expanded="categoryMenuOpen"
+                >
                     <span class="whitespace-nowrap">Catégorie :</span>
                     <span class="text-white break-words"
                           x-text="selectedCategory === 'all'
@@ -337,6 +309,7 @@
                 </button>
 
                 <div
+                    x-cloak
                     x-show="categoryMenuOpen"
                     @click.away="categoryMenuOpen = false"
                     x-transition:enter="transition ease-out duration-100"
@@ -348,7 +321,8 @@
                     class="origin-top-right absolute left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 sm:translate-x-0 mt-2 w-64 sm:w-56 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
                     role="menu"
                     aria-orientation="vertical"
-                    tabindex="-1">
+                    tabindex="-1"
+                >
                     <div class="py-1" role="none">
                         <a href="{{ route('vote-jour-j.show', request('search') ? ['search' => request('search')] : []) }}"
                            class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm w-full text-left"
@@ -396,19 +370,15 @@
                             placeholder="Rechercher un projet, une équipe ..."
                             class="w-full bg-gray-900/50 border border-gray-700 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
                             value="{{ request('search') }}"
-                            autocomplete="off">
+                            autocomplete="off"
+                        >
                         <button
                             type="submit"
                             class="hidden md:flex items-center justify-center absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-400 transition-colors"
-                            aria-label="Lancer la recherche">
-                            <svg id="search-icon"
-                                 class="w-5 h-5"
-                                 fill="none"
-                                 stroke="currentColor"
-                                 viewBox="0 0 24 24">
-                                <path stroke-linecap="round"
-                                      stroke-linejoin="round"
-                                      stroke-width="2"
+                            aria-label="Lancer la recherche"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                             </svg>
                         </button>
@@ -442,15 +412,14 @@
                                         : $snapshot['champs_personnalises'];
 
                                     $schoolValue = $champsPerso['student_school'] ?? null;
-                                    if ($schoolValue === 'OTHER') {
-                                        $school = $champsPerso['student_school_other'] ?? null;
-                                    } else {
-                                        $school = $schoolValue;
-                                    }
+                                    $school = ($schoolValue === 'OTHER')
+                                        ? ($champsPerso['student_school_other'] ?? null)
+                                        : $schoolValue;
                                 }
                             }
 
                             $profileType = $projet->submission?->profile_type ?? 'other';
+
                             $demoUrl = $projet->video_demo
                                 ?? $projet->video_demonstration
                                 ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demo')
@@ -462,9 +431,7 @@
                             :class="{ 'opacity-50 hover:bg-gray-800/20': !hasEvent }"
                             x-show="selectedCategory === 'all' || selectedCategory === '{{ $profileType }}'"
                         >
-                            <td class="hidden md:table-cell p-4" data-label="Secteur : ">
-                                {{ $secteur->nom }}
-                            </td>
+                            <td class="hidden md:table-cell p-4" data-label="Secteur : ">{{ $secteur->nom }}</td>
 
                             <td class="hidden md:table-cell p-4" data-label="Équipe : ">
                                 <div>{{ $projet->nom_equipe }}</div>
@@ -496,21 +463,13 @@
                                         <button
                                             type="button"
                                             class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                            aria-label="Détails du projet"
                                             title="Détails"
-                                            @click="openDetails(@js($projet))">
-                                            <svg xmlns="http://www.w3.org/2000/svg"
-                                                 class="h-5 w-5"
-                                                 viewBox="0 0 24 24"
-                                                 fill="none"
-                                                 stroke="currentColor"
-                                                 stroke-width="1.8">
-                                                <path stroke-linecap="round"
-                                                      stroke-linejoin="round"
-                                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round"
-                                                      stroke-linejoin="round"
-                                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            @click="openDetails(@js($projet))"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="1.8">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
                                         </button>
 
@@ -519,54 +478,34 @@
                                             type="button"
                                             class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                                             title="Partager ce projet"
-                                            onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
-                                            <svg xmlns="http://www.w3.org/2000/svg"
-                                                 class="h-5 w-5"
-                                                 viewBox="0 0 20 20"
-                                                 fill="currentColor">
+                                            onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                                 <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                                             </svg>
                                         </button>
 
                                         <!-- Démo -->
                                         @if($demoUrl)
-                                            <a href="{{ $demoUrl }}"
-                                               target="_blank"
-                                               rel="noopener noreferrer"
+                                            <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
                                                class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                                                title="Voir la démonstration">
-                                                <svg xmlns="http://www.w3.org/2000/svg"
-                                                     class="h-5 w-5"
-                                                     viewBox="0 0 24 24"
-                                                     fill="none"
-                                                     stroke="currentColor"
-                                                     stroke-width="1.8">
-                                                    <path stroke-linecap="round"
-                                                          stroke-linejoin="round"
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
+                                                     fill="none" stroke="currentColor" stroke-width="1.8">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
                                                           d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2"
-                                                          stroke-linecap="round"
-                                                          stroke-linejoin="round" />
+                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
                                                 </svg>
                                             </a>
                                         @else
                                             <span class="p-2 rounded-full text-gray-600 bg-transparent opacity-60"
                                                   title="Aucune démonstration disponible" aria-hidden="true">
-                                                <svg xmlns="http://www.w3.org/2000/svg"
-                                                     class="h-5 w-5"
-                                                     viewBox="0 0 24 24"
-                                                     fill="none"
-                                                     stroke="currentColor"
-                                                     stroke-width="1.2">
-                                                    <path stroke-linecap="round"
-                                                          stroke-linejoin="round"
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
+                                                     fill="none" stroke="currentColor" stroke-width="1.2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
                                                           d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2"
-                                                          stroke-linecap="round"
-                                                          stroke-linejoin="round" />
-                                                    <line x1="3" y1="3" x2="21" y2="21"
-                                                          stroke-linecap="round"
-                                                          stroke-linejoin="round" />
+                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                    <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
                                                 </svg>
                                             </span>
                                         @endif
@@ -579,136 +518,98 @@
                                             class="group flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
                                             :class="voteButtonClass()"
                                             :disabled="voteButtonDisabled()"
-                                            @click="openVote(@js($projet))">
-                                            <svg xmlns="http://www.w3.org/2000/svg"
-                                                 class="h-4 w-4"
-                                                 fill="none"
-                                                 viewBox="0 0 24 24"
-                                                 stroke="currentColor"
-                                                 stroke-width="2">
-                                                <path stroke-linecap="round"
-                                                      stroke-linejoin="round"
+                                            @click="openVote(@js($projet))"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
                                                       d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                             Voter
                                         </button>
 
-                                        <!-- Overlay pour capter le clic quand inactif / hors zone / GPS en attente -->
                                         <button
+                                            x-cloak
                                             x-show="voteButtonDisabled()"
                                             @click.prevent="explainWhyVoteDisabled()"
                                             class="absolute inset-0 w-full h-full z-20 bg-transparent"
-                                            aria-hidden="true"></button>
+                                            aria-hidden="true"
+                                        ></button>
                                     </div>
                                 </div>
 
                                 <!-- Desktop -->
                                 <div class="hidden md:flex relative md:flex-row items-center justify-center gap-2">
-                                    <!-- Détails -->
                                     <button
                                         type="button"
                                         class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                        aria-label="Détails du projet"
                                         title="Détails"
-                                        @click="openDetails(@js($projet))">
-                                        <svg xmlns="http://www.w3.org/2000/svg"
-                                             class="h-5 w-5"
-                                             viewBox="0 0 24 24"
-                                             fill="none"
-                                             stroke="currentColor"
-                                             stroke-width="1.8">
-                                            <path stroke-linecap="round"
-                                                  stroke-linejoin="round"
-                                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path stroke-linecap="round"
-                                                  stroke-linejoin="round"
-                                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        @click="openDetails(@js($projet))"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
+                                             fill="none" stroke="currentColor" stroke-width="1.8">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
                                     </button>
 
-                                    <!-- Partager -->
                                     <button
                                         type="button"
                                         class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                                         title="Partager ce projet"
-                                        onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
-                                        <svg xmlns="http://www.w3.org/2000/svg"
-                                             class="h-5 w-5"
-                                             viewBox="0 0 20 20"
-                                             fill="currentColor">
+                                        onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                             <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                                         </svg>
                                     </button>
 
-                                    <!-- Démo -->
                                     @if($demoUrl)
-                                        <a href="{{ $demoUrl }}"
-                                           target="_blank"
-                                           rel="noopener noreferrer"
+                                        <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
                                            class="p-2 ml-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                                            title="Voir la démonstration">
-                                            <svg xmlns="http://www.w3.org/2000/svg"
-                                                 class="h-5 w-5"
-                                                 viewBox="0 0 24 24"
-                                                 fill="none"
-                                                 stroke="currentColor"
-                                                 stroke-width="1.8">
-                                                <path stroke-linecap="round"
-                                                      stroke-linejoin="round"
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="1.8">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
                                                       d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                <rect x="2" y="5" width="11" height="14" rx="2" ry="2"
-                                                      stroke-linecap="round"
-                                                      stroke-linejoin="round" />
+                                                <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
                                             </svg>
                                         </a>
                                     @else
                                         <span class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60"
                                               title="Aucune démonstration disponible" aria-hidden="true">
-                                            <svg xmlns="http://www.w3.org/2000/svg"
-                                                 class="h-5 w-5"
-                                                 viewBox="0 0 24 24"
-                                                 fill="none"
-                                                 stroke="currentColor"
-                                                 stroke-width="1.2">
-                                                <path stroke-linecap="round"
-                                                      stroke-linejoin="round"
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
+                                                 fill="none" stroke="currentColor" stroke-width="1.2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
                                                       d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                <rect x="2" y="5" width="11" height="14" rx="2" ry="2"
-                                                      stroke-linecap="round"
-                                                      stroke-linejoin="round" />
-                                                <line x1="3" y1="3" x2="21" y2="21"
-                                                      stroke-linecap="round"
-                                                      stroke-linejoin="round" />
+                                                <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
                                             </svg>
                                         </span>
                                     @endif
 
-                                    <!-- Voter (desktop) -->
                                     <button
                                         type="button"
                                         class="group flex items-center justify-center gap-2 md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
                                         :class="voteButtonClass()"
                                         :disabled="voteButtonDisabled()"
-                                        @click="openVote(@js($projet))">
-                                        <svg xmlns="http://www.w3.org/2000/svg"
-                                             class="h-4 w-4"
-                                             fill="none"
-                                             viewBox="0 0 24 24"
-                                             stroke="currentColor"
-                                             stroke-width="2">
-                                            <path stroke-linecap="round"
-                                                  stroke-linejoin="round"
+                                        @click="openVote(@js($projet))"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
                                                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                         Voter
                                     </button>
 
-                                    <!-- Overlay inactif -->
                                     <button
+                                        x-cloak
                                         x-show="voteButtonDisabled()"
                                         @click.prevent="explainWhyVoteDisabled()"
                                         class="absolute inset-0 w-full h-full z-20 bg-transparent"
-                                        aria-hidden="true"></button>
+                                        aria-hidden="true"
+                                    ></button>
                                 </div>
                             </td>
                         </tr>
@@ -721,15 +622,16 @@
 
         {{-- Modale DÉTAILS --}}
         <div
+            x-cloak
             x-show="showModal"
-            style="display:none;"
             class="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0"
             x-transition:enter-end="opacity-100"
             x-transition:leave="transition ease-in duration-200"
             x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0">
+            x-transition:leave-end="opacity-0"
+        >
             <div
                 @click.away="showModal = false"
                 class="bg-gray-900/95 border-yellow-400/30 rounded-lg shadow-2xl max-w-2xl w-full text-white relative flex flex-col"
@@ -739,11 +641,10 @@
                 x-transition:enter-end="opacity-100 transform scale-100"
                 x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100 transform scale-100"
-                x-transition:leave-end="opacity-0 transform scale-90">
+                x-transition:leave-end="opacity-0 transform scale-90"
+            >
                 <div class="p-6 border-b border-gray-700 flex-shrink-0">
-                    <button
-                        @click="showModal = false"
-                        class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl leading-none">
+                    <button @click="showModal = false" class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl leading-none">
                         &times;
                     </button>
                     <h2 class="text-2xl sm:text-3xl font-bold text-gray-400 mb-2" x-text="modalProjet?.nom_projet"></h2>
@@ -757,17 +658,22 @@
                         <strong class="text-gray-300">Résumé :</strong>
                         <span class="whitespace-pre-wrap" x-text="modalProjet?.resume"></span>
                     </p>
+
                     <div>
                         <strong class="text-gray-300">Description :</strong>
                         <div
                             class="whitespace-pre-wrap"
-                            :class="{'max-h-24 overflow-hidden': !descriptionExpanded && (modalProjet?.description?.length || 0) > 250}">
+                            :class="{'max-h-24 overflow-hidden': !descriptionExpanded && (modalProjet?.description?.length || 0) > 250}"
+                        >
                             <span x-text="modalProjet?.description"></span>
                         </div>
+
                         <button
+                            x-cloak
                             x-show="(modalProjet?.description?.length || 0) > 250"
                             @click="descriptionExpanded = !descriptionExpanded"
-                            class="text-yellow-400 hover:text-yellow-300 mt-2 text-sm">
+                            class="text-yellow-400 hover:text-yellow-300 mt-2 text-sm"
+                        >
                             <span x-text="descriptionExpanded ? 'Voir moins' : 'Voir plus'"></span>
                         </button>
                     </div>
@@ -777,15 +683,16 @@
 
         {{-- Modale VOTE --}}
         <div
+            x-cloak
             x-show="showVoteModal"
-            style="display:none;"
             class="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0"
             x-transition:enter-end="opacity-100"
             x-transition:leave="transition ease-in duration-200"
             x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0">
+            x-transition:leave-end="opacity-0"
+        >
             <div
                 @click.away="if (!isLoading) showVoteModal = false"
                 class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-2xl max-w-lg w-full text-white relative flex flex-col"
@@ -794,20 +701,16 @@
                 x-transition:enter-end="opacity-100 transform scale-100"
                 x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100 transform scale-100"
-                x-transition:leave-end="opacity-0 transform scale-90">
+                x-transition:leave-end="opacity-0 transform scale-90"
+            >
                 <div class="p-6 border-b border-gray-700 flex-shrink-0 relative">
                     <button
                         @click="if (!isLoading) showVoteModal = false"
-                        class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                             class="h-6 w-6"
-                             fill="none"
-                             viewBox="0 0 24 24"
-                             stroke="currentColor"
-                             stroke-width="2">
-                            <path stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  d="M6 18L18 6M6 6l12 12"/>
+                        class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
 
@@ -819,32 +722,31 @@
                     </p>
 
                     <div
+                        x-cloak
                         x-show="voteStep === 1 || voteStep === 2"
-                        class="absolute bottom-0 left-6 translate-y-1/2 bg-gray-800 px-3 py-1 rounded-full text-xs text-yellow-300 border border-gray-700">
+                        class="absolute bottom-0 left-6 translate-y-1/2 bg-gray-800 px-3 py-1 rounded-full text-xs text-yellow-300 border border-gray-700"
+                    >
                         <span x-text="`Étape ${voteStep} sur 2`"></span>
                     </div>
                 </div>
 
                 <div class="p-6 space-y-4">
                     {{-- Étape 1 --}}
-                    <div x-show="voteStep === 1">
+                    <div x-cloak x-show="voteStep === 1">
                         <div class="space-y-4">
                             <div>
-                                <label for="nom_votant" class="block mb-2 text-sm font-medium text-gray-300">
-                                    Votre nom (Optionnel)
-                                </label>
+                                <label for="nom_votant" class="block mb-2 text-sm font-medium text-gray-300">Votre nom (Optionnel)</label>
                                 <input
                                     type="text"
                                     id="nom_votant"
                                     class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
                                     placeholder="Ex: Paul David Mbaye"
-                                    x-model="nomVotant">
+                                    x-model="nomVotant"
+                                >
                             </div>
 
                             <div>
-                                <label for="telephone_display" class="block mb-2 text-sm font-medium text-gray-300">
-                                    Votre numéro de téléphone
-                                </label>
+                                <label for="telephone_display" class="block mb-2 text-sm font-medium text-gray-300">Votre numéro de téléphone</label>
                                 <div class="flex flex-row gap-0">
                                     <div class="flex-shrink-0 z-10 inline-flex items-center py-2.5 px-3 text-sm font-medium text-center text-gray-200 bg-gray-800 border border-gray-600 rounded-l-lg">
                                         🇸🇳 +221
@@ -856,7 +758,8 @@
                                             class="block p-2.5 w-full z-20 text-sm text-white bg-gray-700/50 rounded-r-lg border border-gray-600 border-l-0 focus:ring-2 focus:outline-none focus:ring-yellow-400"
                                             placeholder="Ex: 77 123 45 67"
                                             required
-                                            x-model="telephoneDisplay">
+                                            x-model="telephoneDisplay"
+                                        >
                                     </div>
                                 </div>
                                 <p class="mt-2 text-xs text-gray-400">
@@ -870,7 +773,8 @@
                                         type="button"
                                         class="w-full px-8 text-sm py-3 text-white rounded-full font-medium bg-gray-900 flex items-center justify-center"
                                         :disabled="isLoading"
-                                        @click="sendOtp()">
+                                        @click="sendOtp()"
+                                    >
                                         <span x-show="!isLoading">Cliquez pour recevoir le code de vote</span>
                                         <span x-show="isLoading">Envoi en cours...</span>
                                     </button>
@@ -880,16 +784,12 @@
                     </div>
 
                     {{-- Étape 2 --}}
-                    <div x-show="voteStep === 2" style="display:none;">
+                    <div x-cloak x-show="voteStep === 2">
                         <div class="space-y-4">
-                            <p class="text-center text-gray-300">
-                                Un code a été envoyé. Veuillez le saisir ci-dessous.
-                            </p>
+                            <p class="text-center text-gray-300">Un code a été envoyé. Veuillez le saisir ci-dessous.</p>
 
                             <div>
-                                <label for="code_otp" class="block mb-2 text-sm font-medium text-gray-300">
-                                    Code de vérification (OTP)
-                                </label>
+                                <label for="code_otp" class="block mb-2 text-sm font-medium text-gray-300">Code de vérification (OTP)</label>
                                 <input
                                     type="tel"
                                     id="code_otp"
@@ -899,7 +799,8 @@
                                     maxlength="6"
                                     pattern="\d{6}"
                                     inputmode="numeric"
-                                    x-model="otpCode">
+                                    x-model="otpCode"
+                                >
                             </div>
 
                             <div class="pt-4">
@@ -907,7 +808,8 @@
                                     type="button"
                                     class="w-full skew-btn bg-emerald-600 text-white hover:text-white flex items-center justify-center"
                                     :disabled="isLoading"
-                                    @click="verifyOtp()">
+                                    @click="verifyOtp()"
+                                >
                                     <span x-show="!isLoading">Valider le vote</span>
                                     <span x-show="isLoading">Validation...</span>
                                 </button>
@@ -916,24 +818,16 @@
                     </div>
 
                     {{-- Étape 3 --}}
-                    <div x-show="voteStep === 3" style="display:none;" class="text-center py-6 px-4">
-                        <div x-show="successMessage" class="space-y-5">
+                    <div x-cloak x-show="voteStep === 3" class="text-center py-6 px-4">
+                        <div x-cloak x-show="successMessage" class="space-y-5">
                             <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
                                 <div class="w-16 h-16 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-8 h-8 sm:w-7 sm:h-7 text-emerald-400"
-                                         fill="none"
-                                         stroke="currentColor"
-                                         viewBox="0 0 24 24">
-                                        <path stroke-linecap="round"
-                                              stroke-linejoin="round"
-                                              stroke-width="2.5"
-                                              d="M5 13l4 4L19 7"></path>
+                                    <svg class="w-8 h-8 sm:w-7 sm:h-7 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
                                     </svg>
                                 </div>
                                 <div class="text-center sm:text-left">
-                                    <h3 class="text-xl sm:text-2xl font-semibold text-white mb-1">
-                                        Vote enregistré
-                                    </h3>
+                                    <h3 class="text-xl sm:text-2xl font-semibold text-white mb-1">Vote enregistré</h3>
                                     <p class="text-sm text-gray-400" x-text="successMessage"></p>
                                 </div>
                             </div>
@@ -941,55 +835,34 @@
                             <div class="pt-4 pb-2 border-t border-gray-800">
                                 <div class="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-lg mx-auto">
                                     <div class="text-center sm:text-left flex-1">
-                                        <h4 class="text-base font-medium text-white mb-1">
-                                            Grande Finale
-                                        </h4>
-                                        <p class="text-xs text-gray-400">
-                                            Réservez votre place dès maintenant
-                                        </p>
+                                        <h4 class="text-base font-medium text-white mb-1">Grande Finale</h4>
+                                        <p class="text-xs text-gray-400">Réservez votre place dès maintenant</p>
                                     </div>
-                                    <a href="https://reservation.govathon.sn"
-                                       target="_blank"
+                                    <a href="https://reservation.govathon.sn" target="_blank"
                                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-medium text-sm rounded-lg transition-all duration-200 shadow-lg hover:shadow-yellow-500/20 flex-shrink-0">
                                         <span>Réserver</span>
-                                        <svg class="w-4 h-4"
-                                             fill="none"
-                                             stroke="currentColor"
-                                             viewBox="0 0 24 24">
-                                            <path stroke-linecap="round"
-                                                  stroke-linejoin="round"
-                                                  stroke-width="2"
-                                                  d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
                                         </svg>
                                     </a>
                                 </div>
                             </div>
 
-                            <button
-                                @click="showVoteModal = false"
-                                class="text-sm text-gray-500 hover:text-gray-300 underline transition-colors">
+                            <button @click="showVoteModal = false" class="text-sm text-gray-500 hover:text-gray-300 underline transition-colors">
                                 Fermer
                             </button>
                         </div>
 
-                        <div x-show="errorMessage" class="space-y-4">
+                        <div x-cloak x-show="errorMessage" class="space-y-4">
                             <div class="flex items-center justify-center gap-4">
                                 <div class="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-7 h-7 text-red-400"
-                                         fill="none"
-                                         stroke="currentColor"
-                                         viewBox="0 0 24 24">
-                                        <path stroke-linecap="round"
-                                              stroke-linejoin="round"
-                                              stroke-width="2"
-                                              d="M6 18L18 6M6 6l12 12"></path>
+                                    <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                     </svg>
                                 </div>
                                 <p class="text-base text-gray-300 text-left flex-1" x-text="errorMessage"></p>
                             </div>
-                            <button
-                                @click="showVoteModal = false"
-                                class="text-sm text-gray-500 hover:text-gray-300 underline transition-colors">
+                            <button @click="showVoteModal = false" class="text-sm text-gray-500 hover:text-gray-300 underline transition-colors">
                                 Fermer
                             </button>
                         </div>
@@ -997,15 +870,18 @@
 
                     <!-- Erreur inline étape 1/2 -->
                     <div
+                        x-cloak
                         x-show="errorMessage && (voteStep === 1 || voteStep === 2)"
                         class="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg relative mt-4"
-                        role="alert">
+                        role="alert"
+                    >
                         <p x-text="errorMessage"></p>
                     </div>
 
                 </div>
             </div>
         </div>
+
     </div>
 </main>
 
@@ -1016,8 +892,7 @@
 
 <script>
 /**
- * Alpine component (on sort tout le gros JS du x-data pour éviter de casser le HTML
- * et éviter l'affichage "en texte" après scan QR).
+ * Alpine component
  */
 function voteJourJComponent(cfg) {
     return {
@@ -1069,21 +944,22 @@ function voteJourJComponent(cfg) {
         sendOtpUrl: cfg.sendOtpUrl,
         verifyOtpUrl: cfg.verifyOtpUrl,
 
+        isSecureContextOk() {
+            const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            return (window.location.protocol === 'https:' || isLocalhost) && window.isSecureContext;
+        },
+
         init() {
             const self = this;
 
-            // Modale d'accueil une seule fois
-            if (!sessionStorage.getItem('welcome_modal_shown')) {
-                self.showWelcomeModal = true;
-                sessionStorage.setItem('welcome_modal_shown', 'true');
-            }
+            // Toujours afficher la modale au chargement (pour forcer un clic utilisateur)
+            self.showWelcomeModal = true;
 
             // Event actif ?
             if (!self.hasEvent) {
                 self.gpsStatus = 'unavailable';
                 self.gpsMessage = 'Vote Jour J désactivé';
             } else {
-                // On tente auto si permission déjà accordée, sinon on reste en idle
                 self.tryAutoGPS();
             }
 
@@ -1093,7 +969,7 @@ function voteJourJComponent(cfg) {
                 self.errorMessage = self.inactiveMessage;
             }
 
-            // Écouteurs global
+            // Écouteurs global (optionnels)
             window.addEventListener('project-data', function(e) {
                 self.modalProjet = e.detail;
                 self.showModal = true;
@@ -1108,6 +984,7 @@ function voteJourJComponent(cfg) {
         closeAll() {
             this.showModal = false;
             this.showVoteModal = false;
+            this.categoryMenuOpen = false;
         },
 
         showInactiveNotice() {
@@ -1117,20 +994,22 @@ function voteJourJComponent(cfg) {
 
         startFromWelcome() {
             this.showWelcomeModal = false;
-            if (this.hasEvent) {
-                this.captureGPS(true); // force demande permission
-            }
+            if (this.hasEvent) this.captureGPS(true);
         },
 
         async tryAutoGPS() {
-            // si pas support
             if (!navigator.geolocation) {
                 this.gpsStatus = 'unavailable';
                 this.gpsMessage = 'Votre navigateur ne supporte pas la géolocalisation.';
                 return;
             }
 
-            // tentative de check permission (si dispo)
+            if (!this.isSecureContextOk()) {
+                this.gpsStatus = 'unavailable';
+                this.gpsMessage = 'Géolocalisation indisponible (HTTPS requis).';
+                return;
+            }
+
             if (navigator.permissions && navigator.permissions.query) {
                 try {
                     const p = await navigator.permissions.query({ name: 'geolocation' });
@@ -1143,19 +1022,16 @@ function voteJourJComponent(cfg) {
                         this.gpsMessage = '✗ Permission GPS refusée. Veuillez autoriser la géolocalisation.';
                         return;
                     }
-                    // prompt => on reste idle, user click
                     this.gpsStatus = 'idle';
                     this.gpsMessage = 'Veuillez activer la localisation pour voter.';
                     return;
                 } catch (e) {
-                    // fallback: idle
                     this.gpsStatus = 'idle';
                     this.gpsMessage = 'Veuillez activer la localisation pour voter.';
                     return;
                 }
             }
 
-            // fallback: idle
             this.gpsStatus = 'idle';
             this.gpsMessage = 'Veuillez activer la localisation pour voter.';
         },
@@ -1182,6 +1058,12 @@ function voteJourJComponent(cfg) {
                 return;
             }
 
+            if (!this.isSecureContextOk()) {
+                this.gpsStatus = 'unavailable';
+                this.gpsMessage = 'Géolocalisation indisponible (HTTPS requis).';
+                return;
+            }
+
             this.gpsStatus = 'loading';
             this.gpsMessage = 'Recherche de votre position...';
 
@@ -1190,7 +1072,7 @@ function voteJourJComponent(cfg) {
                     this.userLatitude = position.coords.latitude;
                     this.userLongitude = position.coords.longitude;
 
-                    if (this.hasEvent) {
+                    if (this.hasEvent && this.eventLat != null && this.eventLon != null && this.eventRadius != null) {
                         this.distanceToEvent = this.calculateDistance(
                             this.userLatitude,
                             this.userLongitude,
@@ -1209,12 +1091,13 @@ function voteJourJComponent(cfg) {
                         }
                     } else {
                         this.gpsStatus = 'success';
-                        this.gpsMessage = '✓ Position détectée (aucun événement GPS actif)';
+                        this.gpsMessage = '✓ Position détectée';
                         this.isInRange = true;
                     }
                 },
                 (error) => {
                     console.error('Erreur GPS:', error);
+
                     if (error.code === error.PERMISSION_DENIED) {
                         this.gpsStatus = 'denied';
                         this.gpsMessage = '✗ Permission GPS refusée. Veuillez autoriser la géolocalisation.';
@@ -1230,6 +1113,7 @@ function voteJourJComponent(cfg) {
                         this.gpsMessage = '✗ Délai de géolocalisation dépassé.';
                         return;
                     }
+
                     this.gpsStatus = 'error';
                     this.gpsMessage = '✗ Erreur de géolocalisation.';
                 },
@@ -1269,6 +1153,10 @@ function voteJourJComponent(cfg) {
                 this.showInactiveNotice();
                 return;
             }
+            if (!this.isSecureContextOk()) {
+                alert('⚠️ La géolocalisation nécessite HTTPS (ou localhost).');
+                return;
+            }
             if (this.gpsStatus !== 'success') {
                 alert('⚠️ Activez la localisation puis attendez la détection GPS.');
                 return;
@@ -1287,6 +1175,7 @@ function voteJourJComponent(cfg) {
 
             this.voteProjet = projet;
             this.showVoteModal = true;
+
             this.voteStep = this.isVoteActive ? 1 : 3;
             this.errorMessage = this.isVoteActive ? '' : this.inactiveMessage;
             this.successMessage = '';
@@ -1295,7 +1184,6 @@ function voteJourJComponent(cfg) {
 
         normalizeSNPhone(raw) {
             const digits = String(raw || '').replace(/\D+/g, '');
-            // si l'utilisateur saisit déjà 221..., on prend les 9 derniers chiffres
             const last9 = digits.length >= 9 ? digits.slice(-9) : digits;
             if (last9.length !== 9) return null;
             return '+221' + last9;
@@ -1331,9 +1219,7 @@ function voteJourJComponent(cfg) {
                 if (this.recaptchaKey && window.grecaptcha && window.grecaptcha.execute) {
                     recaptchaToken = await window.grecaptcha.execute(this.recaptchaKey, { action: 'vote_jourj' });
                 }
-            } catch (e) {
-                // On continue sans bloquer si recaptcha non dispo
-            }
+            } catch (e) {}
 
             this.isLoading = true;
 
@@ -1357,7 +1243,6 @@ function voteJourJComponent(cfg) {
 
                 if (!res.ok || !data.success) {
                     this.errorMessage = data.message || 'Erreur lors de l’envoi du code.';
-                    this.isLoading = false;
                     return;
                 }
 
@@ -1406,9 +1291,7 @@ function voteJourJComponent(cfg) {
                 const data = await res.json().catch(() => ({}));
 
                 if (!res.ok || !data.success) {
-                    // On reste sur étape 2 avec erreur visible
                     this.errorMessage = data.message || 'Validation OTP échouée.';
-                    this.isLoading = false;
                     return;
                 }
 
