@@ -622,4 +622,33 @@ class VoteJourJController extends Controller
 
         return true;
     }
+
+    /**
+     * ADMIN : Supprime un événement Vote Jour J
+     */
+    public function destroyEvent($id)
+    {
+        $event = VoteEvent::findOrFail($id);
+
+        try {
+            // Supprimer tous les votes associés via la relation VoteJourJ
+            VoteJourJ::where('vote_event_id', $event->id)->delete();
+            
+            // Supprimer l'événement
+            $event->delete();
+
+            return redirect()
+                ->route('admin.vote-events.index')
+                ->with('success', "L'événement '{$event->nom}' a été supprimé avec succès.");
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la suppression d\'un événement', [
+                'event_id' => $id,
+                'error'    => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->route('admin.vote-events.index')
+                ->with('error', 'Une erreur est survenue lors de la suppression de l\'événement.');
+        }
+    }
 }

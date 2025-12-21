@@ -9,10 +9,6 @@
         <h2 class="text-bold text-body-emphasis">📍 Gestion des Événements Vote Jour J</h2>
         <p class="text-body-tertiary">Gérez les événements GPS pour le vote sur place</p>
     </div>
-    <div class="pb-5">
-        <h2 class="text-bold text-body-emphasis">📍 Gestion des Événements Vote Jour J</h2>
-        <p class="text-body-tertiary">Gérez les événements GPS pour le vote sur place</p>
-    </div>
 
     <!-- Bouton Créer un événement -->
     <div class="mb-4 d-flex justify-content-between align-items-center">
@@ -90,6 +86,13 @@
                                            title="Voir QR Code">
                                             <i class="fas fa-qrcode"></i>
                                         </a>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-danger"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteModal{{ $event->id }}"
+                                                title="Supprimer l'événement">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                         <span class="badge bg-secondary ms-2">{{ $item['total_votes'] ?? 0 }} votes</span>
                                     </td>
                                 </tr>
@@ -97,6 +100,51 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Modales de suppression -->
+                @foreach($events as $item)
+                    @php $event = $item['event']; @endphp
+                    <div class="modal fade" id="deleteModal{{ $event->id }}" tabindex="-1" aria-labelledby="deleteLabel{{ $event->id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-danger text-white">
+                                    <h5 class="modal-title" id="deleteLabel{{ $event->id }}">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        Supprimer l'événement
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p><strong>Êtes-vous sûr de vouloir supprimer cet événement ?</strong></p>
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <p class="mb-1"><strong>{{ $event->nom }}</strong></p>
+                                            <small class="text-muted">Du {{ $event->date_debut->format('d/m/Y H:i') }} au {{ $event->date_fin->format('d/m/Y H:i') }}</small>
+                                        </div>
+                                    </div>
+                                    @if($item['total_votes'] > 0)
+                                        <div class="alert alert-warning mt-3" role="alert">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Attention :</strong> Cet événement contient {{ $item['total_votes'] }} vote(s). 
+                                            Cette action supprimera aussi tous les votes enregistrés.
+                                        </div>
+                                    @endif
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                    <form action="{{ route('admin.vote-events.destroy', $event->id) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fas fa-trash me-2"></i>
+                                            Oui, supprimer
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
             @else
                 <div class="text-center py-5">
                     <i class="fas fa-map-marker-alt fa-3x text-muted mb-3"></i>

@@ -41,7 +41,6 @@
 
     <div class="admin-hero d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between">
         <div class="d-flex align-items-center gap-3">
-            <img src="{{ asset('images/logoGov.jpeg') }}" alt="GovAthon Logo" style="width:68px; height:auto; border-radius:8px;" />
             <div>
                 <h1 class="h4 mb-0">Admin Dashboard</h1>
                 <p class="mb-0 text-muted small">Vue d'ensemble — statistiques et contrôles rapides</p>

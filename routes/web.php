@@ -48,6 +48,7 @@ Route::middleware(['auth', 'verified', 'role.admin:admin,super_admin'])->prefix(
     Route::get('/vote-events/create', [\App\Http\Controllers\VoteJourJController::class, 'createEvent'])->name('vote-events.create');
     Route::post('/vote-events', [\App\Http\Controllers\VoteJourJController::class, 'storeEvent'])->name('vote-events.store');
     Route::post('/vote-events/{id}/toggle', [\App\Http\Controllers\VoteJourJController::class, 'toggleEvent'])->name('vote-events.toggle');
+    Route::delete('/vote-events/{id}', [\App\Http\Controllers\VoteJourJController::class, 'destroyEvent'])->name('vote-events.destroy');
     Route::get('/vote-events/{id}/qr-code', [\App\Http\Controllers\VoteJourJController::class, 'showQrCode'])->name('vote-events.qr-code');
 });
 
