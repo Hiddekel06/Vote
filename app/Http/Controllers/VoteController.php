@@ -499,7 +499,7 @@ class VoteController extends Controller
         }
 
         // Limite de tentatives (session)
-        $maxAttempts = 10;
+        $maxAttempts = 5;
         if (isset($otpData['attempts']) && $otpData['attempts'] >= $maxAttempts) {
             $request->session()->forget('otp_data');
 

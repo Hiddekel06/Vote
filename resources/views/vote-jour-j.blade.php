@@ -3,862 +3,1151 @@
 <head>
     <!-- Google tag (gtag.js) - Analytics -->
     @if(config('app.google_analytics_id'))
-      <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('app.google_analytics_id') }}"></script>
-      <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', '{{ config('app.google_analytics_id') }}');
-      </script>
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('app.google_analytics_id') }}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '{{ config('app.google_analytics_id') }}');
+        </script>
     @endif
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grande Finale Jour J - GovAthon</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    {{-- 2. On place le script qui utilise Alpine APRÈS, et on le "defer" aussi pour qu'il attende --}}
 
     <!-- Police -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
+        rel="stylesheet">
 </head>
 <body class="bg-black text-white flex flex-col min-h-screen bg-cover bg-center bg-fixed bg-image-custom font-poppins overflow-x-hidden">
 
-    <x-header />
+<x-header />
 
-    <main class="flex-grow container mx-auto px-4 py-12 flex items-center overflow-x-hidden">
-        <div class="bg-black bg-opacity-60 p-8 rounded-lg shadow-2xl max-w-6xl mx-auto w-full">
-            <!-- Bouton Retour à l'accueil -->
-            <div class="mb-4">
-                <a href="{{ route('vote.index') }}" class="inline-flex items-center gap-2 text-gray-400 hover:text-yellow-400 transition-colors text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+<main class="flex-grow container mx-auto px-4 py-12 flex items-center overflow-x-hidden">
+    <div
+        class="bg-black bg-opacity-60 p-8 rounded-lg shadow-2xl max-w-6xl mx-auto w-full"
+        x-data="{
+            showModal: false,
+            modalProjet: null,
+            showVoteModal: false,
+            voteProjet: null,
+
+            // Vote Jour J : si un event existe, on considère que le vote est actif
+            isVoteActive: true,
+            inactiveMessage: '',
+
+            voteStep: 1,
+            isLoading: false,
+            errorMessage: '',
+            successMessage: '',
+            descriptionExpanded: false,
+
+            // Dropdown de catégorie utilisé pour le x-show et le label
+            selectedCategory: '{{ request('profile_type', 'all') }}',
+            categoryMenuOpen: false,
+
+            // 🌍 Variables GPS
+            gpsStatus: 'loading', // 'loading' | 'success' | 'error' | 'denied' | 'unavailable'
+            gpsMessage: 'Recherche de votre position...',
+            userLatitude: null,
+            userLongitude: null,
+            distanceToEvent: null,
+            isInRange: false,
+            @if($event)
+            eventLat: {{ $event->latitude }},
+            eventLon: {{ $event->longitude }},
+            eventRadius: {{ $event->rayon_metres }},
+            hasEvent: true,
+            @else
+            eventLat: null,
+            eventLon: null,
+            eventRadius: null,
+            hasEvent: false,
+            @endif
+
+            inactiveNoticeVisible: false,
+            showInactiveNotice() {
+                this.inactiveNoticeVisible = true;
+                setTimeout(() => { this.inactiveNoticeVisible = false }, 1000);
+            },
+
+            // 🌍 Fonction de calcul de distance (Haversine)
+            calculateDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371000; // m
+                const φ1 = lat1 * Math.PI / 180;
+                const φ2 = lat2 * Math.PI / 180;
+                const Δφ = (lat2 - lat1) * Math.PI / 180;
+                const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+                const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                          Math.cos(φ1) * Math.cos(φ2) *
+                          Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+                return R * c;
+            },
+
+            // 🌍 Capture GPS
+            captureGPS() {
+                if (!navigator.geolocation) {
+                    this.gpsStatus = 'unavailable';
+                    this.gpsMessage = 'Votre navigateur ne supporte pas la géolocalisation.';
+                    return;
+                }
+
+                this.gpsStatus = 'loading';
+                this.gpsMessage = 'Recherche de votre position...';
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        this.userLatitude = position.coords.latitude;
+                        this.userLongitude = position.coords.longitude;
+
+                        if (this.hasEvent) {
+                            this.distanceToEvent = this.calculateDistance(
+                                this.userLatitude,
+                                this.userLongitude,
+                                this.eventLat,
+                                this.eventLon
+                            );
+
+                            this.isInRange = this.distanceToEvent <= this.eventRadius;
+
+                            if (this.isInRange) {
+                                this.gpsStatus = 'success';
+                                this.gpsMessage = `✓ Vous êtes dans la zone (${Math.round(this.distanceToEvent)}m)`;
+                            } else {
+                                this.gpsStatus = 'error';
+                                this.gpsMessage =
+                                    `❌ Vous n’êtes pas dans une zone autorisée à voter pour cet événement (${Math.round(this.distanceToEvent)}m / ${this.eventRadius}m max)`;
+                            }
+                        } else {
+                            this.gpsStatus = 'success';
+                            this.gpsMessage = '✓ Position détectée (aucun événement GPS actif)';
+                            this.isInRange = true;
+                        }
+                    },
+                    (error) => {
+                        console.error('Erreur GPS:', error);
+
+                        switch (error.code) {
+                            case error.PERMISSION_DENIED:
+                                this.gpsStatus = 'denied';
+                                this.gpsMessage = '✗ Permission GPS refusée. Veuillez autoriser la géolocalisation.';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                this.gpsStatus = 'error';
+                                this.gpsMessage = '✗ Position GPS indisponible.';
+                                break;
+                            case error.TIMEOUT:
+                                this.gpsStatus = 'error';
+                                this.gpsMessage = '✗ Délai de géolocalisation dépassé.';
+                                break;
+                            default:
+                                this.gpsStatus = 'error';
+                                this.gpsMessage = '✗ Erreur de géolocalisation.';
+                        }
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            }
+        }"
+        x-init="
+            const self = this;
+
+            // Lancer la capture GPS automatiquement
+            this.captureGPS();
+
+            if (!isVoteActive) {
+                voteStep = 3;
+                errorMessage = inactiveMessage;
+            }
+
+            window.addEventListener('project-data', function(e) {
+                console.log('📊 Alpine: Event project-data reçu', e.detail);
+                self.modalProjet = e.detail;
+                self.showModal = true;
+                self.descriptionExpanded = false;
+            });
+
+            window.addEventListener('project-for-vote', function(e) {
+                console.log('🎯 Alpine: Event project-for-vote reçu', e.detail);
+                self.voteProjet = e.detail;
+                self.showVoteModal = true;
+                console.log('🎯 Alpine: showVoteModal mis à true');
+                self.voteStep = isVoteActive ? 1 : 3;
+                self.errorMessage = isVoteActive ? '' : inactiveMessage;
+                self.successMessage = '';
+                console.log('🎯 Alpine: voteStep =', self.voteStep, ', showVoteModal =', self.showVoteModal);
+            });
+        "
+        @keydown.escape.window="showModal = false; showVoteModal = false"
+    >
+
+        <!-- Bouton Retour -->
+        <div class="mb-4">
+            <a href="{{ route('vote.index') }}"
+               class="inline-flex items-center gap-2 text-gray-400 hover:text-yellow-400 transition-colors text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg"
+                     class="h-5 w-5"
+                     viewBox="0 0 20 20"
+                     fill="currentColor">
+                    <path fill-rule="evenodd"
+                          d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+                          clip-rule="evenodd" />
+                </svg>
+                Retour
+            </a>
+        </div>
+
+        <!-- Titre -->
+        <div class="text-center mb-4 px-2">
+            <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-2">
+                🏆 GRANDE FINALE JOUR J
+            </h1>
+            @if(!$event)
+                <div class="mt-2 px-4 py-2 bg-yellow-900/30 border border-yellow-700 rounded-lg inline-block">
+                    <p class="text-yellow-300 text-xs">⚠️ Aucun événement GPS actif</p>
+                </div>
+            @endif
+        </div>
+
+        <!-- 🌍 Indicateur GPS -->
+        <div class="mb-6 px-2">
+            <div class="max-w-2xl mx-auto">
+                <!-- Loading -->
+                <div
+                    x-show="gpsStatus === 'loading'"
+                    class="flex items-center justify-center gap-3 bg-blue-900/30 border border-blue-600/50 rounded-lg px-4 py-3">
+                    <svg class="animate-spin h-5 w-5 text-blue-400"
+                         xmlns="http://www.w3.org/2000/svg"
+                         fill="none"
+                         viewBox="0 0 24 24">
+                        <circle class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"></circle>
+                        <path class="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
                     </svg>
-                    Retour
-                </a>
+                    <span class="text-blue-300 text-sm font-medium" x-text="gpsMessage"></span>
+                </div>
+
+                <!-- Succès dans le rayon -->
+                <div
+                    x-show="gpsStatus === 'success' && isInRange"
+                    class="flex items-center justify-center gap-3 bg-green-900/30 border border-green-500/50 rounded-lg px-4 py-3">
+                    <svg class="h-5 w-5 text-green-400"
+                         fill="none"
+                         stroke="currentColor"
+                         viewBox="0 0 24 24">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-green-300 text-sm font-medium" x-text="gpsMessage"></span>
+                </div>
+
+                <!-- Hors du rayon -->
+                <div
+                    x-show="gpsStatus === 'error'"
+                    class="flex flex-col items-center justify-center gap-2 bg-red-900/30 border border-red-500/50 rounded-lg px-4 py-3">
+                    <div class="flex items-center gap-3">
+                        <svg class="h-5 w-5 text-red-400"
+                             fill="none"
+                             stroke="currentColor"
+                             viewBox="0 0 24 24">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="text-red-300 text-sm font-medium" x-text="gpsMessage"></span>
+                    </div>
+                    <button
+                        @click="captureGPS()"
+                        class="text-xs text-red-200 hover:text-white underline">
+                        Réessayer
+                    </button>
+                </div>
+
+                <!-- Permission refusée -->
+                <div
+                    x-show="gpsStatus === 'denied'"
+                    class="flex flex-col items-center justify-center gap-2 bg-orange-900/30 border border-orange-500/50 rounded-lg px-4 py-3">
+                    <div class="flex items-center gap-3">
+                        <svg class="h-5 w-5 text-orange-400"
+                             fill="none"
+                             stroke="currentColor"
+                             viewBox="0 0 24 24">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <span class="text-orange-300 text-sm font-medium" x-text="gpsMessage"></span>
+                    </div>
+                    <p class="text-xs text-orange-200 text-center">
+                        Cliquez sur l'icône 🔒 dans votre navigateur pour autoriser la géolocalisation
+                    </p>
+                    <button
+                        @click="captureGPS()"
+                        class="text-xs text-orange-200 hover:text-white underline">
+                        Réessayer
+                    </button>
+                </div>
+
+                <!-- Non disponible -->
+                <div
+                    x-show="gpsStatus === 'unavailable'"
+                    class="flex items-center justify-center gap-3 bg-gray-800/50 border border-gray-600/50 rounded-lg px-4 py-3">
+                    <svg class="h-5 w-5 text-gray-400"
+                         fill="none"
+                         stroke="currentColor"
+                         viewBox="0 0 24 24">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"></path>
+                    </svg>
+                    <span class="text-gray-300 text-sm font-medium" x-text="gpsMessage"></span>
+                </div>
             </div>
+        </div>
 
-            <!-- Titre Grande Finale Jour J -->
-            <div class="text-center mb-4 px-2">
-                <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-2">🏆 GRANDE FINALE JOUR J</h1>
-                @if(!$event)
-                    <div class="mt-2 px-4 py-2 bg-yellow-900/30 border border-yellow-700 rounded-lg inline-block">
-                        <p class="text-yellow-300 text-xs">⚠️ Aucun événement GPS actif</p>
-                    </div>
-                @endif
-            </div>
+        <!-- Dropdown de catégories -->
+        <div class="text-center mb-4 px-2">
+            <div class="relative inline-block text-left max-w-full">
+                <button
+                    @click="categoryMenuOpen = !categoryMenuOpen"
+                    type="button"
+                    class="inline-flex flex-wrap justify-center items-center w-full rounded-md px-3 py-2 text-sm sm:text-base md:text-xl lg:text-2xl font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none gap-1"
+                    id="menu-button"
+                    aria-haspopup="true"
+                    :aria-expanded="categoryMenuOpen">
+                    <span class="whitespace-nowrap">Categorie :</span>
+                    <span class="text-white break-words"
+                          x-text="selectedCategory === 'all'
+                            ? 'Toutes'
+                            : (selectedCategory === 'student'
+                                ? 'Étudiant'
+                                : (selectedCategory === 'startup'
+                                    ? 'Startup'
+                                    : 'Porteurs de projet'))"></span>
+                    <svg class="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 flex-shrink-0"
+                         xmlns="http://www.w3.org/2000/svg"
+                         viewBox="0 0 20 20"
+                         fill="currentColor"
+                         aria-hidden="true">
+                        <path fill-rule="evenodd"
+                              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                              clip-rule="evenodd" />
+                    </svg>
+                </button>
 
-            <!-- 🌍 Indicateur GPS en temps réel -->
-            <div class="mb-6 px-2">
-                <div class="max-w-2xl mx-auto">
-                    <!-- Status GPS Loading -->
-                    <div x-show="gpsStatus === 'loading'" 
-                         class="flex items-center justify-center gap-3 bg-blue-900/30 border border-blue-600/50 rounded-lg px-4 py-3">
-                        <svg class="animate-spin h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span class="text-blue-300 text-sm font-medium" x-text="gpsMessage"></span>
-                    </div>
-
-                    <!-- Status GPS Success (dans le rayon) -->
-                    <div x-show="gpsStatus === 'success' && isInRange" 
-                         class="flex items-center justify-center gap-3 bg-green-900/30 border border-green-500/50 rounded-lg px-4 py-3">
-                        <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <span class="text-green-300 text-sm font-medium" x-text="gpsMessage"></span>
-                    </div>
-
-                    <!-- Status GPS Error (hors du rayon) -->
-                    <div x-show="gpsStatus === 'error'" 
-                         class="flex flex-col items-center justify-center gap-2 bg-red-900/30 border border-red-500/50 rounded-lg px-4 py-3">
-                        <div class="flex items-center gap-3">
-                            <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <span class="text-red-300 text-sm font-medium" x-text="gpsMessage"></span>
-                        </div>
-                        <button @click="captureGPS()" class="text-xs text-red-200 hover:text-white underline">Réessayer</button>
-                    </div>
-
-                    <!-- Status GPS Denied (permission refusée) -->
-                    <div x-show="gpsStatus === 'denied'" 
-                         class="flex flex-col items-center justify-center gap-2 bg-orange-900/30 border border-orange-500/50 rounded-lg px-4 py-3">
-                        <div class="flex items-center gap-3">
-                            <svg class="h-5 w-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                            </svg>
-                            <span class="text-orange-300 text-sm font-medium" x-text="gpsMessage"></span>
-                        </div>
-                        <p class="text-xs text-orange-200 text-center">Cliquez sur l'icône 🔒 dans votre navigateur pour autoriser la géolocalisation</p>
-                        <button @click="captureGPS()" class="text-xs text-orange-200 hover:text-white underline">Réessayer</button>
-                    </div>
-
-                    <!-- Status GPS Unavailable (pas de support) -->
-                    <div x-show="gpsStatus === 'unavailable'" 
-                         class="flex items-center justify-center gap-3 bg-gray-800/50 border border-gray-600/50 rounded-lg px-4 py-3">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"></path>
-                        </svg>
-                        <span class="text-gray-300 text-sm font-medium" x-text="gpsMessage"></span>
+                <div
+                    x-show="categoryMenuOpen"
+                    @click.away="categoryMenuOpen = false"
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="transform opacity-0 scale-95"
+                    x-transition:enter-end="transform opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-75"
+                    x-transition:leave-start="transform opacity-100 scale-100"
+                    x-transition:leave-end="transform opacity-0 scale-95"
+                    class="origin-top-right absolute left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 sm:translate-x-0 mt-2 w-64 sm:w-56 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+                    role="menu"
+                    aria-orientation="vertical"
+                    tabindex="-1">
+                    <div class="py-1" role="none">
+                        <a href="{{ route('vote-jour-j.show', request('search') ? ['search' => request('search')] : []) }}"
+                           class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm w-full text-left"
+                           role="menuitem">
+                            Toutes les catégories
+                        </a>
+                        <a href="{{ route('vote-jour-j.show', array_filter(['profile_type' => 'student', 'search' => request('search')])) }}"
+                           class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm w-full text-left"
+                           role="menuitem">
+                            Étudiant
+                        </a>
+                        <a href="{{ route('vote-jour-j.show', array_filter(['profile_type' => 'startup', 'search' => request('search')])) }}"
+                           class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm w-full text-left"
+                           role="menuitem">
+                            Startup
+                        </a>
+                        <a href="{{ route('vote-jour-j.show', array_filter(['profile_type' => 'other', 'search' => request('search')])) }}"
+                           class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm w-full text-left"
+                           role="menuitem">
+                            Porteurs de projet
+                        </a>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Dropdown de catégories (filtrage visuel uniquement) -->
-            <div class="text-center mb-4 px-2">
-                <div x-data="{ open: false, selectedCategory: 'all' }" class="relative inline-block text-left max-w-full">
-                    <div>
-                        <button @click="open = !open" type="button" class="inline-flex flex-wrap justify-center items-center w-full rounded-md px-3 py-2 text-sm sm:text-base md:text-xl lg:text-2xl font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none gap-1" id="menu-button" aria-expanded="open" aria-haspopup="true">
-                            <span class="whitespace-nowrap">Categorie :</span>
-                            <span class="text-white break-words" x-text="selectedCategory === 'all' ? 'Toutes' : (selectedCategory === 'student' ? 'Étudiant' : (selectedCategory === 'startup' ? 'Startup' : 'Porteurs de projet'))"></span>
-                            <svg class="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+        <p class="text-center text-gray-300 mb-8 px-4 text-sm sm:text-base">
+            Recherchez un projet, une équipe, puis votez pour votre préféré.
+        </p>
+
+        <!-- Barre de recherche -->
+        <div class="mb-8">
+            <form action="{{ route('vote-jour-j.show') }}" method="GET" class="w-full">
+                <div class="flex flex-col sm:flex-row gap-2 w-full">
+                    @if(request('profile_type'))
+                        <input type="hidden" name="profile_type" value="{{ request('profile_type') }}">
+                    @endif
+
+                    <div class="relative flex-1 min-w-0">
+                        <input
+                            type="text"
+                            id="search-input"
+                            name="search"
+                            placeholder="Rechercher un projet, une équipe ..."
+                            class="w-full bg-gray-900/50 border border-gray-700 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                            value="{{ request('search') }}"
+                            autocomplete="off">
+                        <button
+                            type="submit"
+                            class="hidden md:flex items-center justify-center absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-400 transition-colors"
+                            aria-label="Lancer la recherche">
+                            <svg id="search-icon"
+                                 class="w-5 h-5"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 viewBox="0 0 24 24">
+                                <path stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                             </svg>
                         </button>
                     </div>
-
-                    <div x-show="open"
-                         @click.away="open = false"
-                         x-transition:enter="transition ease-out duration-100"
-                         x-transition:enter-start="transform opacity-0 scale-95"
-                         x-transition:enter-end="transform opacity-100 scale-100"
-                         x-transition:leave="transition ease-in duration-75"
-                         x-transition:leave-start="transform opacity-100 scale-100"
-                         x-transition:leave-end="transform opacity-0 scale-95"
-                         class="origin-top-right absolute left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 sm:translate-x-0 mt-2 w-64 sm:w-56 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
-                         role="menu" aria-orientation="vertical" aria-labelledby="menu-button" tabindex="-1">
-                        <div class="py-1" role="none">
-                            <a href="{{ route('vote-jour-j.show', request('search') ? ['search' => request('search')] : []) }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm w-full text-left" role="menuitem" tabindex="-1">Toutes les catégories</a>
-                            <a href="{{ route('vote-jour-j.show', array_filter(['profile_type' => 'student', 'search' => request('search')])) }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm w-full text-left" role="menuitem" tabindex="-1">Étudiant</a>
-                            <a href="{{ route('vote-jour-j.show', array_filter(['profile_type' => 'startup', 'search' => request('search')])) }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm w-full text-left" role="menuitem" tabindex="-1">Startup</a>
-                            <a href="{{ route('vote-jour-j.show', array_filter(['profile_type' => 'other', 'search' => request('search')])) }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm w-full text-left" role="menuitem" tabindex="-1">Porteurs de projet</a>
-                        </div>
-                    </div>
                 </div>
-            </div>
-            <p class="text-center text-gray-300 mb-8 px-4 text-sm sm:text-base">Recherchez un projet, une équipe, puis votez pour votre préféré.</p>
-
-            <!-- Barre de recherche -->
-            <div class="mb-8">
-    <form action="{{ route('vote-jour-j.show') }}" method="GET" class="w-full">
-        <div class="flex flex-col sm:flex-row gap-2 w-full">
-            @if(request('profile_type'))
-                <input type="hidden" name="profile_type" value="{{ request('profile_type') }}">
-            @endif
-            <!-- Input + icône desktop -->
-            <div class="relative flex-1 min-w-0">
-                <input
-                    type="text"
-                    id="search-input"
-                    name="search"
-                    placeholder="Rechercher un projet, une équipe ..."
-                    class="w-full bg-gray-900/50 border border-gray-700 rounded-lg py-3 px-4 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                    value="{{ request('search') }}"
-                    autocomplete="off"
-                >
-                <!-- Icône loupe cliquable sur desktop -->
-                <button
-                    type="submit"
-                    class="hidden md:flex items-center justify-center absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-400 transition-colors"
-                    aria-label="Lancer la recherche"
-                >
-                    <svg id="search-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                </button>
-            </div>
+            </form>
         </div>
-    </form>
-</div>
 
-
-            <!-- Conteneur Alpine.js global -->
-            {{--  Étape 1.1: Ajout des états pour la modale de vote (voteStep, messages, etc.) --}}
-                <div
-    x-data="{
-        showModal: false,
-        modalProjet: null,
-        showVoteModal: false,
-        voteProjet: null,
-
-        //  Pour le Vote Jour J, l'événement est toujours actif s'il existe
-        isVoteActive: true,
-        inactiveMessage: '',
-
-        voteStep: 1,
-        isLoading: false,
-        errorMessage: '',
-        successMessage: '',
-        descriptionExpanded: false,
-
-        // Variables pour le dropdown de catégorie
-        open: false,
-        selectedCategory: '{{ request('profile_type', 'all') }}',
-
-        // 🌍 Variables GPS
-        gpsStatus: 'loading', // 'loading' | 'success' | 'error' | 'denied' | 'unavailable'
-        gpsMessage: 'Recherche de votre position...',
-        userLatitude: null,
-        userLongitude: null,
-        distanceToEvent: null,
-        isInRange: false,
-        @if($event)
-        eventLat: {{ $event->latitude }},
-        eventLon: {{ $event->longitude }},
-        eventRadius: {{ $event->rayon_metres }},
-        hasEvent: true,
-        @else
-        eventLat: null,
-        eventLon: null,
-        eventRadius: null,
-        hasEvent: false,
-        @endif
-
-        // Notification temporaire lorsque le vote est inactif
-        inactiveNoticeVisible: false,
-        showInactiveNotice() {
-            this.inactiveNoticeVisible = true;
-            setTimeout(() => { this.inactiveNoticeVisible = false }, 1000);
-        },
-
-        // 🌍 Fonction de calcul de distance (Haversine)
-        calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371000; // Rayon de la Terre en mètres
-            const φ1 = lat1 * Math.PI / 180;
-            const φ2 = lat2 * Math.PI / 180;
-            const Δφ = (lat2 - lat1) * Math.PI / 180;
-            const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                      Math.cos(φ1) * Math.cos(φ2) *
-                      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-            return R * c; // Distance en mètres
-        },
-
-        // 🌍 Fonction de capture GPS
-        captureGPS() {
-            if (!navigator.geolocation) {
-                this.gpsStatus = 'unavailable';
-                this.gpsMessage = 'Votre navigateur ne supporte pas la géolocalisation.';
-                return;
+        @php
+            $__projectsCount = 0;
+            foreach ($secteurs as $__s) {
+                $__projectsCount += $__s->projets->count();
             }
+        @endphp
 
-            this.gpsStatus = 'loading';
-            this.gpsMessage = 'Recherche de votre position...';
+        <!-- Tableau des projets -->
+        <div class="overflow-x-visible md:overflow-x-auto">
+            <table class="w-full text-left border-collapse md:max-w-4xl md:mx-auto">
+                <thead class="bg-gray-800 hidden md:table-header-group">
+                <tr>
+                    <th class="p-4 text-lg font-semibold text-gray-100">Secteur</th>
+                    <th class="p-4 text-lg font-semibold text-gray-100">Equipe</th>
+                    <th class="p-4 text-lg font-semibold text-gray-100">Projet</th>
+                    <th class="p-4 text-lg font-semibold text-gray-100 text-center">Vote</th>
+                </tr>
+                </thead>
+                <tbody id="projects-table-body">
+                @foreach ($secteurs as $secteur)
+                    @forelse ($secteur->projets as $projet)
+                        @php
+                            $school = null;
+                            if ($projet->submission?->profile_type === 'student' && $projet->listePreselectionne?->snapshot) {
+                                $snapshot = json_decode($projet->listePreselectionne->snapshot, true);
+                                if (isset($snapshot['champs_personnalises'])) {
+                                    $champsPerso = is_string($snapshot['champs_personnalises'])
+                                        ? json_decode($snapshot['champs_personnalises'], true)
+                                        : $snapshot['champs_personnalises'];
 
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    this.userLatitude = position.coords.latitude;
-                    this.userLongitude = position.coords.longitude;
-                    
-                    if (this.hasEvent) {
-                        // Calculer la distance
-                        this.distanceToEvent = this.calculateDistance(
-                            this.userLatitude, 
-                            this.userLongitude,
-                            this.eventLat,
-                            this.eventLon
-                        );
+                                    $schoolValue = $champsPerso['student_school'] ?? null;
+                                    if ($schoolValue === 'OTHER') {
+                                        $school = $champsPerso['student_school_other'] ?? null;
+                                    } else {
+                                        $school = $schoolValue;
+                                    }
+                                }
+                            }
 
-                        this.isInRange = this.distanceToEvent <= this.eventRadius;
-
-                        if (this.isInRange) {
-                            this.gpsStatus = 'success';
-                            this.gpsMessage = `✓ Vous êtes dans la zone (${Math.round(this.distanceToEvent)}m)`;
-                        } else {
-                            this.gpsStatus = 'error';
-                            this.gpsMessage = `✗ Vous êtes trop loin (${Math.round(this.distanceToEvent)}m / ${this.eventRadius}m max)`;
-                        }
-                    } else {
-                        // Pas d'événement GPS actif
-                        this.gpsStatus = 'success';
-                        this.gpsMessage = '✓ Position détectée (aucun événement GPS actif)';
-                        this.isInRange = true;
-                    }
-                },
-                (error) => {
-                    console.error('Erreur GPS:', error);
-                    
-                    switch(error.code) {
-                        case error.PERMISSION_DENIED:
-                            this.gpsStatus = 'denied';
-                            this.gpsMessage = '✗ Permission GPS refusée. Veuillez autoriser la géolocalisation.';
-                            break;
-                        case error.POSITION_UNAVAILABLE:
-                            this.gpsStatus = 'error';
-                            this.gpsMessage = '✗ Position GPS indisponible.';
-                            break;
-                        case error.TIMEOUT:
-                            this.gpsStatus = 'error';
-                            this.gpsMessage = '✗ Délai de géolocalisation dépassé.';
-                            break;
-                        default:
-                            this.gpsStatus = 'error';
-                            this.gpsMessage = '✗ Erreur de géolocalisation.';
-                    }
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
-            );
-        }
-    }"
-
-    x-init="
-        // Capturer le contexte Alpine pour les event listeners
-        const self = this;
-
-        // 🌍 Lancer la capture GPS automatiquement au chargement
-        this.captureGPS();
-
-        // Si le vote est inactif, on initialise la modale
-        if (!isVoteActive) {
-            voteStep = 3;
-            errorMessage = inactiveMessage;
-        }
-        // Écouteurs pour charger les projets depuis le client sans embarquer l'objet complet dans la page
-        window.addEventListener('project-data', function(e) {
-            console.log('📊 Alpine: Event project-data reçu', e.detail);
-            self.modalProjet = e.detail;
-            self.showModal = true;
-            self.descriptionExpanded = false;
-        });
-        window.addEventListener('project-for-vote', function(e) {
-            console.log('🎯 Alpine: Event project-for-vote reçu', e.detail);
-            self.voteProjet = e.detail;
-            self.showVoteModal = true;
-            console.log('🎯 Alpine: showVoteModal mis à true');
-            self.voteStep = isVoteActive ? 1 : 3;
-            self.errorMessage = isVoteActive ? '' : inactiveMessage;
-            self.successMessage = '';
-            console.log('🎯 Alpine: voteStep =', self.voteStep, ', showVoteModal =', self.showVoteModal);
-        });
-    "
-
-    @keydown.escape.window="showModal = false; showVoteModal = false"
->
-
-
-
-                {{-- Message "aucun résultat" : s'affiche si une recherche est effectuée et qu'aucun projet n'a été rendu --}}
-                @php
-                    $__projectsCount = 0;
-                    foreach ($secteurs as $__s) {
-                        $__projectsCount += $__s->projets->count();
-                    }
-                @endphp
-
-                {{-- Pas de message de recherche pour le Vote Jour J --}}
-
-                <!-- Notice temporaire en haut à droite pour informer que le vote est désactivé -->
-                {{-- Pas de notice de vote désactivé pour le Vote Jour J --}}
-                <!-- Tableau des projets -->
-                <div class="overflow-x-visible md:overflow-x-auto">
-                    <table class="w-full text-left border-collapse md:max-w-4xl md:mx-auto">
-                        <thead class="bg-gray-800 hidden md:table-header-group">
-                            <tr>
-                                <th class="p-4 text-lg font-semibold text-gray-100">Secteur</th>
-                                <th class="p-4 text-lg font-semibold text-gray-100">Equipe</th>
-                                <th class="p-4 text-lg font-semibold text-gray-100">Projet</th>
-                                <th class="p-4 text-lg font-semibold text-gray-100 text-center">Vote</th>
-                            </tr>
-                        </thead>
-                        <tbody id="projects-table-body">
-                            @foreach ($secteurs as $secteur)
-                                @forelse ($secteur->projets as $projet)
-                                    @php
-                                        // Extraire l'école une seule fois pour éviter la duplication
-                                        $school = null;
-                                        if ($projet->submission?->profile_type === 'student' && $projet->listePreselectionne?->snapshot) {
-                                            $snapshot = json_decode($projet->listePreselectionne->snapshot, true);
-                                            if (isset($snapshot['champs_personnalises'])) {
-                                                $champsPerso = is_string($snapshot['champs_personnalises'])
-                                                    ? json_decode($snapshot['champs_personnalises'], true)
-                                                    : $snapshot['champs_personnalises'];
-
-                                                // Si l'école est "OTHER", utiliser le champ student_school_other
-                                                $schoolValue = $champsPerso['student_school'] ?? null;
-                                                if ($schoolValue === 'OTHER') {
-                                                    $school = $champsPerso['student_school_other'] ?? null;
-                                                } else {
-                                                    $school = $schoolValue;
-                                                }
-                                            }
-                                        }
-                                    @endphp
-                                    <tr class="block md:table-row border-b border-gray-700 hover:bg-gray-900/30 transition-colors bg-gray-800/40 md:bg-transparent rounded-lg md:rounded-none mb-3 md:mb-0"
-                                        x-show="selectedCategory === 'all' || selectedCategory === '{{ $projet->submission?->profile_type ?? 'other' }}'">
-                                        <td class="hidden md:table-cell p-4" data-label="Secteur : ">{{ $secteur->nom }}</td>
-                                        <td class="hidden md:table-cell p-4" data-label="Équipe : ">
-                                            <div>{{ $projet->nom_equipe }}</div>
-                                            @if($school)
-                                                <div class="text-sm text-yellow-300 font-semibold mt-1">{{ $school }}</div>
-                                            @endif
-                                        </td>
-                                        <td class="block md:table-cell p-3 md:p-4 font-semibold" data-label="Projet : ">
-                                            <div class="flex flex-col gap-1">
-                                                <div class="md:hidden">   <!-- Cache le bloc a partir d'un ecran mobile -->
-                                                    <div class="text-[10px] text-gray-400 font-medium tracking-tight mb-1">Nom Équipe :</div>
-                                                    <div class="text-sm text-white">{{ $projet->nom_equipe }}</div>
-                                                    @if($school)
-                                                        <div class="text-xs text-yellow-300 font-bold mt-1">{{ $school }}</div>
-                                                    @endif
-                                                    <div class="text-[10px] text-gray-400 font-medium tracking-tight mt-2 mb-1">Nom Projet :</div>
-                                                    <div class="text-sm font-semibold text-white">{{ $projet->nom_projet }}</div>
-                                                </div>
-                                                <span class="hidden md:inline">{{ $projet->nom_projet }}</span>
-                                            </div>
-                                        </td>
-                                        <td class="block md:table-cell p-3 md:p-4 text-center align-middle">
-                                                   <!-- Mobile: row of icon buttons, then vote button below -->
-                                                   <!-- Desktop: flex row as before -->
-                                                   <div class="md:hidden flex flex-col gap-3">
-                                                       <!-- Row of 3 icon buttons centered -->
-                                                       <div class="flex items-center justify-center gap-3">
-                                                           <!-- Bouton Détails -->
-                                                           <button
-                                                               type="button"
-                                                               class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                               aria-label="Détails du projet"
-                                                               title="Détails"
-                                                               @click="modalProjet = @js($projet); showModal = true; descriptionExpanded = false">
-                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                                   <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                   <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                               </svg>
-                                                           </button>
-
-                                                           <!-- Bouton Partager -->
-                                                           <button
-                                                               type="button"
-                                                               class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                               title="Partager ce projet"
-                                                               onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
-                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                                   <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                                                               </svg>
-                                                           </button>
-
-                                                           @php
-                                                               $demoUrl = $projet->video_demo ?? $projet->video_demonstration ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demo') ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
-                                                           @endphp
-                                                           @if($demoUrl)
-                                                               <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
-                                                                  class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Voir la démonstration">
-                                                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                                       <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                                       <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                                   </svg>
-                                                               </a>
-                                                           @else
-                                                               <span class="p-2 rounded-full text-gray-600 bg-transparent opacity-60" title="Aucune démonstration disponible" aria-hidden="true">
-                                                                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-                                                                       <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                                       <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                                       <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
-                                                                   </svg>
-                                                               </span>
-                                                           @endif
-                                                       </div>
-                                                       <!-- Vote button below, full width -->
-                                                       <div class="relative">
-                                                           <button
-                                                               data-role="vote-btn"
-                                                               type="button"
-                                                               class="group flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
-                                                               :class="{
-                                                                   'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black': isVoteActive,
-                                                                   'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive
-                                                               }"
-                                                               :disabled="!isVoteActive"
-                                                               @click="voteProjet = @js($projet); showVoteModal = true; voteStep = isVoteActive ? 1 : 3; errorMessage = isVoteActive ? '' : inactiveMessage; successMessage = '';">
-                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                               </svg>
-                                                               Voter
-                                                           </button>
-                                                           <button x-show="!isVoteActive" @click.prevent="showInactiveNotice()" class="absolute inset-0 w-full h-full z-20 bg-transparent" aria-hidden="true"></button>
-                                                       </div>
-                                                   </div>
-
-                                                   <!-- Desktop: original flex row layout -->
-                                                   <div class="hidden md:flex relative md:flex-row items-center justify-center gap-2">
-                                                       <!-- Bouton Détails (icône seulement) -->
-                                                       <button
-                                                           type="button"
-                                                           class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                           aria-label="Détails du projet"
-                                                           title="Détails"
-                                                           @click="modalProjet = @js($projet); showModal = true; descriptionExpanded = false">
-                                                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                               <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                               <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                           </svg>
-                                                       </button>
-
-                                                       <!-- Bouton Partager -->
-                                                       <button
-                                                           type="button"
-                                                           class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                           title="Partager ce projet"
-                                                           onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
-                                                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                               <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                                                           </svg>
-                                                       </button>
-
-                                                       @php
-                                                           $demoUrl = $projet->video_demo ?? $projet->video_demonstration ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demo') ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
-                                                       @endphp
-                                                       @if($demoUrl)
-                                                           <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
-                                                              class="p-2 ml-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Voir la démonstration">
-                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                                   <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                                   <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                               </svg>
-                                                           </a>
-                                                       @else
-                                                           <span class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60" title="Aucune démonstration disponible" aria-hidden="true">
-                                                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-                                                                   <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                                   <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                                   <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
-                                                               </svg>
-                                                           </span>
-                                                       @endif
-
-                                                       <!-- Bouton Voter () -->
-                                                       <button
-                                                           data-role="vote-btn"
-                                                           type="button"
-                                                           class="group flex items-center justify-center gap-2 md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
-                                                           :class="{
-                                                               'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black': isVoteActive && isInRange && gpsStatus === 'success',
-                                                               'bg-gray-600 text-gray-300 cursor-not-allowed': !isVoteActive || !isInRange || gpsStatus !== 'success'
-                                                           }"
-                                                           :disabled="!isVoteActive || !isInRange || gpsStatus !== 'success'"
-                                                           @click="if(isInRange && gpsStatus === 'success') { voteProjet = @js($projet); showVoteModal = true; voteStep = isVoteActive ? 1 : 3; errorMessage = isVoteActive ? '' : inactiveMessage; successMessage = ''; } else if (gpsStatus !== 'success') { alert('⚠️ Attendez que votre position GPS soit détectée'); } else { alert('❌ Vous devez être sur place pour voter'); }"
-                                                           :title="!isInRange ? 'Vous devez être sur place pour voter' : (gpsStatus !== 'success' ? 'Position GPS en attente' : 'Cliquez pour voter')">
-                                                           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                           </svg>
-                                                           Voter
-                                                       </button>
-
-                                                       <!-- Overlay pour capter le clic quand le vote est INactif (au-dessus du bouton Voter) -->
-                                                       <button x-show="!isVoteActive || !isInRange || gpsStatus !== 'success'" @click.prevent="if (gpsStatus !== 'success') { alert('⚠️ Attendez que votre position GPS soit détectée'); } else if (!isInRange) { alert('❌ Vous devez être sur place pour voter (distance: ' + Math.round(distanceToEvent) + 'm)'); } else { showInactiveNotice(); }" class="absolute inset-0 w-full h-full z-20 bg-transparent" aria-hidden="true"></button>
-                                                   </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                @endforelse
-                            @endforeach
-                        </tbody>
-                    </table>
-
-                </div>
-                <div class="mt-6">
-
-</div>
-
-
-
-
-                <!-- Fenêtre modale DÉTAILS -->
-                <div
-                        x-show="showModal"
-                        style="display: none;"
-                        class="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-                        x-transition:enter="transition ease-out duration-300"
-                        x-transition:enter-start="opacity-0"
-                        x-transition:enter-end="opacity-100"
-                        x-transition:leave="transition ease-in duration-200"
-                        x-transition:leave-start="opacity-100"
-                        x-transition:leave-end="opacity-0">
-
-                        <div
-                            @click.away="showModal = false"
-                            class="bg-gray-900/95  border-yellow-400/30 rounded-lg shadow-2xl max-w-2xl w-full text-white relative flex flex-col"
-                            style="max-height: 90vh;"
-                            x-transition:enter="transition ease-out duration-300"
-                            x-transition:enter-start="opacity-0 transform scale-90"
-                            x-transition:enter-end="opacity-100 transform scale-100"
-                            x-transition:leave="transition ease-in duration-200"
-                            x-transition:leave-start="opacity-100 transform scale-100"
-                            x-transition:leave-end="opacity-0 transform scale-90">
-
-                            <!-- En-tête -->
-                            <div class="p-6 border-b border-gray-700 flex-shrink-0">
-                                <button @click="showModal = false" class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
-                                <h2 class="text-2xl sm:text-3xl font-bold text-gray-400 mb-2" x-text="modalProjet?.nom_projet"></h2>
-                                <p class="text-md sm:text-lg text-gray-300">
-                                    par <span class="font-semibold" x-text="modalProjet?.nom_equipe"></span>
-                                </p>
-                            </div>
-
-                            <!-- Contenu -->
-                            <div class="p-6 space-y-4 text-gray-200 overflow-y-auto scrollbar-thin">
-                                <p><strong class="text-gray-300">Résumé :</strong>
-                                    <span class="whitespace-pre-wrap" x-text="modalProjet?.resume"></span>
-                                </p>
-                                <div>
-                                    <strong class="text-gray-300">Description :</strong>
-                                    <div class="whitespace-pre-wrap" :class="{'max-h-24 overflow-hidden': !descriptionExpanded && modalProjet?.description.length > 250}">
-                                        <span x-text="modalProjet?.description"></span>
+                            $profileType = $projet->submission?->profile_type ?? 'other';
+                            $demoUrl = $projet->video_demo
+                                ?? $projet->video_demonstration
+                                ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demo')
+                                ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
+                        @endphp
+                        <tr
+                            class="block md:table-row border-b border-gray-700 hover:bg-gray-900/30 transition-colors bg-gray-800/40 md:bg-transparent rounded-lg md:rounded-none mb-3 md:mb-0"
+                            x-show="selectedCategory === 'all' || selectedCategory === '{{ $profileType }}'">
+                            <td class="hidden md:table-cell p-4" data-label="Secteur : ">
+                                {{ $secteur->nom }}
+                            </td>
+                            <td class="hidden md:table-cell p-4" data-label="Équipe : ">
+                                <div>{{ $projet->nom_equipe }}</div>
+                                @if($school)
+                                    <div class="text-sm text-yellow-300 font-semibold mt-1">{{ $school }}</div>
+                                @endif
+                            </td>
+                            <td class="block md:table-cell p-3 md:p-4 font-semibold" data-label="Projet : ">
+                                <div class="flex flex-col gap-1">
+                                    <div class="md:hidden">
+                                        <div class="text-[10px] text-gray-400 font-medium tracking-tight mb-1">Nom Équipe :</div>
+                                        <div class="text-sm text-white">{{ $projet->nom_equipe }}</div>
+                                        @if($school)
+                                            <div class="text-xs text-yellow-300 font-bold mt-1">{{ $school }}</div>
+                                        @endif
+                                        <div class="text-[10px] text-gray-400 font-medium tracking-tight mt-2 mb-1">Nom Projet :</div>
+                                        <div class="text-sm font-semibold text-white">{{ $projet->nom_projet }}</div>
                                     </div>
-                                    <button
-                                        x-show="modalProjet?.description.length > 250"
-                                        @click="descriptionExpanded = !descriptionExpanded"
-                                        class="text-yellow-400 hover:text-yellow-300 mt-2 text-sm">
-                                        <span x-text="descriptionExpanded ? 'Voir moins' : 'Voir plus'"></span>
-                                    </button>
+                                    <span class="hidden md:inline">{{ $projet->nom_projet }}</span>
                                 </div>
-
-                            </div>
-
-                        </div>
-                </div>
-
-                <!-- Fenêtre modale VOTE -->
-                <div
-                    x-show="showVoteModal"
-                    style="display: none;"
-                    class="fixed inset-0 bg-black/5  backdrop-blur-sm flex items-center justify-center z-50 p-4"
-                    x-transition:enter="transition ease-out duration-300"
-                    x-transition:enter-start="opacity-0"
-                    x-transition:enter-end="opacity-100"
-                    x-transition:leave="transition ease-in duration-200"
-                    x-transition:leave-start="opacity-100"
-                    x-transition:leave-end="opacity-0">
-
-                    <div
-                        @click.away="if (!isLoading) showVoteModal = false"
-                        class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-2xl max-w-lg w-full text-white relative flex flex-col"
-                        x-transition:enter="transition ease-out duration-300"
-                        x-transition:enter-start="opacity-0 transform scale-90"
-                        x-transition:enter-end="opacity-100 transform scale-100"
-                        x-transition:leave="transition ease-in duration-200"
-                        x-transition:leave-start="opacity-100 transform scale-100"
-                        x-transition:leave-end="opacity-0 transform scale-90">
-                        <div class="p-6 border-b border-gray-700 flex-shrink-0 relative">
-                            <button @click="if (!isLoading) showVoteModal = false" class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                            <h2 class="text-2xl font-bold text-yellow-400 mb-2">
-                                Voter pour : <span x-text="voteProjet?.nom_projet"></span>
-                            </h2>
-                            <p class="text-gray-300">
-                                Équipe : <span class="font-semibold" x-text="voteProjet?.nom_equipe"></span>
-                            </p>
-                            <!-- Indicateur de progression -->
-                            <div x-show="voteStep === 1 || voteStep === 2" class="absolute bottom-0 left-6 translate-y-1/2 bg-gray-800 px-3 py-1 rounded-full text-xs text-yellow-300 border border-gray-700">
-                                <span x-text="`Étape ${voteStep} sur 2`"></span>
-                            </div>
-                        </div>
-
-                        <!-- Contenu (Formulaire) -->
-                        <div class="p-6 space-y-4">
-                            @csrf
-
-                            {{-- 🚀 Étape 4: Affichage des erreurs de validation --}}
-                            @if ($errors->any())
-                                <div class="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg relative" role="alert">
-                                    <strong class="font-bold">Oups ! Une erreur est survenue.</strong>
-                                    <ul class="mt-2 list-disc list-inside text-sm">
-                                        @foreach ($errors->all() as $error)
-                                            <li>{{ $error }}</li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            @endif
-                            {{-- Fin du bloc d'erreurs --}}
-
-                            {{-- Étape 1: Formulaire Nom & Téléphone --}}
-                            <div x-show="voteStep === 1">
-                                <form id="otp-request-form"
-                                      class="space-y-4"
-                                      data-send-otp-url="{{ route('vote-jour-j.envoyerOtp') }}"
-                                      data-vote-jour-j-url="{{ route('vote-jour-j.store') }}"
-                                      data-recaptcha-key="{{ config('services.recaptcha.site_key') }}"
-                                      onsubmit="return false;">
-                                    <input type="hidden" name="projet_id" :value="voteProjet?.id">
-                                    <input type="hidden" name="telephone" id="telephone_full">
-                                    <input type="hidden" name="recaptcha_token" id="recaptcha-token">
-                                    <!-- 🌍 Champs GPS cachés -->
-                                    <input type="hidden" name="latitude" id="latitude" :value="userLatitude">
-                                    <input type="hidden" name="longitude" id="longitude" :value="userLongitude">
-                                    
-                                    <div>
-                                        <label for="nom_votant" class="block mb-2 text-sm font-medium text-gray-300">Votre nom (Optionnel)</label>
-                                        <input type="text" id="nom_votant" name="nom_votant"
-                                               class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                                               placeholder="Ex: Paul David Mbaye">
-                                    </div>
-
-                                    <div>
-                                        <label for="telephone_display" class="block mb-2 text-sm font-medium text-gray-300">Votre numéro de téléphone</label>
-                                        <div class="flex flex-row gap-0">
-                                            <select id="country_code" name="country_code" class="hidden">
-                                                <option value="+221" selected>+221</option>
-                                            </select>
-                                            <div class="flex-shrink-0 z-10 inline-flex items-center py-2.5 px-3 text-sm font-medium text-center text-gray-200 bg-gray-800 border border-gray-600 rounded-l-lg">
-                                                🇸🇳 +221
-                                            </div>
-                                            <div class="relative w-full">
-                                                <input type="tel" id="telephone_display" name="telephone_display"
-                                                       class="block p-2.5 w-full z-20 text-sm text-white bg-gray-700/50 rounded-r-lg border border-gray-600 border-l-0 focus:ring-2 focus:outline-none focus:ring-yellow-400"
-                                                       placeholder="Ex: 77 123 45 67" required>
-                                            </div>
-                                        </div>
-                                        <p class="mt-2 text-xs text-gray-400">Vous recevrez un code unique par SMS pour valider votre vote.</p>
-                                    </div>
-
-                                    <div class="pt-4 flex justify-center">
-                                        <div class="rainbow relative z-0 overflow-hidden p-0.5 flex items-center justify-center rounded-full hover:scale-105 transition duration-300 active:scale-100 w-full">
-                                            <button type="button" id="submit-vote-btn"
-                                                    class="w-full px-8 text-sm py-3 text-white rounded-full font-medium bg-gray-900 flex items-center justify-center"
-                                                    :disabled="isLoading">
-                                                <span x-show="!isLoading">Cliquez pour recevoir le code de vote</span>
-                                                <span x-show="isLoading">Envoi en cours...</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-
-                            {{-- 🚀 Étape 2: Formulaire de saisie de l'OTP --}}
-                            <div x-show="voteStep === 2" style="display: none;">
-                                <form id="otp-verify-form"
-                                      class="space-y-4"
-                                      data-verify-otp-url="{{ route('vote-jour-j.verifierOtp') }}"
-                                      onsubmit="return false;">
-                                    <p class="text-center text-gray-300">Un code a été envoyé. Veuillez le saisir ci-dessous.</p>
-                                    <div>
-                                        <label for="code_otp" class="block mb-2 text-sm font-medium text-gray-300">Code de vérification (OTP)</label>
-                                        <input type="tel" id="code_otp" name="code_otp"
-                                               class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white text-center text-2xl tracking-[1em]"
-                                               placeholder="------" required maxlength="6" pattern="\d{6}" inputmode="numeric">
-                                    </div>
-                                    <div class="pt-4">
-                                        <button type="button" id="submit-otp-btn"
-                                                class="w-full skew-btn bg-emerald-600 text-white hover:text-white flex items-center justify-center"
-                                                :disabled="isLoading">
-                                            <span x-show="!isLoading">Valider le vote</span>
-                                            <span x-show="isLoading">Validation...</span>
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-
-                            {{-- Étape 3: Messages de succès ou d'erreur --}}
-                            <div x-show="voteStep === 3" style="display: none;" class="text-center py-6 px-4">
-                                {{-- Message de succès --}}
-                                <div x-show="successMessage" class="space-y-5">
-                                    {{-- Icône et message principal - version compacte --}}
-                                    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
-                                        <div class="w-16 h-16 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
-                                            <svg class="w-8 h-8 sm:w-7 sm:h-7 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                            </td>
+                            <td class="block md:table-cell p-3 md:p-4 text-center align-middle">
+                                <!-- Mobile -->
+                                <div class="md:hidden flex flex-col gap-3">
+                                    <div class="flex items-center justify-center gap-3">
+                                        <!-- Détails -->
+                                        <button
+                                            type="button"
+                                            class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                            aria-label="Détails du projet"
+                                            title="Détails"
+                                            @click="modalProjet = @js($projet); showModal = true; descriptionExpanded = false">
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                 class="h-5 w-5"
+                                                 viewBox="0 0 24 24"
+                                                 fill="none"
+                                                 stroke="currentColor"
+                                                 stroke-width="1.8">
+                                                <path stroke-linecap="round"
+                                                      stroke-linejoin="round"
+                                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round"
+                                                      stroke-linejoin="round"
+                                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
-                                        </div>
-                                        <div class="text-center sm:text-left">
-                                            <h3 class="text-xl sm:text-2xl font-semibold text-white mb-1">Vote enregistré</h3>
-                                            <p class="text-sm text-gray-400">Merci pour votre participation</p>
-                                        </div>
-                                    </div>
+                                        </button>
 
-                                    {{-- Invitation grande finale - version compacte --}}
-                                    <div class="pt-4 pb-2 border-t border-gray-800">
-                                        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-lg mx-auto">
-                                            <div class="text-center sm:text-left flex-1">
-                                                <h4 class="text-base font-medium text-white mb-1">Grande Finale</h4>
-                                                <p class="text-xs text-gray-400">Réservez votre place dès maintenant</p>
-                                            </div>
-                                            <a href="https://reservation.govathon.sn"
+                                        <!-- Partager -->
+                                        <button
+                                            type="button"
+                                            class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                            title="Partager ce projet"
+                                            onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                 class="h-5 w-5"
+                                                 viewBox="0 0 20 20"
+                                                 fill="currentColor">
+                                                <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                                            </svg>
+                                        </button>
+
+                                        <!-- Démo -->
+                                        @if($demoUrl)
+                                            <a href="{{ $demoUrl }}"
                                                target="_blank"
-                                               class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-medium text-sm rounded-lg transition-all duration-200 shadow-lg hover:shadow-yellow-500/20 flex-shrink-0">
-                                                <span>Réserver</span>
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                                               rel="noopener noreferrer"
+                                               class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                               title="Voir la démonstration">
+                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                     class="h-5 w-5"
+                                                     viewBox="0 0 24 24"
+                                                     fill="none"
+                                                     stroke="currentColor"
+                                                     stroke-width="1.8">
+                                                    <path stroke-linecap="round"
+                                                          stroke-linejoin="round"
+                                                          d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2"
+                                                          stroke-linecap="round"
+                                                          stroke-linejoin="round" />
                                                 </svg>
                                             </a>
-                                        </div>
+                                        @else
+                                            <span
+                                                class="p-2 rounded-full text-gray-600 bg-transparent opacity-60"
+                                                title="Aucune démonstration disponible"
+                                                aria-hidden="true">
+                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                     class="h-5 w-5"
+                                                     viewBox="0 0 24 24"
+                                                     fill="none"
+                                                     stroke="currentColor"
+                                                     stroke-width="1.2">
+                                                    <path stroke-linecap="round"
+                                                          stroke-linejoin="round"
+                                                          d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2"
+                                                          stroke-linecap="round"
+                                                          stroke-linejoin="round" />
+                                                    <line x1="3" y1="3" x2="21" y2="21"
+                                                          stroke-linecap="round"
+                                                          stroke-linejoin="round" />
+                                                </svg>
+                                            </span>
+                                        @endif
                                     </div>
 
-                                    {{-- Bouton fermer intégré --}}
-                                    <button @click="showVoteModal = false" class="text-sm text-gray-500 hover:text-gray-300 underline transition-colors">
-                                        Fermer
-                                    </button>
-                                </div>
-
-                                {{-- Message d'erreur - version compacte --}}
-                                <div x-show="errorMessage" class="space-y-4">
-                                    <div class="flex items-center justify-center gap-4">
-                                        <div class="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center flex-shrink-0">
-                                            <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    <!-- Bouton voter (mobile) -->
+                                    <div class="relative">
+                                        <button
+                                            data-role="vote-btn"
+                                            type="button"
+                                            class="group flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
+                                            :class="{
+                                                'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black':
+                                                    isVoteActive && isInRange && gpsStatus === 'success',
+                                                'bg-gray-600 text-gray-300 cursor-not-allowed':
+                                                    !isVoteActive || !isInRange || gpsStatus !== 'success'
+                                            }"
+                                            :disabled="!isVoteActive || !isInRange || gpsStatus !== 'success'"
+                                            @click="
+                                                if (isInRange && gpsStatus === 'success') {
+                                                    voteProjet = @js($projet);
+                                                    showVoteModal = true;
+                                                    voteStep = isVoteActive ? 1 : 3;
+                                                    errorMessage = isVoteActive ? '' : inactiveMessage;
+                                                    successMessage = '';
+                                                } else if (gpsStatus !== 'success') {
+                                                    alert('⚠️ Attendez que votre position GPS soit détectée');
+                                                } else {
+                                                    alert('❌ Vous devez être sur place pour voter');
+                                                }
+                                            ">
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                 class="h-4 w-4"
+                                                 fill="none"
+                                                 viewBox="0 0 24 24"
+                                                 stroke="currentColor"
+                                                 stroke-width="2">
+                                                <path stroke-linecap="round"
+                                                      stroke-linejoin="round"
+                                                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                        </div>
-                                        <p class="text-base text-gray-300 text-left flex-1" x-text="errorMessage"></p>
+                                            Voter
+                                        </button>
+                                        <!-- Overlay pour capter le clic quand inactif / hors zone / GPS en attente -->
+                                        <button
+                                            x-show="!isVoteActive || !isInRange || gpsStatus !== 'success'"
+                                            @click.prevent="
+                                                if (gpsStatus !== 'success') {
+                                                    alert('⚠️ Attendez que votre position GPS soit détectée');
+                                                } else if (!isInRange) {
+                                                    alert('❌ Vous devez être sur place pour voter' + (distanceToEvent ? ' (distance: ' + Math.round(distanceToEvent) + 'm)' : ''));
+                                                } else {
+                                                    showInactiveNotice();
+                                                }
+                                            "
+                                            class="absolute inset-0 w-full h-full z-20 bg-transparent"
+                                            aria-hidden="true"></button>
                                     </div>
-                                    <button @click="showVoteModal = false" class="text-sm text-gray-500 hover:text-gray-300 underline transition-colors">
-                                        Fermer
-                                    </button>
                                 </div>
-                            </div>
 
-                            {{-- Affichage des messages d'erreur globaux --}}
-                            <div x-show="errorMessage && (voteStep === 1 || voteStep === 2)"
-                                 class="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg relative mt-4" role="alert">
-                                <p x-text="errorMessage"></p>
-                            </div>
+                                <!-- Desktop -->
+                                <div class="hidden md:flex relative md:flex-row items-center justify-center gap-2">
+                                    <!-- Détails -->
+                                    <button
+                                        type="button"
+                                        class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                        aria-label="Détails du projet"
+                                        title="Détails"
+                                        @click="modalProjet = @js($projet); showModal = true; descriptionExpanded = false">
+                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                             class="h-5 w-5"
+                                             viewBox="0 0 24 24"
+                                             fill="none"
+                                             stroke="currentColor"
+                                             stroke-width="1.8">
+                                            <path stroke-linecap="round"
+                                                  stroke-linejoin="round"
+                                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round"
+                                                  stroke-linejoin="round"
+                                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </button>
+
+                                    <!-- Partager -->
+                                    <button
+                                        type="button"
+                                        class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                        title="Partager ce projet"
+                                        onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
+                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                             class="h-5 w-5"
+                                             viewBox="0 0 20 20"
+                                             fill="currentColor">
+                                            <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                                        </svg>
+                                    </button>
+
+                                    <!-- Démo -->
+                                    @if($demoUrl)
+                                        <a href="{{ $demoUrl }}"
+                                           target="_blank"
+                                           rel="noopener noreferrer"
+                                           class="p-2 ml-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                           title="Voir la démonstration">
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                 class="h-5 w-5"
+                                                 viewBox="0 0 24 24"
+                                                 fill="none"
+                                                 stroke="currentColor"
+                                                 stroke-width="1.8">
+                                                <path stroke-linecap="round"
+                                                      stroke-linejoin="round"
+                                                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                <rect x="2" y="5" width="11" height="14" rx="2" ry="2"
+                                                      stroke-linecap="round"
+                                                      stroke-linejoin="round" />
+                                            </svg>
+                                        </a>
+                                    @else
+                                        <span
+                                            class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60"
+                                            title="Aucune démonstration disponible"
+                                            aria-hidden="true">
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                 class="h-5 w-5"
+                                                 viewBox="0 0 24 24"
+                                                 fill="none"
+                                                 stroke="currentColor"
+                                                 stroke-width="1.2">
+                                                <path stroke-linecap="round"
+                                                      stroke-linejoin="round"
+                                                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                <rect x="2" y="5" width="11" height="14" rx="2" ry="2"
+                                                      stroke-linecap="round"
+                                                      stroke-linejoin="round" />
+                                                <line x1="3" y1="3" x2="21" y2="21"
+                                                      stroke-linecap="round"
+                                                      stroke-linejoin="round" />
+                                            </svg>
+                                        </span>
+                                    @endif
+
+                                    <!-- Voter (desktop) -->
+                                    <button
+                                        data-role="vote-btn"
+                                        type="button"
+                                        class="group flex items-center justify-center gap-2 md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
+                                        :class="{
+                                            'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black':
+                                                isVoteActive && isInRange && gpsStatus === 'success',
+                                            'bg-gray-600 text-gray-300 cursor-not-allowed':
+                                                !isVoteActive || !isInRange || gpsStatus !== 'success'
+                                        }"
+                                        :disabled="!isVoteActive || !isInRange || gpsStatus !== 'success'"
+                                        @click="
+                                            if (isInRange && gpsStatus === 'success') {
+                                                voteProjet = @js($projet);
+                                                showVoteModal = true;
+                                                voteStep = isVoteActive ? 1 : 3;
+                                                errorMessage = isVoteActive ? '' : inactiveMessage;
+                                                successMessage = '';
+                                            } else if (gpsStatus !== 'success') {
+                                                alert('⚠️ Attendez que votre position GPS soit détectée');
+                                            } else {
+                                                alert('❌ Vous devez être sur place pour voter' + (distanceToEvent ? ' (distance: ' + Math.round(distanceToEvent) + 'm)' : ''));
+                                            }
+                                        "
+                                        :title="!isInRange
+                                            ? 'Vous devez être sur place pour voter'
+                                            : (gpsStatus !== 'success'
+                                                ? 'Position GPS en attente'
+                                                : 'Cliquez pour voter')">
+                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                             class="h-4 w-4"
+                                             fill="none"
+                                             viewBox="0 0 24 24"
+                                             stroke="currentColor"
+                                             stroke-width="2">
+                                            <path stroke-linecap="round"
+                                                  stroke-linejoin="round"
+                                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Voter
+                                    </button>
+
+                                    <!-- Overlay inactif -->
+                                    <button
+                                        x-show="!isVoteActive || !isInRange || gpsStatus !== 'success'"
+                                        @click.prevent="
+                                            if (gpsStatus !== 'success') {
+                                                alert('⚠️ Attendez que votre position GPS soit détectée');
+                                            } else if (!isInRange) {
+                                                alert('❌ Vous devez être sur place pour voter' + (distanceToEvent ? ' (distance: ' + Math.round(distanceToEvent) + 'm)' : ''));
+                                            } else {
+                                                showInactiveNotice();
+                                            }
+                                        "
+                                        class="absolute inset-0 w-full h-full z-20 bg-transparent"
+                                        aria-hidden="true"></button>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                    @endforelse
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Modale DÉTAILS --}}
+        <div
+            x-show="showModal"
+            style="display:none;"
+            class="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0">
+
+            <div
+                @click.away="showModal = false"
+                class="bg-gray-900/95 border-yellow-400/30 rounded-lg shadow-2xl max-w-2xl w-full text-white relative flex flex-col"
+                style="max-height: 90vh;"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 transform scale-90"
+                x-transition:enter-end="opacity-100 transform scale-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100 transform scale-100"
+                x-transition:leave-end="opacity-0 transform scale-90">
+
+                <div class="p-6 border-b border-gray-700 flex-shrink-0">
+                    <button
+                        @click="showModal = false"
+                        class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl leading-none">
+                        &times;
+                    </button>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-gray-400 mb-2"
+                        x-text="modalProjet?.nom_projet"></h2>
+                    <p class="text-md sm:text-lg text-gray-300">
+                        par <span class="font-semibold" x-text="modalProjet?.nom_equipe"></span>
+                    </p>
+                </div>
+
+                <div class="p-6 space-y-4 text-gray-200 overflow-y-auto scrollbar-thin">
+                    <p>
+                        <strong class="text-gray-300">Résumé :</strong>
+                        <span class="whitespace-pre-wrap" x-text="modalProjet?.resume"></span>
+                    </p>
+                    <div>
+                        <strong class="text-gray-300">Description :</strong>
+                        <div
+                            class="whitespace-pre-wrap"
+                            :class="{'max-h-24 overflow-hidden': !descriptionExpanded && (modalProjet?.description?.length || 0) > 250}">
+                            <span x-text="modalProjet?.description"></span>
                         </div>
-
+                        <button
+                            x-show="(modalProjet?.description?.length || 0) > 250"
+                            @click="descriptionExpanded = !descriptionExpanded"
+                            class="text-yellow-400 hover:text-yellow-300 mt-2 text-sm">
+                            <span x-text="descriptionExpanded ? 'Voir moins' : 'Voir plus'"></span>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
-    </main>
 
-    <x-footer />
+        {{-- Modale VOTE --}}
+        <div
+            x-show="showVoteModal"
+            style="display:none;"
+            class="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0">
 
-    
+            <div
+                @click.away="if (!isLoading) showVoteModal = false"
+                class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-2xl max-w-lg w-full text-white relative flex flex-col"
+                x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 transform scale-90"
+                x-transition:enter-end="opacity-100 transform scale-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100 transform scale-100"
+                x-transition:leave-end="opacity-0 transform scale-90">
 
-    <!-- 🚀 Étape 1: Chargement de la bibliothèque reCAPTCHA v3 -->
-    <script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}"></script>
+                <div class="p-6 border-b border-gray-700 flex-shrink-0 relative">
+                    <button
+                        @click="if (!isLoading) showVoteModal = false"
+                        class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             class="h-6 w-6"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke="currentColor"
+                             stroke-width="2">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                    <h2 class="text-2xl font-bold text-yellow-400 mb-2">
+                        Voter pour : <span x-text="voteProjet?.nom_projet"></span>
+                    </h2>
+                    <p class="text-gray-300">
+                        Équipe : <span class="font-semibold" x-text="voteProjet?.nom_equipe"></span>
+                    </p>
+                    <div
+                        x-show="voteStep === 1 || voteStep === 2"
+                        class="absolute bottom-0 left-6 translate-y-1/2 bg-gray-800 px-3 py-1 rounded-full text-xs text-yellow-300 border border-gray-700">
+                        <span x-text="`Étape ${voteStep} sur 2`"></span>
+                    </div>
+                </div>
 
+                <div class="p-6 space-y-4">
+                    @csrf
 
-</body>
-</html>
+                    @if($errors->any())
+                        <div class="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg relative" role="alert">
+                            <strong class="font-bold">Oups ! Une erreur est survenue.</strong>
+                            <ul class="mt-2 list-disc list-inside text-sm">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
 
+                    {{-- Étape 1 --}}
+                    <div x-show="voteStep === 1">
+                        <form id="otp-request-form"
+                              class="space-y-4"
+                              data-send-otp-url="{{ route('vote-jour-j.envoyerOtp') }}"
+                              data-vote-jour-j-url="{{ route('vote-jour-j.store') }}"
+                              data-recaptcha-key="{{ config('services.recaptcha.site_key') }}"
+                              onsubmit="return false;">
+                            <input type="hidden" name="projet_id" :value="voteProjet?.id">
+                            <input type="hidden" name="telephone" id="telephone_full">
+                            <input type="hidden" name="recaptcha_token" id="recaptcha-token">
+
+                            <!-- GPS -->
+                            <input type="hidden" name="latitude" id="latitude" :value="userLatitude">
+                            <input type="hidden" name="longitude" id="longitude" :value="userLongitude">
+
+                            <div>
+                                <label for="nom_votant" class="block mb-2 text-sm font-medium text-gray-300">
+                                    Votre nom (Optionnel)
+                                </label>
+                                <input
+                                    type="text"
+                                    id="nom_votant"
+                                    name="nom_votant"
+                                    class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                                    placeholder="Ex: Paul David Mbaye">
+                            </div>
+
+                            <div>
+                                <label for="telephone_display" class="block mb-2 text-sm font-medium text-gray-300">
+                                    Votre numéro de téléphone
+                                </label>
+                                <div class="flex flex-row gap-0">
+                                    <select id="country_code" name="country_code" class="hidden">
+                                        <option value="+221" selected>+221</option>
+                                    </select>
+                                    <div class="flex-shrink-0 z-10 inline-flex items-center py-2.5 px-3 text-sm font-medium text-center text-gray-200 bg-gray-800 border border-gray-600 rounded-l-lg">
+                                        🇸🇳 +221
+                                    </div>
+                                    <div class="relative w-full">
+                                        <input
+                                            type="tel"
+                                            id="telephone_display"
+                                            name="telephone_display"
+                                            class="block p-2.5 w-full z-20 text-sm text-white bg-gray-700/50 rounded-r-lg border border-gray-600 border-l-0 focus:ring-2 focus:outline-none focus:ring-yellow-400"
+                                            placeholder="Ex: 77 123 45 67"
+                                            required>
+                                    </div>
+                                </div>
+                                <p class="mt-2 text-xs text-gray-400">
+                                    Vous recevrez un code unique par SMS pour valider votre vote.
+                                </p>
+                            </div>
+
+                            <div class="pt-4 flex justify-center">
+                                <div class="rainbow relative z-0 overflow-hidden p-0.5 flex items-center justify-center rounded-full hover:scale-105 transition duration-300 active:scale-100 w-full">
+                                    <button
+                                        type="button"
+                                        id="submit-vote-btn"
+                                        class="w-full px-8 text-sm py-3 text-white rounded-full font-medium bg-gray-900 flex items-center justify-center"
+                                        :disabled="isLoading">
+                                        <span x-show="!isLoading">Cliquez pour recevoir le code de vote</span>
+                                        <span x-show="isLoading">Envoi en cours...</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    {{-- Étape 2 --}}
+                    <div x-show="voteStep === 2" style="display:none;">
+                        <form id="otp-verify-form"
+                              class="space-y-4"
+                              data-verify-otp-url="{{ route('vote-jour-j.verifierOtp') }}"
+                              onsubmit="return false;">
+                            <p class="text-center text-gray-300">
+                                Un code a été envoyé. Veuillez le saisir ci-dessous.
+                            </p>
+                            <div>
+                                <label for="code_otp" class="block mb-2 text-sm font-medium text-gray-300">
+                                    Code de vérification (OTP)
+                                </label>
+                                <input
+                                    type="tel"
+                                    id="code_otp"
+                                    name="code_otp"
+                                    class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white text-center text-2xl tracking-[1em]"
+                                    placeholder="------"
+                                    required
+                                    maxlength="6"
+                                    pattern="\d{6}"
+                                    inputmode="numeric">
+                            </div>
+                            <div class="pt-4">
+                                <button
+                                    type="button"
+                                    id="submit-otp-btn"
+                                    class="w-full skew-btn bg-emerald-600 text-white hover:text-white flex items-center justify-center"
+                                    :disabled="isLoading">
+                                    <span x-show="!isLoading">Valider le vote</span>
+                                    <span x-show="isLoading">Validation...</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {{-- Étape 3 --}}
+                    <div x-show="voteStep === 3" style="display:none;" class="text-center py-6 px-4">
+                        <div x-show="successMessage" class="space-y-5">
+                            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
+                                <div class="w-16 h-16 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-8 h-8 sm:w-7 sm:h-7 text-emerald-400"
+                                         fill="none"
+                                         stroke="currentColor"
+                                         viewBox="0 0 24 24">
+                                        <path stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                              stroke-width="2.5"
+                                              d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </div>
+                                <div class="text-center sm:text-left">
+                                    <h3 class="text-xl sm:text-2xl font-semibold text-white mb-1">
+                                        Vote enregistré
+                                    </h3>
+                                    <p class="text-sm text-gray-400">
+                                        Merci pour votre participation
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="pt-4 pb-2 border-t border-gray-800">
+                                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-lg mx-auto">
+                                    <div class="text-center sm:text-left flex-1">
+                                        <h4 class="text-base font-medium text-white mb-1">
+                                            Grande Finale
+                                        </h4>
+                                        <p class="text-xs text-gray-400">
+                                            Réservez votre place dès maintenant
+                                        </p>
+                                    </div>
+                                    <a href="https://reservation.govathon.sn"
+                                       target="_blank"
+                                       class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-medium text-sm rounded-lg transition-all duration-200 shadow-lg hover:shadow-yellow-500/20 flex-shrink-0">
+                                        <span>Réserver</span>
+                                        <svg class="w-4 h-4"
+                                             fill="none"
+                                             stroke="currentColor"
+                                             viewBox="0 0 24 24">
+                                            <path stroke-linecap="round"
+                                                  stroke-linejoin="round"
+                                                  stroke-width="2"
+                                                  d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                                        </svg>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <button
+                                @click="showVoteModal = false"
+                                class="text-sm text-gray-500 hover:text-gray-300 underline transition-colors">
+                                Fermer
+                            </button>
+                        </div>
+
+                        <div x-show="errorMessage" class="space-y-4">
+                            <div class="flex items-center justify-center gap-4">
+                                <div class="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-7 h-7 text-red-400"
+                                         fill="none"
+                                         stroke="currentColor"
+                                         viewBox="0 0 24 24">
+                                        <path stroke-linecap="round"
+                                              stroke-linejoin="round"
+                                              stroke-width="2"
+                                              d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </div>
+                                <p class="text-base text-gray-300 text-left flex-1"
+                                   x-text="errorMessage"></p>
+                            </div>
+                            <button
+                                @click="showVoteModal = false"
+                                class="text-sm text-gray-500 hover:text-gray-300 underline transition-colors">
+                                Fermer
+                            </button>
+                        </div>
+                    </div>
+
+                    <div
+                        x-show="errorMessage && (voteStep === 1 || voteStep === 2)"
+                        class="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg relative mt-4"
+                        role="alert">
+                        <p x-text="errorMessage"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<x-footer />
+
+<!-- reCAPTCHA v3 -->
+<script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}"></script>
+
+<!-- Partage projet -->
 <script>
 window.shareProjectForProject = function (id, projectName) {
     const urlObj = new URL(window.location.href);
-    // Construire une URL de filtre basée sur la barre de recherche
+
     urlObj.searchParams.delete('vote');
     urlObj.searchParams.delete('project_id');
     urlObj.searchParams.delete('page');
+
     if (projectName && typeof projectName === 'string') {
         urlObj.searchParams.set('search', projectName);
     }
+
     const finalUrl = urlObj.toString();
 
     const title = document.title || 'GovAthon – Découvrir un projet';
     const text  = 'Découvrez ce projet et votez pour lui :';
-
-    // Message visuel retiré (demande produit) : partage direct uniquement
 
     if (typeof window.shareProject === 'function') {
         window.shareProject(finalUrl);
@@ -881,6 +1170,7 @@ window.shareProjectForProject = function (id, projectName) {
 };
 </script>
 
+<!-- Deep link auto-vote -->
 <script>
 (function () {
     let voteDeepLinkHandled = false;
@@ -909,10 +1199,8 @@ window.shareProjectForProject = function (id, projectName) {
             .then(function (data) {
                 console.log('✅ Données projet reçues pour auto-vote :', data);
 
-                // ➜ Ici on déclenche l’event attendu par Alpine
                 window.dispatchEvent(new CustomEvent('project-for-vote', { detail: data }));
 
-                // Nettoyage de l'URL pour éviter la réouverture au refresh
                 if (history && history.replaceState) {
                     const cleanUrl = new URL(window.location);
                     cleanUrl.searchParams.delete('vote');
@@ -926,18 +1214,18 @@ window.shareProjectForProject = function (id, projectName) {
             });
     }
 
-    // Quand Alpine a fini d'initialiser les composants
     document.addEventListener('alpine:initialized', function () {
         console.log('🎉 alpine:initialized (auto-vote)');
         openVoteFromUrl();
     });
 
-    // Fallback au cas où l'événement passe à côté
     window.addEventListener('load', function () {
         setTimeout(openVoteFromUrl, 400);
     });
 })();
 </script>
+
+<!-- Recherche auto -->
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const input = document.getElementById('search-input');
@@ -950,9 +1238,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     input.addEventListener('input', function () {
         clearTimeout(timer);
-        // lance la recherche 400 ms après que l'utilisateur a fini de taper
-        //sd
         timer = setTimeout(() => form.submit(), 400);
     });
 });
 </script>
+
+</body>
+</html>
