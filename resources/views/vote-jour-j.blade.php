@@ -1507,7 +1507,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let timer = null;
     input.addEventListener('input', function () {
         clearTimeout(timer);
-        timer = setTimeout(() => form.submit(), 400);
+        timer = setTimeout(() => form.submit(), 450);
     });
 });
 </script>
