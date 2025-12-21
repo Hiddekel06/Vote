@@ -72,6 +72,29 @@
             </div>
             <p class="text-center text-gray-300 mb-8 px-4 text-sm sm:text-base">Recherchez un projet, une équipe , puis votez pour votre préféré.</p>
 
+            <!-- Timer rouge: fin du vote Lundi 22 décembre 15:00 -->
+            <div class="mb-6 text-center">
+                <div class="timer-modern-red" aria-hidden="false">
+                    <div class="time-card-red">
+                        <span id="ss-countdown-days">00</span>
+                        <small>Jours</small>
+                    </div>
+                    <div class="time-card-red">
+                        <span id="ss-countdown-hours">00</span>
+                        <small>Heures</small>
+                    </div>
+                    <div class="time-card-red">
+                        <span id="ss-countdown-minutes">00</span>
+                        <small>Minutes</small>
+                    </div>
+                    <div class="time-card-red">
+                        <span id="ss-countdown-seconds">00</span>
+                        <small>Secondes</small>
+                    </div>
+                </div>
+                <div class="mt-3 text-sm text-red-300">Fin du vote : Lundi 22 décembre — 15:00</div>
+            </div>
+
             <!-- Barre de recherche -->
             <div class="mb-8">
     <form action="{{ route('vote.secteurs', ['profile_type' => $categorie->slug]) }}" method="GET" class="w-full">
@@ -791,5 +814,43 @@ document.addEventListener('DOMContentLoaded', function () {
         timer = setTimeout(() => form.submit(), 400);
     });
 });
+</script>
+
+<!-- Styles et script du timer rouge (fin du vote 22 déc 15:00) -->
+<style>
+    .timer-modern-red { display:flex; gap:12px; justify-content:center; margin:16px 0; flex-wrap:wrap; }
+    .time-card-red { background: rgba(220,38,38,0.08); border:2px solid #dc2626; border-radius:14px; width:clamp(64px,11.5vw,92px); padding:clamp(9px,2.4vw,15px) 7px; text-align:center; box-shadow:0 0 18px rgba(220,38,38,0.32); transition:transform .25s ease, box-shadow .25s ease; }
+    .time-card-red:hover { transform:translateY(-3px); box-shadow:0 0 26px rgba(220,38,38,0.45); }
+    .time-card-red span { display:block; font-size:clamp(20px,4.8vw,30px); font-weight:800; color:#ef4444; line-height:1; }
+    .time-card-red small { display:block; margin-top:5px; font-size:clamp(9px,2vw,11px); letter-spacing:.7px; text-transform:uppercase; color:rgba(255,255,255,.75); }
+    @media (max-width:768px){ .timer-modern-red{ gap:10px; } }
+    @media (max-width:480px){ .timer-modern-red{ gap:9px; } }
+</style>
+
+<script>
+    (function(){
+        const target = new Date(2025, 11, 22, 15, 0, 0);
+        const elDays = document.getElementById('ss-countdown-days');
+        const elHours = document.getElementById('ss-countdown-hours');
+        const elMins = document.getElementById('ss-countdown-minutes');
+        const elSecs = document.getElementById('ss-countdown-seconds');
+
+        function pad(n){ return String(n).padStart(2,'0'); }
+        function tick(){
+            const now = new Date();
+            let diff = Math.max(0, target - now);
+            const secs = Math.floor(diff / 1000);
+            const d = Math.floor(secs / 86400);
+            const h = Math.floor((secs % 86400) / 3600);
+            const m = Math.floor((secs % 3600) / 60);
+            const s = secs % 60;
+            if (elDays) elDays.textContent = pad(d);
+            if (elHours) elHours.textContent = pad(h);
+            if (elMins) elMins.textContent = pad(m);
+            if (elSecs) elSecs.textContent = pad(s);
+        }
+        tick();
+        setInterval(tick, 1000);
+    })();
 </script>
 
