@@ -1,3 +1,4 @@
+{{-- resources/views/vote-jour-j.blade.php --}}
 <!DOCTYPE html>
 <html lang="fr" class="overflow-x-hidden">
 <head>
@@ -13,6 +14,7 @@
     @endif
 
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grande Finale Jour J - GovAthon</title>
 
@@ -24,187 +26,50 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
         rel="stylesheet">
+
+    <style>
+        /* Optionnel: ton background custom */
+        .bg-image-custom { background-image: url('{{ asset('assets/img/bg-vote.jpg') }}'); }
+    </style>
 </head>
+
 <body class="bg-black text-white flex flex-col min-h-screen bg-cover bg-center bg-fixed bg-image-custom font-poppins overflow-x-hidden">
 
 <x-header />
 
+@php
+    // Petits flags simples pour la vue
+    $isVoteActive = $isVoteActive ?? true;
+    $inactiveMessage = $inactiveMessage ?? "Le vote Jour J n'est pas ouvert pour le moment.";
+
+    $hasEvent = (bool) $event;
+    $eventPayload = $event ? [
+        'lat' => (float) $event->latitude,
+        'lon' => (float) $event->longitude,
+        'radius' => (int) $event->rayon_metres,
+    ] : null;
+
+    $__projectsCount = 0;
+    foreach ($secteurs as $__s) {
+        $__projectsCount += $__s->projets->count();
+    }
+@endphp
+
 <main class="flex-grow container mx-auto px-4 py-12 flex items-center overflow-x-hidden">
     <div
         class="bg-black bg-opacity-60 p-8 rounded-lg shadow-2xl max-w-6xl mx-auto w-full"
-        x-data="{
-            showModal: false,
-            showWelcomeModal: false,
-            modalProjet: null,
-            showVoteModal: false,
-            voteProjet: null,
-
-            // Vote Jour J : valeur dynamique depuis le backend
-            isVoteActive: @json($isVoteActive ?? true),
-            inactiveMessage: @json($inactiveMessage ?? \"Le vote Jour J n'est pas ouvert pour le moment.\"),
-
-            voteStep: 1,
-            isLoading: false,
-            errorMessage: '',
-            successMessage: '',
-            descriptionExpanded: false,
-
-            // Dropdown de catégorie utilisé pour le x-show et le label
-            selectedCategory: '{{ request('profile_type', 'all') }}',
-            categoryMenuOpen: false,
-
-            // 🌍 Variables GPS
-            gpsStatus: 'loading', // 'loading' | 'success' | 'error' | 'denied' | 'unavailable'
-            gpsMessage: 'Recherche de votre position...',
-            userLatitude: null,
-            userLongitude: null,
-            distanceToEvent: null,
-            isInRange: false,
-            @if($event)
-            eventLat: {{ $event->latitude }},
-            eventLon: {{ $event->longitude }},
-            eventRadius: {{ $event->rayon_metres }},
-            hasEvent: true,
-            @else
-            eventLat: null,
-            eventLon: null,
-            eventRadius: null,
-            hasEvent: false,
-            @endif
-
-            inactiveNoticeVisible: false,
-            showInactiveNotice() {
-                this.inactiveNoticeVisible = true;
-                setTimeout(() => { this.inactiveNoticeVisible = false }, 1200);
-            },
-
-            // 🌍 Fonction de calcul de distance (Haversine)
-            calculateDistance(lat1, lon1, lat2, lon2) {
-                const R = 6371000; // m
-                const φ1 = lat1 * Math.PI / 180;
-                const φ2 = lat2 * Math.PI / 180;
-                const Δφ = (lat2 - lat1) * Math.PI / 180;
-                const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-                const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                          Math.cos(φ1) * Math.cos(φ2) *
-                          Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-                return R * c;
-            },
-
-            // 🌍 Capture GPS
-            captureGPS() {
-                if (!navigator.geolocation) {
-                    this.gpsStatus = 'unavailable';
-                    this.gpsMessage = 'Votre navigateur ne supporte pas la géolocalisation.';
-                    return;
-                }
-
-                this.gpsStatus = 'loading';
-                this.gpsMessage = 'Recherche de votre position...';
-
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        this.userLatitude = position.coords.latitude;
-                        this.userLongitude = position.coords.longitude;
-
-                        if (this.hasEvent) {
-                            this.distanceToEvent = this.calculateDistance(
-                                this.userLatitude,
-                                this.userLongitude,
-                                this.eventLat,
-                                this.eventLon
-                            );
-
-                            this.isInRange = this.distanceToEvent <= this.eventRadius;
-
-                            if (this.isInRange) {
-                                this.gpsStatus = 'success';
-                                this.gpsMessage = `✓ Vous êtes dans la zone (${Math.round(this.distanceToEvent)}m)`;
-                            } else {
-                                this.gpsStatus = 'error';
-                                this.gpsMessage =
-                                    `❌ Vous n’êtes pas dans une zone autorisée à voter pour cet événement (${Math.round(this.distanceToEvent)}m / ${this.eventRadius}m max)`;
-                            }
-                        } else {
-                            this.gpsStatus = 'success';
-                            this.gpsMessage = '✓ Position détectée (aucun événement GPS actif)';
-                            this.isInRange = true;
-                        }
-                    },
-                    (error) => {
-                        console.error('Erreur GPS:', error);
-
-                        switch (error.code) {
-                            case error.PERMISSION_DENIED:
-                                this.gpsStatus = 'denied';
-                                this.gpsMessage = '✗ Permission GPS refusée. Veuillez autoriser la géolocalisation.';
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                this.gpsStatus = 'error';
-                                this.gpsMessage = '✗ Position GPS indisponible.';
-                                break;
-                            case error.TIMEOUT:
-                                this.gpsStatus = 'error';
-                                this.gpsMessage = '✗ Délai de géolocalisation dépassé.';
-                                break;
-                            default:
-                                this.gpsStatus = 'error';
-                                this.gpsMessage = '✗ Erreur de géolocalisation.';
-                        }
-                    },
-                    {
-                        enableHighAccuracy: false,
-                        timeout: 5000,
-                        maximumAge: 0
-                    }
-                );
-            }
-        }"
-        x-init="
-            const self = this;
-
-            // Afficher la modale d'accueil UNE SEULE FOIS
-            if (!sessionStorage.getItem('welcome_modal_shown')) {
-                this.showWelcomeModal = true;
-                sessionStorage.setItem('welcome_modal_shown', 'true');
-            }
-
-            // Lancer la capture GPS automatiquement SEULEMENT si le vote Jour J est actif (événement)
-            if (this.hasEvent) {
-                this.captureGPS();
-            } else {
-                this.gpsStatus = 'unavailable';
-                this.gpsMessage = 'Vote Jour J désactivé';
-            }
-
-            // Si le vote est globalement désactivé côté backend
-            if (!self.isVoteActive) {
-                self.voteStep = 3;
-                self.errorMessage = self.inactiveMessage;
-            }
-
-            window.addEventListener('project-data', function(e) {
-                console.log('📊 Alpine: Event project-data reçu', e.detail);
-                self.modalProjet = e.detail;
-                self.showModal = true;
-                self.descriptionExpanded = false;
-            });
-
-            window.addEventListener('project-for-vote', function(e) {
-                console.log('🎯 Alpine: Event project-for-vote reçu', e.detail);
-                self.voteProjet = e.detail;
-                self.showVoteModal = true;
-                console.log('🎯 Alpine: showVoteModal mis à true');
-                self.voteStep = self.isVoteActive ? 1 : 3;
-                self.errorMessage = self.isVoteActive ? '' : self.inactiveMessage;
-                self.successMessage = '';
-                console.log('🎯 Alpine: voteStep =', self.voteStep, ', showVoteModal =', self.showVoteModal);
-            });
-        "
-        @keydown.escape.window="showModal = false; showVoteModal = false"
+        x-data="voteJourJComponent({
+            isVoteActive: @json($isVoteActive),
+            inactiveMessage: @json($inactiveMessage),
+            selectedCategory: @json(request('profile_type', 'all')),
+            hasEvent: @json($hasEvent),
+            event: @json($eventPayload),
+            recaptchaKey: @json(config('services.recaptcha.site_key')),
+            sendOtpUrl: @json(route('vote-jour-j.envoyerOtp')),
+            verifyOtpUrl: @json(route('vote-jour-j.verifierOtp')),
+        })"
+        x-init="init()"
+        @keydown.escape.window="closeAll()"
     >
         <!-- Toast rapide quand vote désactivé -->
         <div
@@ -233,10 +98,8 @@
                  x-transition:enter-start="scale-95 opacity-0"
                  x-transition:enter-end="scale-100 opacity-100">
 
-                <!-- Titre -->
                 <h1 class="text-3xl font-bold text-yellow-400 mb-8">🏆 GRANDE FINALE<br>GOV'ATHON</h1>
 
-                <!-- Étapes -->
                 <div class="space-y-4 mb-8 text-left">
                     <div class="flex items-start gap-4">
                         <div class="flex-shrink-0 w-8 h-8 bg-yellow-500 text-black rounded-full font-bold flex items-center justify-center">1</div>
@@ -245,7 +108,6 @@
                             <p class="text-gray-400 text-sm">Nous aurons besoin de votre position GPS</p>
                         </div>
                     </div>
-
                     <div class="flex items-start gap-4">
                         <div class="flex-shrink-0 w-8 h-8 bg-yellow-500 text-black rounded-full font-bold flex items-center justify-center">2</div>
                         <div>
@@ -253,7 +115,6 @@
                             <p class="text-gray-400 text-sm">Parcourez et choisissez votre favori</p>
                         </div>
                     </div>
-
                     <div class="flex items-start gap-4">
                         <div class="flex-shrink-0 w-8 h-8 bg-yellow-500 text-black rounded-full font-bold flex items-center justify-center">3</div>
                         <div>
@@ -261,7 +122,6 @@
                             <p class="text-gray-400 text-sm">Pour vérifier votre identité</p>
                         </div>
                     </div>
-
                     <div class="flex items-start gap-4">
                         <div class="flex-shrink-0 w-8 h-8 bg-yellow-500 text-black rounded-full font-bold flex items-center justify-center">4</div>
                         <div>
@@ -271,19 +131,11 @@
                     </div>
                 </div>
 
-                <!-- Bouton -->
                 <button
-                    @click="
-                        showWelcomeModal = false;
-                        // Dès qu'il ferme la modale, on déclenche la demande de localisation
-                        if (hasEvent) {
-                            captureGPS();
-                        }
-                    "
+                    @click="startFromWelcome()"
                     class="w-full px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-black rounded-lg font-bold transition-colors">
                     Commencer
                 </button>
-
             </div>
         </div>
 
@@ -308,16 +160,47 @@
             <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-2">
                 🏆 GRANDE FINALE JOUR J
             </h1>
+
             @if(!$event)
                 <div class="mt-2 px-4 py-2 bg-red-900/30 border border-red-700 rounded-lg inline-block">
                     <p class="text-red-300 text-xs">❌ Le vote Jour J est actuellement désactivé</p>
                 </div>
             @endif
+
+            {{-- Info pratique: geoloc sur mobile --}}
+            <div class="mt-2 text-[11px] text-gray-400">
+                ⚠️ La géolocalisation fonctionne uniquement sur <strong>HTTPS</strong> (ou <strong>localhost</strong>) et certains lecteurs QR ouvrent un navigateur interne sans GPS.
+            </div>
         </div>
 
         <!-- 🌍 Indicateur GPS -->
         <div class="mb-6 px-2">
             <div class="max-w-2xl mx-auto">
+
+                <!-- IDLE (pas encore demandé) -->
+                <div
+                    x-show="gpsStatus === 'idle'"
+                    class="flex flex-col items-center justify-center gap-2 bg-gray-800/50 border border-gray-600/50 rounded-lg px-4 py-3"
+                >
+                    <div class="flex items-center gap-3">
+                        <svg class="h-5 w-5 text-gray-300"
+                             fill="none"
+                             stroke="currentColor"
+                             viewBox="0 0 24 24">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M12 6v6l4 2"></path>
+                        </svg>
+                        <span class="text-gray-200 text-sm font-medium" x-text="gpsMessage"></span>
+                    </div>
+                    <button
+                        @click="captureGPS(true)"
+                        class="text-xs text-yellow-300 hover:text-yellow-200 underline">
+                        Activer la localisation
+                    </button>
+                </div>
+
                 <!-- Loading -->
                 <div
                     x-show="gpsStatus === 'loading'"
@@ -373,7 +256,7 @@
                         <span class="text-red-300 text-sm font-medium" x-text="gpsMessage"></span>
                     </div>
                     <button
-                        @click="captureGPS()"
+                        @click="captureGPS(true)"
                         class="text-xs text-red-200 hover:text-white underline">
                         Réessayer
                     </button>
@@ -399,7 +282,7 @@
                         Cliquez sur l'icône 🔒 dans votre navigateur pour autoriser la géolocalisation
                     </p>
                     <button
-                        @click="captureGPS()"
+                        @click="captureGPS(true)"
                         class="text-xs text-orange-200 hover:text-white underline">
                         Réessayer
                     </button>
@@ -494,6 +377,7 @@
 
         <p class="text-center text-gray-300 mb-8 px-4 text-sm sm:text-base">
             Recherchez un projet, une équipe, puis votez pour votre préféré.
+            <span class="text-gray-500">({{ $__projectsCount }} projet(s))</span>
         </p>
 
         <!-- Barre de recherche -->
@@ -533,13 +417,6 @@
             </form>
         </div>
 
-        @php
-            $__projectsCount = 0;
-            foreach ($secteurs as $__s) {
-                $__projectsCount += $__s->projets->count();
-            }
-        @endphp
-
         <!-- Tableau des projets -->
         <div class="overflow-x-visible md:overflow-x-auto">
             <table class="w-full text-left border-collapse md:max-w-4xl md:mx-auto">
@@ -551,6 +428,7 @@
                     <th class="p-4 text-lg font-semibold text-gray-100 text-center">Vote</th>
                 </tr>
                 </thead>
+
                 <tbody id="projects-table-body">
                 @foreach ($secteurs as $secteur)
                     @forelse ($secteur->projets as $projet)
@@ -578,19 +456,23 @@
                                 ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demo')
                                 ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
                         @endphp
+
                         <tr
-                            :class="{ 'opacity-50 hover:bg-gray-800/20': !hasEvent }"
                             class="block md:table-row border-b border-gray-700 hover:bg-gray-900/30 transition-colors bg-gray-800/40 md:bg-transparent rounded-lg md:rounded-none mb-3 md:mb-0"
-                            x-show="selectedCategory === 'all' || selectedCategory === '{{ $profileType }}'">
+                            :class="{ 'opacity-50 hover:bg-gray-800/20': !hasEvent }"
+                            x-show="selectedCategory === 'all' || selectedCategory === '{{ $profileType }}'"
+                        >
                             <td class="hidden md:table-cell p-4" data-label="Secteur : ">
                                 {{ $secteur->nom }}
                             </td>
+
                             <td class="hidden md:table-cell p-4" data-label="Équipe : ">
                                 <div>{{ $projet->nom_equipe }}</div>
                                 @if($school)
                                     <div class="text-sm text-yellow-300 font-semibold mt-1">{{ $school }}</div>
                                 @endif
                             </td>
+
                             <td class="block md:table-cell p-3 md:p-4 font-semibold" data-label="Projet : ">
                                 <div class="flex flex-col gap-1">
                                     <div class="md:hidden">
@@ -605,6 +487,7 @@
                                     <span class="hidden md:inline">{{ $projet->nom_projet }}</span>
                                 </div>
                             </td>
+
                             <td class="block md:table-cell p-3 md:p-4 text-center align-middle">
                                 <!-- Mobile -->
                                 <div class="md:hidden flex flex-col gap-3">
@@ -615,7 +498,7 @@
                                             class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                                             aria-label="Détails du projet"
                                             title="Détails"
-                                            @click="modalProjet = @js($projet); showModal = true; descriptionExpanded = false">
+                                            @click="openDetails(@js($projet))">
                                             <svg xmlns="http://www.w3.org/2000/svg"
                                                  class="h-5 w-5"
                                                  viewBox="0 0 24 24"
@@ -667,10 +550,8 @@
                                                 </svg>
                                             </a>
                                         @else
-                                            <span
-                                                class="p-2 rounded-full text-gray-600 bg-transparent opacity-60"
-                                                title="Aucune démonstration disponible"
-                                                aria-hidden="true">
+                                            <span class="p-2 rounded-full text-gray-600 bg-transparent opacity-60"
+                                                  title="Aucune démonstration disponible" aria-hidden="true">
                                                 <svg xmlns="http://www.w3.org/2000/svg"
                                                      class="h-5 w-5"
                                                      viewBox="0 0 24 24"
@@ -694,31 +575,11 @@
                                     <!-- Bouton voter (mobile) -->
                                     <div class="relative">
                                         <button
-                                            data-role="vote-btn"
                                             type="button"
                                             class="group flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
-                                            :class="{
-                                                'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black':
-                                                    hasEvent && isVoteActive && isInRange && gpsStatus === 'success',
-                                                'bg-gray-600 text-gray-300 cursor-not-allowed':
-                                                    !hasEvent || !isVoteActive || !isInRange || gpsStatus !== 'success'
-                                            }"
-                                            :disabled="!hasEvent || !isVoteActive || !isInRange || gpsStatus !== 'success'"
-                                            @click="
-                                                if (!hasEvent) {
-                                                    alert('❌ Le système de vote Jour J est désactivé. Aucun événement actif');
-                                                } else if (isInRange && gpsStatus === 'success') {
-                                                    voteProjet = @js($projet);
-                                                    showVoteModal = true;
-                                                    voteStep = isVoteActive ? 1 : 3;
-                                                    errorMessage = isVoteActive ? '' : inactiveMessage;
-                                                    successMessage = '';
-                                                } else if (gpsStatus !== 'success') {
-                                                    alert('⚠️ Attendez que votre position GPS soit détectée');
-                                                } else {
-                                                    alert('❌ Vous devez être sur place pour voter' + (distanceToEvent ? ' (distance: ' + Math.round(distanceToEvent) + 'm)' : ''));
-                                                }
-                                            ">
+                                            :class="voteButtonClass()"
+                                            :disabled="voteButtonDisabled()"
+                                            @click="openVote(@js($projet))">
                                             <svg xmlns="http://www.w3.org/2000/svg"
                                                  class="h-4 w-4"
                                                  fill="none"
@@ -731,18 +592,11 @@
                                             </svg>
                                             Voter
                                         </button>
+
                                         <!-- Overlay pour capter le clic quand inactif / hors zone / GPS en attente -->
                                         <button
-                                            x-show="!isVoteActive || !isInRange || gpsStatus !== 'success'"
-                                            @click.prevent="
-                                                if (gpsStatus !== 'success') {
-                                                    alert('⚠️ Attendez que votre position GPS soit détectée');
-                                                } else if (!isInRange) {
-                                                    alert('❌ Vous devez être sur place pour voter' + (distanceToEvent ? ' (distance: ' + Math.round(distanceToEvent) + 'm)' : ''));
-                                                } else {
-                                                    showInactiveNotice();
-                                                }
-                                            "
+                                            x-show="voteButtonDisabled()"
+                                            @click.prevent="explainWhyVoteDisabled()"
                                             class="absolute inset-0 w-full h-full z-20 bg-transparent"
                                             aria-hidden="true"></button>
                                     </div>
@@ -756,7 +610,7 @@
                                         class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
                                         aria-label="Détails du projet"
                                         title="Détails"
-                                        @click="modalProjet = @js($projet); showModal = true; descriptionExpanded = false">
+                                        @click="openDetails(@js($projet))">
                                         <svg xmlns="http://www.w3.org/2000/svg"
                                              class="h-5 w-5"
                                              viewBox="0 0 24 24"
@@ -808,10 +662,8 @@
                                             </svg>
                                         </a>
                                     @else
-                                        <span
-                                            class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60"
-                                            title="Aucune démonstration disponible"
-                                            aria-hidden="true">
+                                        <span class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60"
+                                              title="Aucune démonstration disponible" aria-hidden="true">
                                             <svg xmlns="http://www.w3.org/2000/svg"
                                                  class="h-5 w-5"
                                                  viewBox="0 0 24 24"
@@ -833,36 +685,11 @@
 
                                     <!-- Voter (desktop) -->
                                     <button
-                                        data-role="vote-btn"
                                         type="button"
                                         class="group flex items-center justify-center gap-2 md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
-                                        :class="{
-                                            'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black':
-                                                hasEvent && isVoteActive && isInRange && gpsStatus === 'success',
-                                            'bg-gray-600 text-gray-300 cursor-not-allowed':
-                                                !hasEvent || !isVoteActive || !isInRange || gpsStatus !== 'success'
-                                        }"
-                                        :disabled="!hasEvent || !isVoteActive || !isInRange || gpsStatus !== 'success'"
-                                        @click="
-                                            if (!hasEvent) {
-                                                alert('❌ Le système de vote Jour J est désactivé. Aucun événement actif');
-                                            } else if (isInRange && gpsStatus === 'success') {
-                                                voteProjet = @js($projet);
-                                                showVoteModal = true;
-                                                voteStep = isVoteActive ? 1 : 3;
-                                                errorMessage = isVoteActive ? '' : inactiveMessage;
-                                                successMessage = '';
-                                            } else if (gpsStatus !== 'success') {
-                                                alert('⚠️ Attendez que votre position GPS soit détectée');
-                                            } else {
-                                                alert('❌ Vous devez être sur place pour voter' + (distanceToEvent ? ' (distance: ' + Math.round(distanceToEvent) + 'm)' : ''));
-                                            }
-                                        "
-                                        :title="!isInRange
-                                            ? 'Vous devez être sur place pour voter'
-                                            : (gpsStatus !== 'success'
-                                                ? 'Position GPS en attente'
-                                                : 'Cliquez pour voter')">
+                                        :class="voteButtonClass()"
+                                        :disabled="voteButtonDisabled()"
+                                        @click="openVote(@js($projet))">
                                         <svg xmlns="http://www.w3.org/2000/svg"
                                              class="h-4 w-4"
                                              fill="none"
@@ -878,16 +705,8 @@
 
                                     <!-- Overlay inactif -->
                                     <button
-                                        x-show="!isVoteActive || !isInRange || gpsStatus !== 'success'"
-                                        @click.prevent="
-                                            if (gpsStatus !== 'success') {
-                                                alert('⚠️ Attendez que votre position GPS soit détectée');
-                                            } else if (!isInRange) {
-                                                alert('❌ Vous devez être sur place pour voter' + (distanceToEvent ? ' (distance: ' + Math.round(distanceToEvent) + 'm)' : ''));
-                                            } else {
-                                                showInactiveNotice();
-                                            }
-                                        "
+                                        x-show="voteButtonDisabled()"
+                                        @click.prevent="explainWhyVoteDisabled()"
                                         class="absolute inset-0 w-full h-full z-20 bg-transparent"
                                         aria-hidden="true"></button>
                                 </div>
@@ -911,7 +730,6 @@
             x-transition:leave="transition ease-in duration-200"
             x-transition:leave-start="opacity-100"
             x-transition:leave-end="opacity-0">
-
             <div
                 @click.away="showModal = false"
                 class="bg-gray-900/95 border-yellow-400/30 rounded-lg shadow-2xl max-w-2xl w-full text-white relative flex flex-col"
@@ -922,15 +740,13 @@
                 x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100 transform scale-100"
                 x-transition:leave-end="opacity-0 transform scale-90">
-
                 <div class="p-6 border-b border-gray-700 flex-shrink-0">
                     <button
                         @click="showModal = false"
                         class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl leading-none">
                         &times;
                     </button>
-                    <h2 class="text-2xl sm:text-3xl font-bold text-gray-400 mb-2"
-                        x-text="modalProjet?.nom_projet"></h2>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-gray-400 mb-2" x-text="modalProjet?.nom_projet"></h2>
                     <p class="text-md sm:text-lg text-gray-300">
                         par <span class="font-semibold" x-text="modalProjet?.nom_equipe"></span>
                     </p>
@@ -970,7 +786,6 @@
             x-transition:leave="transition ease-in duration-200"
             x-transition:leave-start="opacity-100"
             x-transition:leave-end="opacity-0">
-
             <div
                 @click.away="if (!isLoading) showVoteModal = false"
                 class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-2xl max-w-lg w-full text-white relative flex flex-col"
@@ -980,7 +795,6 @@
                 x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100 transform scale-100"
                 x-transition:leave-end="opacity-0 transform scale-90">
-
                 <div class="p-6 border-b border-gray-700 flex-shrink-0 relative">
                     <button
                         @click="if (!isLoading) showVoteModal = false"
@@ -996,12 +810,14 @@
                                   d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
+
                     <h2 class="text-2xl font-bold text-yellow-400 mb-2">
                         Voter pour : <span x-text="voteProjet?.nom_projet"></span>
                     </h2>
                     <p class="text-gray-300">
                         Équipe : <span class="font-semibold" x-text="voteProjet?.nom_equipe"></span>
                     </p>
+
                     <div
                         x-show="voteStep === 1 || voteStep === 2"
                         class="absolute bottom-0 left-6 translate-y-1/2 bg-gray-800 px-3 py-1 rounded-full text-xs text-yellow-300 border border-gray-700">
@@ -1012,22 +828,7 @@
                 <div class="p-6 space-y-4">
                     {{-- Étape 1 --}}
                     <div x-show="voteStep === 1">
-                        <form id="otp-request-form"
-                              class="space-y-4"
-                              data-send-otp-url="{{ route('vote-jour-j.envoyerOtp') }}"
-                              data-vote-jour-j-url="{{ route('vote-jour-j.store') }}"
-                              data-recaptcha-key="{{ config('services.recaptcha.site_key') }}"
-                              onsubmit="return false;">
-                            @csrf
-
-                            <input type="hidden" name="projet_id" :value="voteProjet?.id">
-                            <input type="hidden" name="telephone" id="telephone_full">
-                            <input type="hidden" name="recaptcha_token" id="recaptcha-token">
-
-                            <!-- GPS -->
-                            <input type="hidden" name="latitude" id="latitude" :value="userLatitude">
-                            <input type="hidden" name="longitude" id="longitude" :value="userLongitude">
-
+                        <div class="space-y-4">
                             <div>
                                 <label for="nom_votant" class="block mb-2 text-sm font-medium text-gray-300">
                                     Votre nom (Optionnel)
@@ -1035,9 +836,9 @@
                                 <input
                                     type="text"
                                     id="nom_votant"
-                                    name="nom_votant"
                                     class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                                    placeholder="Ex: Paul David Mbaye">
+                                    placeholder="Ex: Paul David Mbaye"
+                                    x-model="nomVotant">
                             </div>
 
                             <div>
@@ -1045,9 +846,6 @@
                                     Votre numéro de téléphone
                                 </label>
                                 <div class="flex flex-row gap-0">
-                                    <select id="country_code" name="country_code" class="hidden">
-                                        <option value="+221" selected>+221</option>
-                                    </select>
                                     <div class="flex-shrink-0 z-10 inline-flex items-center py-2.5 px-3 text-sm font-medium text-center text-gray-200 bg-gray-800 border border-gray-600 rounded-l-lg">
                                         🇸🇳 +221
                                     </div>
@@ -1055,10 +853,10 @@
                                         <input
                                             type="tel"
                                             id="telephone_display"
-                                            name="telephone_display"
                                             class="block p-2.5 w-full z-20 text-sm text-white bg-gray-700/50 rounded-r-lg border border-gray-600 border-l-0 focus:ring-2 focus:outline-none focus:ring-yellow-400"
                                             placeholder="Ex: 77 123 45 67"
-                                            required>
+                                            required
+                                            x-model="telephoneDisplay">
                                     </div>
                                 </div>
                                 <p class="mt-2 text-xs text-gray-400">
@@ -1070,28 +868,24 @@
                                 <div class="rainbow relative z-0 overflow-hidden p-0.5 flex items-center justify-center rounded-full hover:scale-105 transition duration-300 active:scale-100 w-full">
                                     <button
                                         type="button"
-                                        id="submit-vote-btn"
                                         class="w-full px-8 text-sm py-3 text-white rounded-full font-medium bg-gray-900 flex items-center justify-center"
-                                        :disabled="isLoading">
+                                        :disabled="isLoading"
+                                        @click="sendOtp()">
                                         <span x-show="!isLoading">Cliquez pour recevoir le code de vote</span>
                                         <span x-show="isLoading">Envoi en cours...</span>
                                     </button>
                                 </div>
                             </div>
-                        </form>
+                        </div>
                     </div>
 
                     {{-- Étape 2 --}}
                     <div x-show="voteStep === 2" style="display:none;">
-                        <form id="otp-verify-form"
-                              class="space-y-4"
-                              data-verify-otp-url="{{ route('vote-jour-j.verifierOtp') }}"
-                              onsubmit="return false;">
-                            @csrf
-
+                        <div class="space-y-4">
                             <p class="text-center text-gray-300">
                                 Un code a été envoyé. Veuillez le saisir ci-dessous.
                             </p>
+
                             <div>
                                 <label for="code_otp" class="block mb-2 text-sm font-medium text-gray-300">
                                     Code de vérification (OTP)
@@ -1099,25 +893,26 @@
                                 <input
                                     type="tel"
                                     id="code_otp"
-                                    name="code_otp"
                                     class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white text-center text-2xl tracking-[1em]"
                                     placeholder="------"
                                     required
                                     maxlength="6"
                                     pattern="\d{6}"
-                                    inputmode="numeric">
+                                    inputmode="numeric"
+                                    x-model="otpCode">
                             </div>
+
                             <div class="pt-4">
                                 <button
                                     type="button"
-                                    id="submit-otp-btn"
                                     class="w-full skew-btn bg-emerald-600 text-white hover:text-white flex items-center justify-center"
-                                    :disabled="isLoading">
+                                    :disabled="isLoading"
+                                    @click="verifyOtp()">
                                     <span x-show="!isLoading">Valider le vote</span>
                                     <span x-show="isLoading">Validation...</span>
                                 </button>
                             </div>
-                        </form>
+                        </div>
                     </div>
 
                     {{-- Étape 3 --}}
@@ -1139,9 +934,7 @@
                                     <h3 class="text-xl sm:text-2xl font-semibold text-white mb-1">
                                         Vote enregistré
                                     </h3>
-                                    <p class="text-sm text-gray-400">
-                                        Merci pour votre participation
-                                    </p>
+                                    <p class="text-sm text-gray-400" x-text="successMessage"></p>
                                 </div>
                             </div>
 
@@ -1192,8 +985,7 @@
                                               d="M6 18L18 6M6 6l12 12"></path>
                                     </svg>
                                 </div>
-                                <p class="text-base text-gray-300 text-left flex-1"
-                                   x-text="errorMessage"></p>
+                                <p class="text-base text-gray-300 text-left flex-1" x-text="errorMessage"></p>
                             </div>
                             <button
                                 @click="showVoteModal = false"
@@ -1203,12 +995,14 @@
                         </div>
                     </div>
 
+                    <!-- Erreur inline étape 1/2 -->
                     <div
                         x-show="errorMessage && (voteStep === 1 || voteStep === 2)"
                         class="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg relative mt-4"
                         role="alert">
                         <p x-text="errorMessage"></p>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -1219,6 +1013,418 @@
 
 <!-- reCAPTCHA v3 -->
 <script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}"></script>
+
+<script>
+/**
+ * Alpine component (on sort tout le gros JS du x-data pour éviter de casser le HTML
+ * et éviter l'affichage "en texte" après scan QR).
+ */
+function voteJourJComponent(cfg) {
+    return {
+        // UI
+        showModal: false,
+        showWelcomeModal: false,
+        modalProjet: null,
+
+        showVoteModal: false,
+        voteProjet: null,
+        voteStep: 1,
+        isLoading: false,
+        errorMessage: '',
+        successMessage: '',
+        descriptionExpanded: false,
+
+        // Vote status
+        isVoteActive: !!cfg.isVoteActive,
+        inactiveMessage: cfg.inactiveMessage || "Le vote Jour J n'est pas ouvert pour le moment.",
+
+        // category
+        selectedCategory: cfg.selectedCategory || 'all',
+        categoryMenuOpen: false,
+
+        // Event
+        hasEvent: !!cfg.hasEvent,
+        eventLat: cfg.event?.lat ?? null,
+        eventLon: cfg.event?.lon ?? null,
+        eventRadius: cfg.event?.radius ?? null,
+
+        // GPS
+        gpsStatus: 'idle', // idle | loading | success | error | denied | unavailable
+        gpsMessage: 'Veuillez activer la localisation pour voter.',
+        userLatitude: null,
+        userLongitude: null,
+        distanceToEvent: null,
+        isInRange: false,
+
+        // quick notice
+        inactiveNoticeVisible: false,
+
+        // OTP form state
+        nomVotant: '',
+        telephoneDisplay: '',
+        otpCode: '',
+
+        // urls / keys
+        recaptchaKey: cfg.recaptchaKey || '',
+        sendOtpUrl: cfg.sendOtpUrl,
+        verifyOtpUrl: cfg.verifyOtpUrl,
+
+        init() {
+            const self = this;
+
+            // Modale d'accueil une seule fois
+            if (!sessionStorage.getItem('welcome_modal_shown')) {
+                self.showWelcomeModal = true;
+                sessionStorage.setItem('welcome_modal_shown', 'true');
+            }
+
+            // Event actif ?
+            if (!self.hasEvent) {
+                self.gpsStatus = 'unavailable';
+                self.gpsMessage = 'Vote Jour J désactivé';
+            } else {
+                // On tente auto si permission déjà accordée, sinon on reste en idle
+                self.tryAutoGPS();
+            }
+
+            // Vote désactivé globalement
+            if (!self.isVoteActive) {
+                self.voteStep = 3;
+                self.errorMessage = self.inactiveMessage;
+            }
+
+            // Écouteurs global
+            window.addEventListener('project-data', function(e) {
+                self.modalProjet = e.detail;
+                self.showModal = true;
+                self.descriptionExpanded = false;
+            });
+
+            window.addEventListener('project-for-vote', function(e) {
+                self.openVote(e.detail);
+            });
+        },
+
+        closeAll() {
+            this.showModal = false;
+            this.showVoteModal = false;
+        },
+
+        showInactiveNotice() {
+            this.inactiveNoticeVisible = true;
+            setTimeout(() => { this.inactiveNoticeVisible = false }, 1200);
+        },
+
+        startFromWelcome() {
+            this.showWelcomeModal = false;
+            if (this.hasEvent) {
+                this.captureGPS(true); // force demande permission
+            }
+        },
+
+        async tryAutoGPS() {
+            // si pas support
+            if (!navigator.geolocation) {
+                this.gpsStatus = 'unavailable';
+                this.gpsMessage = 'Votre navigateur ne supporte pas la géolocalisation.';
+                return;
+            }
+
+            // tentative de check permission (si dispo)
+            if (navigator.permissions && navigator.permissions.query) {
+                try {
+                    const p = await navigator.permissions.query({ name: 'geolocation' });
+                    if (p.state === 'granted') {
+                        this.captureGPS(false);
+                        return;
+                    }
+                    if (p.state === 'denied') {
+                        this.gpsStatus = 'denied';
+                        this.gpsMessage = '✗ Permission GPS refusée. Veuillez autoriser la géolocalisation.';
+                        return;
+                    }
+                    // prompt => on reste idle, user click
+                    this.gpsStatus = 'idle';
+                    this.gpsMessage = 'Veuillez activer la localisation pour voter.';
+                    return;
+                } catch (e) {
+                    // fallback: idle
+                    this.gpsStatus = 'idle';
+                    this.gpsMessage = 'Veuillez activer la localisation pour voter.';
+                    return;
+                }
+            }
+
+            // fallback: idle
+            this.gpsStatus = 'idle';
+            this.gpsMessage = 'Veuillez activer la localisation pour voter.';
+        },
+
+        calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        },
+
+        captureGPS(forceHighAccuracy = false) {
+            if (!navigator.geolocation) {
+                this.gpsStatus = 'unavailable';
+                this.gpsMessage = 'Votre navigateur ne supporte pas la géolocalisation.';
+                return;
+            }
+
+            this.gpsStatus = 'loading';
+            this.gpsMessage = 'Recherche de votre position...';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    this.userLatitude = position.coords.latitude;
+                    this.userLongitude = position.coords.longitude;
+
+                    if (this.hasEvent) {
+                        this.distanceToEvent = this.calculateDistance(
+                            this.userLatitude,
+                            this.userLongitude,
+                            this.eventLat,
+                            this.eventLon
+                        );
+
+                        this.isInRange = this.distanceToEvent <= this.eventRadius;
+
+                        if (this.isInRange) {
+                            this.gpsStatus = 'success';
+                            this.gpsMessage = `✓ Vous êtes dans la zone (${Math.round(this.distanceToEvent)}m)`;
+                        } else {
+                            this.gpsStatus = 'error';
+                            this.gpsMessage = `❌ Vous n’êtes pas dans une zone autorisée (${Math.round(this.distanceToEvent)}m / ${this.eventRadius}m max)`;
+                        }
+                    } else {
+                        this.gpsStatus = 'success';
+                        this.gpsMessage = '✓ Position détectée (aucun événement GPS actif)';
+                        this.isInRange = true;
+                    }
+                },
+                (error) => {
+                    console.error('Erreur GPS:', error);
+                    if (error.code === error.PERMISSION_DENIED) {
+                        this.gpsStatus = 'denied';
+                        this.gpsMessage = '✗ Permission GPS refusée. Veuillez autoriser la géolocalisation.';
+                        return;
+                    }
+                    if (error.code === error.POSITION_UNAVAILABLE) {
+                        this.gpsStatus = 'error';
+                        this.gpsMessage = '✗ Position GPS indisponible.';
+                        return;
+                    }
+                    if (error.code === error.TIMEOUT) {
+                        this.gpsStatus = 'error';
+                        this.gpsMessage = '✗ Délai de géolocalisation dépassé.';
+                        return;
+                    }
+                    this.gpsStatus = 'error';
+                    this.gpsMessage = '✗ Erreur de géolocalisation.';
+                },
+                {
+                    enableHighAccuracy: !!forceHighAccuracy,
+                    timeout: 12000,
+                    maximumAge: 0
+                }
+            );
+        },
+
+        openDetails(projet) {
+            this.modalProjet = projet;
+            this.showModal = true;
+            this.descriptionExpanded = false;
+        },
+
+        voteButtonDisabled() {
+            return (!this.hasEvent || !this.isVoteActive || !this.isInRange || this.gpsStatus !== 'success');
+        },
+
+        voteButtonClass() {
+            return {
+                'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black':
+                    this.hasEvent && this.isVoteActive && this.isInRange && this.gpsStatus === 'success',
+                'bg-gray-600 text-gray-300 cursor-not-allowed':
+                    this.voteButtonDisabled()
+            };
+        },
+
+        explainWhyVoteDisabled() {
+            if (!this.hasEvent) {
+                alert('❌ Le système de vote Jour J est désactivé. Aucun événement actif.');
+                return;
+            }
+            if (!this.isVoteActive) {
+                this.showInactiveNotice();
+                return;
+            }
+            if (this.gpsStatus !== 'success') {
+                alert('⚠️ Activez la localisation puis attendez la détection GPS.');
+                return;
+            }
+            if (!this.isInRange) {
+                alert('❌ Vous devez être sur place pour voter' + (this.distanceToEvent ? ' (distance: ' + Math.round(this.distanceToEvent) + 'm)' : ''));
+                return;
+            }
+        },
+
+        openVote(projet) {
+            if (this.voteButtonDisabled()) {
+                this.explainWhyVoteDisabled();
+                return;
+            }
+
+            this.voteProjet = projet;
+            this.showVoteModal = true;
+            this.voteStep = this.isVoteActive ? 1 : 3;
+            this.errorMessage = this.isVoteActive ? '' : this.inactiveMessage;
+            this.successMessage = '';
+            this.otpCode = '';
+        },
+
+        normalizeSNPhone(raw) {
+            const digits = String(raw || '').replace(/\D+/g, '');
+            // si l'utilisateur saisit déjà 221..., on prend les 9 derniers chiffres
+            const last9 = digits.length >= 9 ? digits.slice(-9) : digits;
+            if (last9.length !== 9) return null;
+            return '+221' + last9;
+        },
+
+        csrfToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        },
+
+        async sendOtp() {
+            this.errorMessage = '';
+            this.successMessage = '';
+
+            if (this.voteButtonDisabled()) {
+                this.explainWhyVoteDisabled();
+                return;
+            }
+
+            const phone = this.normalizeSNPhone(this.telephoneDisplay);
+            if (!phone) {
+                this.errorMessage = 'Numéro invalide. Exemple: 77 123 45 67';
+                return;
+            }
+
+            if (!this.voteProjet?.id) {
+                this.errorMessage = 'Projet invalide.';
+                return;
+            }
+
+            // reCAPTCHA v3 (si clé dispo)
+            let recaptchaToken = '';
+            try {
+                if (this.recaptchaKey && window.grecaptcha && window.grecaptcha.execute) {
+                    recaptchaToken = await window.grecaptcha.execute(this.recaptchaKey, { action: 'vote_jourj' });
+                }
+            } catch (e) {
+                // On continue sans bloquer si recaptcha non dispo
+            }
+
+            this.isLoading = true;
+
+            try {
+                const res = await fetch(this.sendOtpUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        projet_id: this.voteProjet.id,
+                        telephone: phone,
+                        nom_votant: this.nomVotant || null,
+                        recaptcha_token: recaptchaToken || null
+                    })
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok || !data.success) {
+                    this.errorMessage = data.message || 'Erreur lors de l’envoi du code.';
+                    this.isLoading = false;
+                    return;
+                }
+
+                this.voteStep = 2;
+                this.errorMessage = '';
+            } catch (err) {
+                console.error(err);
+                this.errorMessage = 'Erreur réseau. Veuillez réessayer.';
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        async verifyOtp() {
+            this.errorMessage = '';
+            this.successMessage = '';
+
+            const code = String(this.otpCode || '').replace(/\D+/g, '');
+            if (code.length !== 6) {
+                this.errorMessage = 'Code OTP invalide (6 chiffres).';
+                return;
+            }
+
+            if (this.userLatitude == null || this.userLongitude == null) {
+                this.errorMessage = 'Position GPS non disponible. Activez la localisation puis réessayez.';
+                return;
+            }
+
+            this.isLoading = true;
+
+            try {
+                const res = await fetch(this.verifyOtpUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken(),
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        code_otp: code,
+                        latitude: this.userLatitude,
+                        longitude: this.userLongitude
+                    })
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok || !data.success) {
+                    // On reste sur étape 2 avec erreur visible
+                    this.errorMessage = data.message || 'Validation OTP échouée.';
+                    this.isLoading = false;
+                    return;
+                }
+
+                this.voteStep = 3;
+                this.successMessage = data.message || 'Vote enregistré avec succès !';
+                this.errorMessage = '';
+            } catch (err) {
+                console.error(err);
+                this.errorMessage = 'Erreur réseau. Veuillez réessayer.';
+            } finally {
+                this.isLoading = false;
+            }
+        },
+    };
+}
+</script>
 
 <!-- Partage projet -->
 <script>
@@ -1272,22 +1478,14 @@ window.shareProjectForProject = function (id, projectName) {
         const wantVote  = params.get('vote') === '1';
         const projectId = params.get('project_id');
 
-        if (!wantVote || !projectId) {
-            console.log('🔴 Pas de paramètres vote=1 & project_id, rien à ouvrir.');
-            return;
-        }
-
-        console.log('🟡 Ouverture automatique de la modale de vote pour le projet', projectId);
+        if (!wantVote || !projectId) return;
 
         fetch('/vote/project/' + projectId + '/data')
             .then(function (res) {
-                console.log('🟡 Réponse fetch auto-vote:', res.status, res.ok);
                 if (!res.ok) throw new Error('Impossible de charger le projet');
                 return res.json();
             })
             .then(function (data) {
-                console.log('✅ Données projet reçues pour auto-vote :', data);
-
                 window.dispatchEvent(new CustomEvent('project-for-vote', { detail: data }));
 
                 if (history && history.replaceState) {
@@ -1295,7 +1493,6 @@ window.shareProjectForProject = function (id, projectName) {
                     cleanUrl.searchParams.delete('vote');
                     cleanUrl.searchParams.delete('project_id');
                     history.replaceState({}, '', cleanUrl.toString());
-                    console.log('✅ URL nettoyée après ouverture de la modale de vote');
                 }
             })
             .catch(function (err) {
@@ -1304,7 +1501,6 @@ window.shareProjectForProject = function (id, projectName) {
     }
 
     document.addEventListener('alpine:initialized', function () {
-        console.log('🎉 alpine:initialized (auto-vote)');
         openVoteFromUrl();
     });
 
@@ -1324,7 +1520,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!form) return;
 
     let timer = null;
-
     input.addEventListener('input', function () {
         clearTimeout(timer);
         timer = setTimeout(() => form.submit(), 400);
