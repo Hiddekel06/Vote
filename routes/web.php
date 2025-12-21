@@ -135,3 +135,4 @@ Route::post('/vote/verifier-otp', [VoteController::class, 'verifierOtp'])
 
 
 
+    Route::get('/vote/project/{id}/data', [VoteJourJController::class, 'projectData']);
