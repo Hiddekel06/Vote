@@ -169,8 +169,7 @@
                                 'secteur' => $secteur->nom,
                                 'nom_projet' => $projet->nom_projet,
                                 'nom_equipe' => $projet->nom_equipe,
-                                'resume' => $projet->resume,
-                                'description' => $projet->description,
+
                             ];
 
                             $demoUrl = $projet->video_demo
@@ -725,8 +724,7 @@ document.addEventListener('click', async (e)=>{
     if(action === 'details'){
         if($('detailsTitle')) $('detailsTitle').textContent = projet.nom_projet || '';
         if($('detailsTeam')) $('detailsTeam').textContent = projet.nom_equipe || '';
-        if($('detailsResume')) $('detailsResume').textContent = projet.resume || '';
-        if($('detailsDesc')) $('detailsDesc').textContent = projet.description || '';
+
         openModal('detailsModal');
         return;
     }
