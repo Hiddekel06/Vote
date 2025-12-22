@@ -65,7 +65,7 @@
                 </form>
             </div>
 
-            <div x-data="{ tab: 'general' }" class="w-full">
+            <div x-data="{ tab: '{{ $activeTab }}' }" class="w-full">
                 @include('partials.classement-list')
         </div>
     </main>

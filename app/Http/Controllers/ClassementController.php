@@ -88,11 +88,31 @@ class ClassementController extends Controller
             $activeTab = 'general';
         }
 
-        // Si requête AJAX, renvoyer uniquement le partial (HTML) pour injection côté client
-        if ($request->ajax()) {
-            return view('partials.classement-list', compact('categories', 'classementGeneral', 'classementsParCategorie', 'activeTab', 'perPage'))->render();
+        // 3. Classement Jour J (utilise la table `votes` via la relation votes())
+        $classementJourJ = Projet::whereIn('id', $preselectedProjectIds)
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('nom_projet', 'like', "%{$search}%")
+                        ->orWhere('nom_equipe', 'like', "%{$search}%");
+                });
+            })
+            ->withCount('votes') // compte les votes Jour J
+            ->with('secteur', 'submission', 'listePreselectionne')
+            ->orderBy('votes_count', 'desc')
+            ->orderBy('nom_projet', 'asc')
+            ->paginate($perPage, ['*'], 'page_jourj')
+            ->withQueryString();
+
+        // Activer l'onglet jourj si la pagination correspond
+        if ($request->query('page_jourj') !== null) {
+            $activeTab = 'jourj';
         }
 
-        return view('classement', compact('categories', 'classementGeneral', 'classementsParCategorie', 'activeTab', 'perPage'));
+        // Si requête AJAX, renvoyer uniquement le partial (HTML) pour injection côté client
+        if ($request->ajax()) {
+            return view('partials.classement-list', compact('categories', 'classementGeneral', 'classementsParCategorie', 'classementJourJ', 'activeTab', 'perPage'))->render();
+        }
+
+        return view('classement', compact('categories', 'classementGeneral', 'classementsParCategorie', 'classementJourJ', 'activeTab', 'perPage'));
     }
 }

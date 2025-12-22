@@ -21,8 +21,8 @@
 @endphp
 
 @php
-    // Format votes: affiche le nombre complet sans notation K
-    $votes = (int) ($projet->vote_publics_count ?? 0);
+    // Format votes: preferer votes_count (Jour J) puis vote_publics_count (public)
+    $votes = (int) ($projet->votes_count ?? $projet->vote_publics_count ?? 0);
     $displayVotes = number_format($votes, 0, ',', ' ');
 @endphp
 
