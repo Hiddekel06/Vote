@@ -92,3 +92,68 @@ html, body {
     background-image: linear-gradient(#FF0A7F,#780EFF);
     animation: rotate 4s linear infinite;
 }
+
+/* Responsive styles for vote-jour-j (plain CSS, not Tailwind) */
+.vj-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+.vj-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.vj-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Mobile-first: show mobile actions block, hide desktop block */
+.vj-mobile-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.vj-mobile-actions .vj-icon-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+.vj-mobile-vote { width: 100%; }
+.vj-desktop-actions { display: none; }
+
+/* Desktop: switch to icon row + inline vote button */
+@media (min-width: 768px) {
+    .vj-mobile-actions { display: none; }
+    .vj-desktop-actions { display: flex; align-items: center; gap: 8px; }
+    .vj-desktop-actions .vj-icon-btn { padding: 8px; border-radius: 9999px; }
+    .vj-vote-btn { padding: 8px 12px; border-radius: 8px; }
+}
+
+/* Small tweaks to ensure pseudo-element doesn't block clicks */
+.rainbow::before { pointer-events: none; }
+
+/* Ensure modals and GPS controls remain on top and clickable */
+.modal-overlay { z-index: 9998; position: fixed; inset: 0; display: none; }
+.modal-overlay[aria-hidden="false"] { display: block; }
+.modal-box { position: relative; z-index: 9999; }
+
+/* Make sure gps-card and its buttons are clickable on small screens */
+.gps-card { position: relative; z-index: 10000; }
+
+/* Mobile card layout for vote-jour-j */
+@media (max-width: 767px) {
+    .vj-table thead { display: none; }
+    .vj-table tbody tr { display: block; margin-bottom: 12px; background: rgba(45,55,72,0.6); border-radius: 8px; padding: 10px; }
+    .vj-table tbody tr td { display: block; padding: 6px 8px; }
+    .vj-sector { display: none; }
+    .vj-project { font-size: 1.05rem; font-weight: 700; color: #ffffff; }
+    .vj-team { font-size: 0.95rem; color: #d1d5db; margin-top: 4px; }
+    .vj-actions { margin-top: 8px; }
+    .vj-icon-row { display: flex; gap: 8px; justify-content: flex-start; }
+    .vj-icon-row .p-2 { padding: 8px; }
+    .vj-mobile-vote { margin-top: 10px; display: block; width: 100%; }
+}

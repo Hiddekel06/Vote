@@ -161,7 +161,7 @@
 
         {{-- Tableau --}}
         <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse md:max-w-5xl md:mx-auto">
+            <table class="vj-table w-full text-left border-collapse md:max-w-5xl md:mx-auto">
                 <thead class="bg-gray-800">
                 <tr>
                     <th class="p-4 text-base font-semibold text-gray-100">Secteur</th>
@@ -190,50 +190,107 @@
                                 ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
                         @endphp
 
-                        <tr class="border-b border-gray-700 bg-gray-800/40">
-                            <td class="p-4 text-sm text-gray-200">{{ $secteur->nom }}</td>
-                            <td class="p-4 text-sm text-gray-200">{{ $projet->nom_equipe }}</td>
-                            <td class="p-4 text-sm font-semibold text-white">{{ $projet->nom_projet }}</td>
+                        <tr class="border-b border-gray-700 bg-gray-800/40 vj-card-row">
+                            <td class="p-4 text-sm text-gray-200 vj-sector">{{ $secteur->nom }}</td>
+                            <td class="p-4 text-sm text-gray-200 vj-team">{{ $projet->nom_equipe }}</td>
+                            <td class="p-4 text-sm font-semibold text-white vj-project">{{ $projet->nom_projet }}</td>
                             <td class="p-4">
-                                <div class="flex flex-wrap items-center justify-center gap-2">
-                                    <!-- Icon-only Détails button -->
-                                    <button type="button"
-                                            class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                            aria-label="Détails du projet"
-                                            title="Détails"
-                                            data-action="details"
-                                            data-projet='@json($projetJs, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                    </button>
+                                <div class="vj-actions">
+                                    <!-- Mobile layout: icon row + full-width vote button -->
+                                    <div class="vj-mobile-actions">
+                                        <div class="vj-icon-row">
+                                            <button type="button"
+                                                    class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                    aria-label="Détails du projet"
+                                                    title="Détails"
+                                                    data-action="details"
+                                                    data-projet='@json($projetJs, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            </button>
+                                            <!-- Share button -->
+                                            <button type="button"
+                                                    class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                    title="Partager ce projet"
+                                                    onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                                                </svg>
+                                            </button>
 
-                                    <!-- Voter button (text) -->
-                                    <button type="button"
-                                            class="px-3 py-2 rounded-lg bg-green-500/80 hover:bg-yellow-400 hover:text-black text-white text-sm font-bold"
-                                            data-action="vote"
-                                            data-projet='@json($projetJs, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
-                                        Voter
-                                    </button>
+                                            @if($demoUrl)
+                                                <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
+                                                   class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Voir la démonstration">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                        <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                    </svg>
+                                                </a>
+                                            @else
+                                                <span class="p-2 rounded-full text-gray-600 bg-transparent opacity-60" title="Aucune démonstration disponible" aria-hidden="true">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                        <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                        <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
+                                                    </svg>
+                                                </span>
+                                            @endif
+                                        </div>
 
-                                    @if($demoUrl)
-                                        <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
-                                           class="p-2 ml-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Voir la démonstration">
+                                        <button type="button" class="vj-mobile-vote vj-vote-btn px-3 py-2 rounded-lg bg-green-500/80 hover:bg-yellow-400 hover:text-black text-white text-sm font-bold"
+                                                data-action="vote" data-projet='@json($projetJs, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
+                                            Voter
+                                        </button>
+                                    </div>
+
+                                    <!-- Desktop layout: icon-only buttons + inline vote -->
+                                    <div class="vj-desktop-actions">
+                                        <button type="button"
+                                                class="vj-icon-btn p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                aria-label="Détails du projet"
+                                                title="Détails"
+                                                data-action="details"
+                                                data-projet='@json($projetJs, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
-                                        </a>
-                                    @else
-                                        <span class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60" title="Aucune démonstration disponible" aria-hidden="true">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
+                                        </button>
+
+                                        <button type="button"
+                                                class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                                title="Partager ce projet"
+                                                onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
                                             </svg>
-                                        </span>
-                                    @endif
+                                        </button>
+
+                                        <button type="button" class="vj-vote-btn px-3 py-2 rounded-lg bg-green-500/80 hover:bg-yellow-400 hover:text-black text-white text-sm font-bold"
+                                                data-action="vote" data-projet='@json($projetJs, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
+                                            Voter
+                                        </button>
+
+                                        @if($demoUrl)
+                                            <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
+                                               class="p-2 ml-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Voir la démonstration">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                </svg>
+                                            </a>
+                                        @else
+                                            <span class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60" title="Aucune démonstration disponible" aria-hidden="true">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                    <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
+                                                </svg>
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
                             </td>
                         </tr>
