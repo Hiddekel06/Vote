@@ -196,13 +196,20 @@
                             <td class="p-4 text-sm font-semibold text-white">{{ $projet->nom_projet }}</td>
                             <td class="p-4">
                                 <div class="flex flex-wrap items-center justify-center gap-2">
+                                    <!-- Icon-only Détails button -->
                                     <button type="button"
-                                            class="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm"
+                                            class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                                            aria-label="Détails du projet"
+                                            title="Détails"
                                             data-action="details"
                                             data-projet='@json($projetJs, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
-                                        Détails
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
                                     </button>
 
+                                    <!-- Voter button (text) -->
                                     <button type="button"
                                             class="px-3 py-2 rounded-lg bg-green-500/80 hover:bg-yellow-400 hover:text-black text-white text-sm font-bold"
                                             data-action="vote"
@@ -212,9 +219,20 @@
 
                                     @if($demoUrl)
                                         <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
-                                           class="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm">
-                                            Démo
+                                           class="p-2 ml-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Voir la démonstration">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                            </svg>
                                         </a>
+                                    @else
+                                        <span class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60" title="Aucune démonstration disponible" aria-hidden="true">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
+                                                <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
+                                            </svg>
+                                        </span>
                                     @endif
                                 </div>
                             </td>
@@ -310,10 +328,16 @@
                     <p class="mt-2 text-xs text-gray-400">Vous recevrez un code par SMS.</p>
                 </div>
 
-                <button type="button" id="btnSendOtp"
-                        class="w-full px-4 py-3 rounded-lg font-bold bg-yellow-500 hover:bg-yellow-600 text-black disabled:opacity-50 disabled:cursor-not-allowed">
-                    Recevoir le code
-                </button>
+                <div class="pt-4 flex justify-center">
+                    <div class="rainbow relative z-0 overflow-hidden p-0.5 flex items-center justify-center rounded-full hover:scale-105 transition duration-300 active:scale-100 w-full">
+                        <button type="button" id="btnSendOtp"
+                                class="w-full px-8 text-sm py-3 text-white rounded-full font-medium bg-gray-900 flex items-center justify-center"
+                                aria-pressed="false">
+                            <span class="btn-label">Cliquez pour recevoir le code de vote</span>
+                            <span class="btn-loading hidden">Envoi en cours...</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {{-- Step 2 --}}
@@ -502,6 +526,7 @@ function lockButtonsByGPS(){
 }
 
 async function captureGPS(){
+    console.log('DEBUG: captureGPS called', { REQUIRE_GPS, hasEvent: CFG.hasEvent, protocol: window.location.protocol, isSecureContext: !!window.isSecureContext });
     if(!REQUIRE_GPS) {
         gps = {...gps, status:'success', inRange:true, lastAt: Date.now()};
         approveGps();
@@ -713,6 +738,7 @@ document.addEventListener('click', async (e)=>{
         resetVoteUI();
         openModal('voteModal');
 
+        console.log('DEBUG: vote action -> opening modal and requesting GPS for project', projet.id);
         const ok = await captureGPS();
         startWatchGPS();
 
@@ -774,6 +800,25 @@ async function getRecaptchaToken(){
     }catch(e){}
     return '';
 }
+// Helper to toggle send-OTP button loading state (shows/hides spans)
+function setSendOtpLoading(state){
+    const btn = $('btnSendOtp');
+    if(!btn) return;
+    const label = btn.querySelector('.btn-label');
+    const loading = btn.querySelector('.btn-loading');
+    if(state){
+        btn.setAttribute('aria-busy','true');
+        btn.disabled = true;
+        if(label) label.classList.add('hidden');
+        if(loading) loading.classList.remove('hidden');
+    } else {
+        btn.removeAttribute('aria-busy');
+        if(label) label.classList.remove('hidden');
+        if(loading) loading.classList.add('hidden');
+        // restore enabled state according to GPS rules
+        lockButtonsByGPS();
+    }
+}
 
 const btnSendOtp = $('btnSendOtp');
 if(btnSendOtp){
@@ -781,25 +826,28 @@ if(btnSendOtp){
         hide($('voteError'));
         hide($('voteSuccess'));
 
-        if(!currentProject?.id){ setVoteError('Projet invalide.'); return; }
-
-        // ✅ step1: on exige la zone, mais si approuvé => pas de re-check bloquant
-        if(REQUIRE_GPS && !gpsApproved){
-            const ok = await captureGPS();
-            if(!ok){
-                setVoteError("Vous n'êtes pas dans la zone de vote autorisée.");
-                return;
-            }
-        }
-
-        const phone = normalizeSNPhone($('telephone_display')?.value);
-        if(!phone){ setVoteError('Numéro invalide. Exemple: 77 123 45 67'); return; }
-
-        btnSendOtp.disabled = true;
-
-        const recaptchaToken = await getRecaptchaToken();
+        setSendOtpLoading(true);
 
         try{
+            if(!currentProject?.id){ setVoteError('Projet invalide.'); return; }
+
+            // ✅ step1: on exige la zone, mais si approuvé => pas de re-check bloquant
+            if(REQUIRE_GPS && !gpsApproved){
+                const ok = await captureGPS();
+                if(!ok){
+                    setVoteError("Vous n'êtes pas dans la zone de vote autorisée.");
+                    return;
+                }
+            }
+
+            const phone = normalizeSNPhone($('telephone_display')?.value);
+            if(!phone){ setVoteError('Numéro invalide. Exemple: 77 123 45 67'); return; }
+
+            // keep button disabled and show loading
+            btnSendOtp.disabled = true;
+
+            const recaptchaToken = await getRecaptchaToken();
+
             const res = await fetch(CFG.sendOtpUrl, {
                 method:'POST',
                 headers:{
@@ -830,6 +878,8 @@ if(btnSendOtp){
             console.error(err);
             setVoteError('Erreur réseau. Réessayez.');
             lockButtonsByGPS();
+        } finally {
+            setSendOtpLoading(false);
         }
     });
 }

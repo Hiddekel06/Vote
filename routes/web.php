@@ -101,7 +101,7 @@ Route::get('/apropos', [App\Http\Controllers\PageController::class, 'apropos'])-
 
 // --- Section Vote Jour J ---
 // Page de vote Jour J (accès direct)
-Route::get('/vote-jour-j', [\App\Http\Controllers\VoteJourJController::class, 'show'])->name('vote-jour-j.show');
+Route::get('/votefinale', [\App\Http\Controllers\VoteJourJController::class, 'show'])->name('vote-jour-j.show');
 
 // Traitement du vote Jour J (sans middleware)
 Route::post('/vote-jour-j/vote', [\App\Http\Controllers\VoteJourJController::class, 'store'])->name('vote-jour-j.store');
