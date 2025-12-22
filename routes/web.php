@@ -43,7 +43,8 @@ Route::middleware(['auth', 'verified', 'role.admin:admin,super_admin'])->prefix(
     // Page des statistiques Vote Jour J
     Route::get('/statistiques-jour-j', [DashboardController::class, 'statistiquesJourJ'])->name('statistiques.jour-j');
     // Route pour mettre à jour le statut et la période du vote
-    Route::patch('/vote-status', [VoteStatusController::class, 'update'])->name('vote.status.update');
+    // Accept both PATCH and POST to avoid issues on hosts that block PATCH verbs.
+    Route::match(['patch', 'post'], '/vote-status', [VoteStatusController::class, 'update'])->name('vote.status.update');
     // Route pour désactiver/activer le vote Jour J
     Route::post('/vote-jour-j/toggle-all', [DashboardController::class, 'toggleVoteJourJAll'])->name('vote-jour-j.toggle-all');
 

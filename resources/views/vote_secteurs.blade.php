@@ -92,7 +92,7 @@
                         <small>Secondes</small>
                     </div>
                 </div>
-                <div class="mt-3 text-sm text-red-300">Fin du vote : Lundi 22 décembre — 15:00</div>
+                <div class="mt-3 text-sm text-red-300">Fin du vote : Lundi 22 décembre — 20:00</div>
             </div>
 
             <!-- Barre de recherche -->
@@ -227,6 +227,32 @@
                         <div class="text-xs text-red-200">{{ $voteStatusDetails['inactiveMessage'] }}</div>
                     </div>
                 </div>
+                @if(config('app.debug') || request()->query('debug_panel') == '1')
+                    <div class="mt-4 p-3 bg-yellow-900/20 border border-yellow-700 text-sm text-yellow-100 rounded">
+                        <div class="font-semibold">Debug : structure des secteurs</div>
+                        <div class="mt-2">
+                            <div>Nombre de secteurs: {{ $secteurs->count() }}</div>
+                            <div>Nombre total de projets calculé: {{ $__projectsCount }}</div>
+                            <ul class="mt-2 list-disc list-inside text-xs text-yellow-200">
+                                @foreach($secteurs as $s)
+                                    <li>{{ $s->nom }} — {{ $s->projets->count() }} projet(s)
+                                        @if($s->projets->isNotEmpty())
+                                            <ul class="ml-4 text-xs text-yellow-100">
+                                                @foreach($s->projets as $p)
+                                                    <li>{{ $p->nom_projet ?? '(titre manquant)' }}</li>
+                                                @endforeach
+                                            </ul>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                            <div class="mt-3 text-xs text-yellow-100">
+                                <strong>Dump JSON:</strong>
+                                <pre class="whitespace-pre-wrap text-[11px]">{{ json_encode($secteurs->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                @endif
                 <!-- Tableau des projets -->
                 <div class="overflow-x-visible md:overflow-x-auto">
                     <table class="w-full text-left border-collapse md:max-w-4xl md:mx-auto">
@@ -829,7 +855,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <script>
     (function(){
-        const target = new Date(2025, 11, 22, 15, 0, 0);
+        const target = new Date(2025, 11, 22, 20, 0, 0);
         const elDays = document.getElementById('ss-countdown-days');
         const elHours = document.getElementById('ss-countdown-hours');
         const elMins = document.getElementById('ss-countdown-minutes');
