@@ -5,11 +5,10 @@ import forms from '@tailwindcss/forms';
 export default {
     content: [
         './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
-        './storage/framework/views/*.php',
+        './storage/framework/views/**/*.php',
         './resources/views/**/*.blade.php',
-        './resources/js/**/*.js',
-        './resources/js/**/*.vue',
-        './public/**/*.html',
+        './resources/js/**/*.{js,ts,jsx,tsx,vue}',
+        './app/View/**/*.php',
     ],
 
     theme: {
