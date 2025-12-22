@@ -101,18 +101,7 @@
             </a>
 
             <div class="text-xs text-gray-300">
-                @if($event)
-                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gray-700 bg-gray-900/40">
-                        <span class="text-yellow-300 font-semibold">📍 Zone active :</span>
-                        <span class="mono">{{ number_format($event->latitude, 6) }}, {{ number_format($event->longitude, 6) }}</span>
-                        <span class="text-gray-400">—</span>
-                        <span class="text-gray-100 font-semibold">{{ $event->rayon_metres }}m</span>
-                    </span>
-                @else
-                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-red-800 bg-red-900/20 text-red-200">
-                        ❌ Aucun événement actif
-                    </span>
-                @endif
+                <!-- Zone active information hidden -->
             </div>
         </div>
 
