@@ -134,9 +134,10 @@ class VoteJourJController extends Controller
             ->map(function ($event) {
 
                 $successfulVotes = $event->votes()
-                    ->where('validation_status', 'success')
-                    ->with('projet')
-                    ->get();
+    ->where('vote_jour_j.validation_status', 'success')
+    ->with('projet')
+    ->get();
+
 
                 $ranking = $successfulVotes
                     ->groupBy('projet_id')
