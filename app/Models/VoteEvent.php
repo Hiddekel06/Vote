@@ -48,4 +48,5 @@ class VoteEvent extends Model
     {
         return $this->is_active && now()->between($this->date_debut, $this->date_fin);
     }
+
 }

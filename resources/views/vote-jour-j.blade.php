@@ -2,7 +2,6 @@
 <!DOCTYPE html>
 <html lang="fr" class="overflow-x-hidden">
 <head>
-    <!-- Google tag (gtag.js) - Analytics -->
     @if(config('app.google_analytics_id'))
         <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('app.google_analytics_id') }}"></script>
         <script>
@@ -20,25 +19,56 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <!-- Police -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <!-- Alpine (si pas déjà dans Vite) -->
-    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-
     <style>
+        body { font-family: 'Poppins', sans-serif; }
         .bg-image-custom { background-image: url('{{ asset('assets/img/bg-vote.jpg') }}'); }
-        [x-cloak] { display: none !important; }
 
-        /* Gate GPS (non Alpine) */
-        #gpsGate { display: none; }
-        #gpsGate.is-open { display: flex; }
+        /* Modales */
+        .modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter: blur(6px); display:none; align-items:center; justify-content:center; z-index:9999; padding:16px; }
+        .modal-overlay.open{ display:flex; }
+        .modal-box{ width:100%; max-width:720px; background:rgba(17,24,39,.95); border:1px solid rgba(234,179,8,.25); border-radius:16px; box-shadow: 0 20px 60px rgba(0,0,0,.45); overflow:hidden; }
+        .modal-head{ padding:18px 20px; border-bottom:1px solid rgba(55,65,81,.8); position:relative; }
+        .modal-body{ padding:18px 20px; max-height:72vh; overflow:auto; }
+        .btn-close{ position:absolute; right:10px; top:10px; width:38px; height:38px; border-radius:999px; display:flex; align-items:center; justify-content:center; color:#9ca3af; }
+        .btn-close:hover{ background:rgba(55,65,81,.8); color:white; }
+
+        .badge-step{ position:absolute; left:20px; bottom:-12px; background:rgba(31,41,55,.95); border:1px solid rgba(55,65,81,.9); color:#facc15; font-size:12px; padding:4px 10px; border-radius:999px; }
+
+        /* mini toast */
+        .toast{ position:fixed; top:14px; left:50%; transform:translateX(-50%); background:rgba(127,29,29,.95); border:1px solid rgba(239,68,68,.5); color:#fee2e2; font-size:13px; padding:10px 14px; border-radius:999px; z-index:10000; display:none; }
+        .toast.show{ display:block; }
+
+        /* GPS panel inside modal */
+        .gps-card{
+            border:1px solid rgba(55,65,81,.8);
+            background: rgba(2,6,23,.35);
+            border-radius: 14px;
+            padding: 14px;
+        }
+        .gps-pill{
+            font-size:12px;
+            padding:4px 10px;
+            border-radius:999px;
+            border:1px solid rgba(55,65,81,.8);
+            background: rgba(17,24,39,.6);
+            color:#e5e7eb;
+            display:inline-flex;
+            align-items:center;
+            gap:8px;
+        }
+        .gps-dot{ width:8px;height:8px;border-radius:999px; background:#9ca3af; }
+        .gps-dot.ok{ background:#34d399; }
+        .gps-dot.bad{ background:#fb7185; }
+        .gps-dot.warn{ background:#facc15; }
+        .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
     </style>
 </head>
 
-<body class="bg-black text-white flex flex-col min-h-screen bg-cover bg-center bg-fixed bg-image-custom font-poppins overflow-x-hidden">
+<body class="bg-black text-white flex flex-col min-h-screen bg-cover bg-center bg-fixed bg-image-custom overflow-x-hidden">
 
 <x-header />
 
@@ -48,6 +78,8 @@
 
     $hasEvent = (bool) $event;
     $eventPayload = $event ? [
+        'id' => (int) $event->id,
+        'name' => (string) ($event->nom ?? 'Événement Jour J'),
         'lat' => (float) $event->latitude,
         'lon' => (float) $event->longitude,
         'radius' => (int) $event->rayon_metres,
@@ -57,144 +89,33 @@
     foreach ($secteurs as $__s) { $__projectsCount += $__s->projets->count(); }
 @endphp
 
-{{-- ✅ GPS Gate (fiable iPhone / QR / navigateur interne) --}}
-<div id="gpsGate" class="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md p-4 items-center justify-center">
-    <div class="w-full max-w-md rounded-2xl bg-gray-900 border border-yellow-500/30 shadow-2xl p-6 text-center">
-        <h2 class="text-2xl font-bold text-yellow-400 mb-2">📍 Activer la localisation</h2>
+<div id="toast" class="toast"></div>
 
-        <p id="gpsGateMsg" class="text-sm text-gray-300 mb-5">
-            Pour voter, vous devez autoriser la géolocalisation (sur place).
-        </p>
+<main class="flex-grow container mx-auto px-4 py-12 overflow-x-hidden">
+    <div class="bg-black bg-opacity-60 p-8 rounded-lg shadow-2xl max-w-6xl mx-auto w-full">
 
-        <div class="flex flex-col gap-3">
-            <button id="gpsGateBtn"
-                    class="w-full px-4 py-3 rounded-xl font-bold bg-yellow-500 hover:bg-yellow-600 text-black">
-                Activer la localisation
-            </button>
-
-            <button id="gpsGateCopy"
-                    class="w-full px-4 py-3 rounded-xl font-semibold bg-gray-800 hover:bg-gray-700 text-white">
-                Copier le lien
-            </button>
-
-            <button id="gpsGateClose"
-                    class="text-xs text-gray-400 hover:text-gray-200 underline">
-                Fermer (je comprends)
-            </button>
-        </div>
-
-        <p class="mt-4 text-[11px] text-gray-500 leading-relaxed">
-            Si vous êtes dans un lecteur QR / navigateur interne et que le GPS ne s’active pas,
-            ouvrez le lien dans <strong>Safari</strong> ou <strong>Chrome</strong>.
-        </p>
-    </div>
-</div>
-
-<main class="flex-grow container mx-auto px-4 py-12 flex items-center overflow-x-hidden">
-    <div
-        class="bg-black bg-opacity-60 p-8 rounded-lg shadow-2xl max-w-6xl mx-auto w-full"
-        x-data="voteJourJComponent({
-            isVoteActive: @json($isVoteActive),
-            inactiveMessage: @json($inactiveMessage),
-            selectedCategory: @json(request('profile_type', 'all')),
-            hasEvent: @json($hasEvent),
-            event: @json($eventPayload),
-            recaptchaKey: @json(config('services.recaptcha.site_key')),
-            sendOtpUrl: @json(route('vote-jour-j.envoyerOtp')),
-            verifyOtpUrl: @json(route('vote-jour-j.verifierOtp')),
-        })"
-        x-init="init()"
-        @keydown.escape.window="closeAll()"
-    >
-
-        {{-- Toast vote désactivé --}}
-        <div
-            x-cloak
-            x-show="inactiveNoticeVisible"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 translate-y-2"
-            x-transition:enter-end="opacity-100 translate-y-0"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100 translate-y-0"
-            x-transition:leave-end="opacity-0 translate-y-2"
-            class="fixed top-4 inset-x-0 flex justify-center z-50 px-4"
-        >
-            <div class="bg-red-900/90 border border-red-500/60 text-red-100 text-sm px-4 py-2 rounded-full shadow-lg">
-                Le vote Jour J est momentanément fermé.
-            </div>
-        </div>
-
-        {{-- Modale d’accueil (étapes) --}}
-        <div
-            x-cloak
-            class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4"
-            x-show="showWelcomeModal"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0"
-            x-transition:enter-end="opacity-100"
-        >
-            <div
-                class="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-yellow-500/20 p-8 text-center"
-                x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="scale-95 opacity-0"
-                x-transition:enter-end="scale-100 opacity-100"
-            >
-                <h1 class="text-3xl font-bold text-yellow-400 mb-8">🏆 GRANDE FINALE<br>GOV'ATHON</h1>
-
-                <div class="space-y-4 mb-8 text-left">
-                    <div class="flex items-start gap-4">
-                        <div class="flex-shrink-0 w-8 h-8 bg-yellow-500 text-black rounded-full font-bold flex items-center justify-center">1</div>
-                        <div>
-                            <p class="text-white font-semibold">Activer la localisation</p>
-                            <p class="text-gray-400 text-sm">Nous aurons besoin de votre position GPS</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start gap-4">
-                        <div class="flex-shrink-0 w-8 h-8 bg-yellow-500 text-black rounded-full font-bold flex items-center justify-center">2</div>
-                        <div>
-                            <p class="text-white font-semibold">Sélectionner un projet</p>
-                            <p class="text-gray-400 text-sm">Parcourez et choisissez votre favori</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start gap-4">
-                        <div class="flex-shrink-0 w-8 h-8 bg-yellow-500 text-black rounded-full font-bold flex items-center justify-center">3</div>
-                        <div>
-                            <p class="text-white font-semibold">Entrer votre numéro</p>
-                            <p class="text-gray-400 text-sm">Pour vérifier votre identité</p>
-                        </div>
-                    </div>
-                    <div class="flex items-start gap-4">
-                        <div class="flex-shrink-0 w-8 h-8 bg-yellow-500 text-black rounded-full font-bold flex items-center justify-center">4</div>
-                        <div>
-                            <p class="text-white font-semibold">Confirmer votre vote</p>
-                            <p class="text-gray-400 text-sm">Validez et c'est fait !</p>
-                        </div>
-                    </div>
-                </div>
-
-                <button
-                    @click="startFromWelcome()"
-                    class="w-full px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-black rounded-lg font-bold transition-colors"
-                >
-                    Commencer
-                </button>
-            </div>
-        </div>
-
-        {{-- Bouton Retour --}}
-        <div class="mb-4">
+        <div class="mb-4 flex items-center justify-between gap-3 flex-wrap">
             <a href="{{ route('vote.index') }}"
                class="inline-flex items-center gap-2 text-gray-400 hover:text-yellow-400 transition-colors text-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd"
-                          d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
-                          clip-rule="evenodd" />
-                </svg>
-                Retour
+                <span>←</span> Retour
             </a>
+
+            <div class="text-xs text-gray-300">
+                @if($event)
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gray-700 bg-gray-900/40">
+                        <span class="text-yellow-300 font-semibold">📍 Zone active :</span>
+                        <span class="mono">{{ number_format($event->latitude, 6) }}, {{ number_format($event->longitude, 6) }}</span>
+                        <span class="text-gray-400">—</span>
+                        <span class="text-gray-100 font-semibold">{{ $event->rayon_metres }}m</span>
+                    </span>
+                @else
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-red-800 bg-red-900/20 text-red-200">
+                        ❌ Aucun événement actif
+                    </span>
+                @endif
+            </div>
         </div>
 
-        {{-- Titre --}}
         <div class="text-center mb-4 px-2">
             <h1 class="text-3xl md:text-4xl font-bold text-yellow-400 mb-2">🏆 GRANDE FINALE JOUR J</h1>
 
@@ -204,174 +125,11 @@
                 </div>
             @endif
 
-            <div class="mt-2 text-[11px] text-gray-400">
-                ⚠️ La géolocalisation fonctionne uniquement sur <strong>HTTPS</strong> (ou <strong>localhost</strong>) et certains lecteurs QR ouvrent un navigateur interne sans GPS.
-            </div>
+            <p class="mt-3 text-gray-300 text-sm sm:text-base">
+                Recherchez un projet, une équipe, puis votez.
+                <span class="text-gray-500">({{ $__projectsCount }} projet(s))</span>
+            </p>
         </div>
-
-        {{-- 🌍 Indicateur GPS --}}
-        <div class="mb-6 px-2">
-            <div class="max-w-2xl mx-auto">
-
-                {{-- IDLE --}}
-                <div x-cloak x-show="gpsStatus === 'idle'"
-                     class="flex flex-col items-center justify-center gap-2 bg-gray-800/50 border border-gray-600/50 rounded-lg px-4 py-3">
-                    <div class="flex items-center gap-3">
-                        <svg class="h-5 w-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"></path>
-                        </svg>
-                        <span class="text-gray-200 text-sm font-medium" x-text="gpsMessage"></span>
-                    </div>
-                    <button @click="captureGPS(true); window.showGpsGate?.('Recherche de votre position… Autorisez la localisation.');"
-                            class="text-xs text-yellow-300 hover:text-yellow-200 underline">
-                        Activer la localisation
-                    </button>
-                </div>
-
-                {{-- Loading --}}
-                <div x-cloak x-show="gpsStatus === 'loading'"
-                     class="flex items-center justify-center gap-3 bg-blue-900/30 border border-blue-600/50 rounded-lg px-4 py-3">
-                    <svg class="animate-spin h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span class="text-blue-300 text-sm font-medium" x-text="gpsMessage"></span>
-                </div>
-
-                {{-- Succès --}}
-                <div x-cloak x-show="gpsStatus === 'success' && isInRange"
-                     class="flex items-center justify-center gap-3 bg-green-900/30 border border-green-500/50 rounded-lg px-4 py-3">
-                    <svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span class="text-green-300 text-sm font-medium" x-text="gpsMessage"></span>
-                </div>
-
-                {{-- Hors zone / Erreur --}}
-                <div x-cloak x-show="gpsStatus === 'error'"
-                     class="flex flex-col items-center justify-center gap-2 bg-red-900/30 border border-red-500/50 rounded-lg px-4 py-3">
-                    <div class="flex items-center gap-3">
-                        <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <span class="text-red-300 text-sm font-medium" x-text="gpsMessage"></span>
-                    </div>
-                    <button @click="captureGPS(true); window.showGpsGate?.('Réessai… Autorisez la localisation.');"
-                            class="text-xs text-red-200 hover:text-white underline">
-                        Réessayer
-                    </button>
-                </div>
-
-                {{-- Permission refusée --}}
-                <div x-cloak x-show="gpsStatus === 'denied'"
-                     class="flex flex-col items-center justify-center gap-2 bg-orange-900/30 border border-orange-500/50 rounded-lg px-4 py-3">
-                    <div class="flex items-center gap-3">
-                        <svg class="h-5 w-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                        </svg>
-                        <span class="text-orange-300 text-sm font-medium" x-text="gpsMessage"></span>
-                    </div>
-                    <p class="text-xs text-orange-200 text-center">
-                        Cliquez sur l’icône 🔒 du navigateur, puis autorisez “Localisation”.
-                    </p>
-                    <button @click="captureGPS(true); window.showGpsGate?.('Essayez à nouveau après avoir autorisé la localisation.');"
-                            class="text-xs text-orange-200 hover:text-white underline">
-                        Réessayer
-                    </button>
-                </div>
-
-                {{-- Non disponible --}}
-                <div x-cloak x-show="gpsStatus === 'unavailable'"
-                     class="flex items-center justify-center gap-3 bg-gray-800/50 border border-gray-600/50 rounded-lg px-4 py-3">
-                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"></path>
-                    </svg>
-                    <span class="text-gray-300 text-sm font-medium" x-text="gpsMessage"></span>
-                </div>
-
-            </div>
-        </div>
-
-        {{-- Dropdown catégories --}}
-        <div class="text-center mb-4 px-2">
-            <div class="relative inline-block text-left max-w-full">
-                <button
-                    @click="categoryMenuOpen = !categoryMenuOpen"
-                    type="button"
-                    class="inline-flex flex-wrap justify-center items-center w-full rounded-md px-3 py-2 text-sm sm:text-base md:text-xl lg:text-2xl font-bold text-yellow-400 hover:text-yellow-300 focus:outline-none gap-1"
-                    aria-haspopup="true"
-                    :aria-expanded="categoryMenuOpen"
-                >
-                    <span class="whitespace-nowrap">Catégorie :</span>
-                    <span class="text-white break-words"
-                          x-text="selectedCategory === 'all'
-                            ? 'Toutes'
-                            : (selectedCategory === 'student'
-                                ? 'Étudiant'
-                                : (selectedCategory === 'startup'
-                                    ? 'Startup'
-                                    : 'Porteurs de projet'))"></span>
-                    <svg class="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 flex-shrink-0"
-                         xmlns="http://www.w3.org/2000/svg"
-                         viewBox="0 0 20 20"
-                         fill="currentColor"
-                         aria-hidden="true">
-                        <path fill-rule="evenodd"
-                              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                              clip-rule="evenodd" />
-                    </svg>
-                </button>
-
-                <div
-                    x-cloak
-                    x-show="categoryMenuOpen"
-                    @click.away="categoryMenuOpen = false"
-                    x-transition:enter="transition ease-out duration-100"
-                    x-transition:enter-start="transform opacity-0 scale-95"
-                    x-transition:enter-end="transform opacity-100 scale-100"
-                    x-transition:leave="transition ease-in duration-75"
-                    x-transition:leave-start="transform opacity-100 scale-100"
-                    x-transition:leave-end="transform opacity-0 scale-95"
-                    class="origin-top-right absolute left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 sm:translate-x-0 mt-2 w-64 sm:w-56 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
-                    role="menu"
-                    aria-orientation="vertical"
-                    tabindex="-1"
-                >
-                    <div class="py-1" role="none">
-                        <a href="{{ route('vote-jour-j.show', request('search') ? ['search' => request('search')] : []) }}"
-                           class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm w-full text-left"
-                           role="menuitem">
-                            Toutes les catégories
-                        </a>
-                        <a href="{{ route('vote-jour-j.show', array_filter(['profile_type' => 'student', 'search' => request('search')])) }}"
-                           class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm w-full text-left"
-                           role="menuitem">
-                            Étudiant
-                        </a>
-                        <a href="{{ route('vote-jour-j.show', array_filter(['profile_type' => 'startup', 'search' => request('search')])) }}"
-                           class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm w-full text-left"
-                           role="menuitem">
-                            Startup
-                        </a>
-                        <a href="{{ route('vote-jour-j.show', array_filter(['profile_type' => 'other', 'search' => request('search')])) }}"
-                           class="text-gray-300 hover:bg-gray-700 hover:text-white block px-4 py-2 text-sm w-full text-left"
-                           role="menuitem">
-                            Porteurs de projet
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <p class="text-center text-gray-300 mb-8 px-4 text-sm sm:text-base">
-            Recherchez un projet, une équipe, puis votez pour votre préféré.
-            <span class="text-gray-500">({{ $__projectsCount }} projet(s))</span>
-        </p>
 
         {{-- Recherche --}}
         <div class="mb-8">
@@ -391,53 +149,40 @@
                             value="{{ request('search') }}"
                             autocomplete="off"
                         >
-                        <button
-                            type="submit"
-                            class="hidden md:flex items-center justify-center absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-400 transition-colors"
-                            aria-label="Lancer la recherche"
-                        >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                        </button>
                     </div>
+
+                    <button type="submit"
+                            class="px-4 py-3 rounded-lg font-semibold bg-yellow-500 hover:bg-yellow-600 text-black">
+                        Rechercher
+                    </button>
                 </div>
             </form>
         </div>
 
-        {{-- Tableau projets --}}
-        <div class="overflow-x-visible md:overflow-x-auto">
-            <table class="w-full text-left border-collapse md:max-w-4xl md:mx-auto">
-                <thead class="bg-gray-800 hidden md:table-header-group">
+        {{-- Tableau --}}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse md:max-w-5xl md:mx-auto">
+                <thead class="bg-gray-800">
                 <tr>
-                    <th class="p-4 text-lg font-semibold text-gray-100">Secteur</th>
-                    <th class="p-4 text-lg font-semibold text-gray-100">Equipe</th>
-                    <th class="p-4 text-lg font-semibold text-gray-100">Projet</th>
-                    <th class="p-4 text-lg font-semibold text-gray-100 text-center">Vote</th>
+                    <th class="p-4 text-base font-semibold text-gray-100">Secteur</th>
+                    <th class="p-4 text-base font-semibold text-gray-100">Équipe</th>
+                    <th class="p-4 text-base font-semibold text-gray-100">Projet</th>
+                    <th class="p-4 text-base font-semibold text-gray-100 text-center">Actions</th>
                 </tr>
                 </thead>
 
-                <tbody id="projects-table-body">
+                <tbody>
                 @foreach ($secteurs as $secteur)
                     @forelse ($secteur->projets as $projet)
                         @php
-                            $school = null;
-                            if ($projet->submission?->profile_type === 'student' && $projet->listePreselectionne?->snapshot) {
-                                $snapshot = json_decode($projet->listePreselectionne->snapshot, true);
-                                if (isset($snapshot['champs_personnalises'])) {
-                                    $champsPerso = is_string($snapshot['champs_personnalises'])
-                                        ? json_decode($snapshot['champs_personnalises'], true)
-                                        : $snapshot['champs_personnalises'];
-
-                                    $schoolValue = $champsPerso['student_school'] ?? null;
-                                    $school = ($schoolValue === 'OTHER')
-                                        ? ($champsPerso['student_school_other'] ?? null)
-                                        : $schoolValue;
-                                }
-                            }
-
-                            $profileType = $projet->submission?->profile_type ?? 'other';
+                            $projetJs = [
+                                'id' => $projet->id,
+                                'secteur' => $secteur->nom,
+                                'nom_projet' => $projet->nom_projet,
+                                'nom_equipe' => $projet->nom_equipe,
+                                'resume' => $projet->resume,
+                                'description' => $projet->description,
+                            ];
 
                             $demoUrl = $projet->video_demo
                                 ?? $projet->video_demonstration
@@ -445,168 +190,32 @@
                                 ?? \Illuminate\Support\Facades\DB::table('liste_preselectionnes')->where('projet_id', $projet->id)->value('video_demonstration');
                         @endphp
 
-                        <tr
-                            class="block md:table-row border-b border-gray-700 hover:bg-gray-900/30 transition-colors bg-gray-800/40 md:bg-transparent rounded-lg md:rounded-none mb-3 md:mb-0"
-                            :class="{ 'opacity-50 hover:bg-gray-800/20': !hasEvent }"
-                            x-show="selectedCategory === 'all' || selectedCategory === '{{ $profileType }}'"
-                        >
-                            <td class="hidden md:table-cell p-4">{{ $secteur->nom }}</td>
-
-                            <td class="hidden md:table-cell p-4">
-                                <div>{{ $projet->nom_equipe }}</div>
-                                @if($school)
-                                    <div class="text-sm text-yellow-300 font-semibold mt-1">{{ $school }}</div>
-                                @endif
-                            </td>
-
-                            <td class="block md:table-cell p-3 md:p-4 font-semibold">
-                                <div class="flex flex-col gap-1">
-                                    <div class="md:hidden">
-                                        <div class="text-[10px] text-gray-400 font-medium tracking-tight mb-1">Nom Équipe :</div>
-                                        <div class="text-sm text-white">{{ $projet->nom_equipe }}</div>
-                                        @if($school)
-                                            <div class="text-xs text-yellow-300 font-bold mt-1">{{ $school }}</div>
-                                        @endif
-                                        <div class="text-[10px] text-gray-400 font-medium tracking-tight mt-2 mb-1">Nom Projet :</div>
-                                        <div class="text-sm font-semibold text-white">{{ $projet->nom_projet }}</div>
-                                    </div>
-                                    <span class="hidden md:inline">{{ $projet->nom_projet }}</span>
-                                </div>
-                            </td>
-
-                            <td class="block md:table-cell p-3 md:p-4 text-center align-middle">
-                                {{-- Mobile --}}
-                                <div class="md:hidden flex flex-col gap-3">
-                                    <div class="flex items-center justify-center gap-3">
-                                        <button type="button"
-                                                class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                title="Détails"
-                                                @click="openDetails(@js($projet))">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
-                                                 fill="none" stroke="currentColor" stroke-width="1.8">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                        </button>
-
-                                        <button type="button"
-                                                class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                title="Partager ce projet"
-                                                onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                                            </svg>
-                                        </button>
-
-                                        @if($demoUrl)
-                                            <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
-                                               class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                               title="Voir la démonstration">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
-                                                     fill="none" stroke="currentColor" stroke-width="1.8">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                </svg>
-                                            </a>
-                                        @else
-                                            <span class="p-2 rounded-full text-gray-600 bg-transparent opacity-60"
-                                                  title="Aucune démonstration disponible" aria-hidden="true">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
-                                                     fill="none" stroke="currentColor" stroke-width="1.2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                    <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
-                                                </svg>
-                                            </span>
-                                        @endif
-                                    </div>
-
-                                    <div class="relative">
-                                        <button type="button"
-                                                class="group flex items-center justify-center gap-2 w-full px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
-                                                :class="voteButtonClass()"
-                                                :disabled="voteButtonDisabled()"
-                                                @click="openVote(@js($projet))">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            Voter
-                                        </button>
-
-                                        <button x-cloak x-show="voteButtonDisabled()"
-                                                @click.prevent="explainWhyVoteDisabled()"
-                                                class="absolute inset-0 w-full h-full z-20 bg-transparent"
-                                                aria-hidden="true"></button>
-                                    </div>
-                                </div>
-
-                                {{-- Desktop --}}
-                                <div class="hidden md:flex relative md:flex-row items-center justify-center gap-2">
+                        <tr class="border-b border-gray-700 bg-gray-800/40">
+                            <td class="p-4 text-sm text-gray-200">{{ $secteur->nom }}</td>
+                            <td class="p-4 text-sm text-gray-200">{{ $projet->nom_equipe }}</td>
+                            <td class="p-4 text-sm font-semibold text-white">{{ $projet->nom_projet }}</td>
+                            <td class="p-4">
+                                <div class="flex flex-wrap items-center justify-center gap-2">
                                     <button type="button"
-                                            class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                            title="Détails"
-                                            @click="openDetails(@js($projet))">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
-                                             fill="none" stroke="currentColor" stroke-width="1.8">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
+                                            class="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm"
+                                            data-action="details"
+                                            data-projet='@json($projetJs, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
+                                        Détails
                                     </button>
 
                                     <button type="button"
-                                            class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                            title="Partager ce projet"
-                                            onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                                        </svg>
+                                            class="px-3 py-2 rounded-lg bg-green-500/80 hover:bg-yellow-400 hover:text-black text-white text-sm font-bold"
+                                            data-action="vote"
+                                            data-projet='@json($projetJs, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
+                                        Voter
                                     </button>
 
                                     @if($demoUrl)
                                         <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
-                                           class="p-2 ml-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                           title="Voir la démonstration">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
-                                                 fill="none" stroke="currentColor" stroke-width="1.8">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                            </svg>
+                                           class="px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm">
+                                            Démo
                                         </a>
-                                    @else
-                                        <span class="p-2 ml-1 rounded-full text-gray-600 bg-transparent opacity-60"
-                                              title="Aucune démonstration disponible" aria-hidden="true">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24"
-                                                     fill="none" stroke="currentColor" stroke-width="1.2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14" />
-                                                    <rect x="2" y="5" width="11" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                    <line x1="3" y1="3" x2="21" y2="21" stroke-linecap="round" stroke-linejoin="round" />
-                                                </svg>
-                                        </span>
                                     @endif
-
-                                    <button type="button"
-                                            class="group flex items-center justify-center gap-2 md:w-auto px-4 py-2 text-sm font-bold rounded-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-yellow-400/20"
-                                            :class="voteButtonClass()"
-                                            :disabled="voteButtonDisabled()"
-                                            @click="openVote(@js($projet))">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Voter
-                                    </button>
-
-                                    <button x-cloak x-show="voteButtonDisabled()"
-                                            @click.prevent="explainWhyVoteDisabled()"
-                                            class="absolute inset-0 w-full h-full z-20 bg-transparent"
-                                            aria-hidden="true"></button>
                                 </div>
                             </td>
                         </tr>
@@ -617,892 +226,695 @@
             </table>
         </div>
 
-        {{-- Modale DÉTAILS --}}
-        <div x-cloak x-show="showModal"
-             class="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0">
-            <div @click.away="showModal = false"
-                 class="bg-gray-900/95 border-yellow-400/30 rounded-lg shadow-2xl max-w-2xl w-full text-white relative flex flex-col"
-                 style="max-height: 90vh;"
-                 x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="opacity-0 transform scale-90"
-                 x-transition:enter-end="opacity-100 transform scale-100"
-                 x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="opacity-100 transform scale-100"
-                 x-transition:leave-end="opacity-0 transform scale-90">
-                <div class="p-6 border-b border-gray-700 flex-shrink-0">
-                    <button @click="showModal = false" class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl leading-none">
-                        &times;
-                    </button>
-                    <h2 class="text-2xl sm:text-3xl font-bold text-gray-400 mb-2" x-text="modalProjet?.nom_projet"></h2>
-                    <p class="text-md sm:text-lg text-gray-300">
-                        par <span class="font-semibold" x-text="modalProjet?.nom_equipe"></span>
-                    </p>
-                </div>
-
-                <div class="p-6 space-y-4 text-gray-200 overflow-y-auto scrollbar-thin">
-                    <p>
-                        <strong class="text-gray-300">Résumé :</strong>
-                        <span class="whitespace-pre-wrap" x-text="modalProjet?.resume"></span>
-                    </p>
-
-                    <div>
-                        <strong class="text-gray-300">Description :</strong>
-                        <div class="whitespace-pre-wrap"
-                             :class="{'max-h-24 overflow-hidden': !descriptionExpanded && (modalProjet?.description?.length || 0) > 250}">
-                            <span x-text="modalProjet?.description"></span>
-                        </div>
-
-                        <button x-cloak x-show="(modalProjet?.description?.length || 0) > 250"
-                                @click="descriptionExpanded = !descriptionExpanded"
-                                class="text-yellow-400 hover:text-yellow-300 mt-2 text-sm">
-                            <span x-text="descriptionExpanded ? 'Voir moins' : 'Voir plus'"></span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Modale VOTE --}}
-        <div x-cloak x-show="showVoteModal"
-             class="fixed inset-0 bg-black/5 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0">
-            <div @click.away="if (!isLoading) showVoteModal = false"
-                 class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-2xl max-w-lg w-full text-white relative flex flex-col"
-                 x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="opacity-0 transform scale-90"
-                 x-transition:enter-end="opacity-100 transform scale-100"
-                 x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="opacity-100 transform scale-100"
-                 x-transition:leave-end="opacity-0 transform scale-90">
-
-                <div class="p-6 border-b border-gray-700 flex-shrink-0 relative">
-                    <button @click="if (!isLoading) showVoteModal = false"
-                            class="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors p-1 rounded-full hover:bg-gray-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-
-                    <h2 class="text-2xl font-bold text-yellow-400 mb-2">
-                        Voter pour : <span x-text="voteProjet?.nom_projet"></span>
-                    </h2>
-                    <p class="text-gray-300">
-                        Équipe : <span class="font-semibold" x-text="voteProjet?.nom_equipe"></span>
-                    </p>
-
-                    <div x-cloak x-show="voteStep === 1 || voteStep === 2"
-                         class="absolute bottom-0 left-6 translate-y-1/2 bg-gray-800 px-3 py-1 rounded-full text-xs text-yellow-300 border border-gray-700">
-                        <span x-text="`Étape ${voteStep} sur 2`"></span>
-                    </div>
-                </div>
-
-                <div class="p-6 space-y-4">
-                    {{-- Étape 1 --}}
-                    <div x-cloak x-show="voteStep === 1">
-                        <div class="space-y-4">
-                            <div>
-                                <label for="nom_votant" class="block mb-2 text-sm font-medium text-gray-300">Votre nom (Optionnel)</label>
-                                <input type="text" id="nom_votant"
-                                       class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                                       placeholder="Ex: Paul David Mbaye"
-                                       x-model="nomVotant">
-                            </div>
-
-                            <div>
-                                <label for="telephone_display" class="block mb-2 text-sm font-medium text-gray-300">Votre numéro de téléphone</label>
-                                <div class="flex flex-row gap-0">
-                                    <div class="flex-shrink-0 z-10 inline-flex items-center py-2.5 px-3 text-sm font-medium text-center text-gray-200 bg-gray-800 border border-gray-600 rounded-l-lg">
-                                        🇸🇳 +221
-                                    </div>
-                                    <div class="relative w-full">
-                                        <input type="tel" id="telephone_display"
-                                               class="block p-2.5 w-full z-20 text-sm text-white bg-gray-700/50 rounded-r-lg border border-gray-600 border-l-0 focus:ring-2 focus:outline-none focus:ring-yellow-400"
-                                               placeholder="Ex: 77 123 45 67"
-                                               required
-                                               x-model="telephoneDisplay">
-                                    </div>
-                                </div>
-                                <p class="mt-2 text-xs text-gray-400">
-                                    Vous recevrez un code unique par SMS pour valider votre vote.
-                                </p>
-                            </div>
-
-                            <div class="pt-4 flex justify-center">
-                                <div class="rainbow relative z-0 overflow-hidden p-0.5 flex items-center justify-center rounded-full hover:scale-105 transition duration-300 active:scale-100 w-full">
-                                    <button type="button"
-                                            class="w-full px-8 text-sm py-3 text-white rounded-full font-medium bg-gray-900 flex items-center justify-center"
-                                            :disabled="isLoading"
-                                            @click="sendOtp()">
-                                        <span x-show="!isLoading">Cliquez pour recevoir le code de vote</span>
-                                        <span x-show="isLoading">Envoi en cours...</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Étape 2 --}}
-                    <div x-cloak x-show="voteStep === 2">
-                        <div class="space-y-4">
-                            <p class="text-center text-gray-300">Un code a été envoyé. Veuillez le saisir ci-dessous.</p>
-
-                            <div>
-                                <label for="code_otp" class="block mb-2 text-sm font-medium text-gray-300">Code de vérification (OTP)</label>
-                                <input type="tel" id="code_otp"
-                                       class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white text-center text-2xl tracking-[1em]"
-                                       placeholder="------"
-                                       required maxlength="6" pattern="\d{6}" inputmode="numeric"
-                                       x-model="otpCode">
-                            </div>
-
-                            <div class="pt-4">
-                                <button type="button"
-                                        class="w-full skew-btn bg-emerald-600 text-white hover:text-white flex items-center justify-center"
-                                        :disabled="isLoading"
-                                        @click="verifyOtp()">
-                                    <span x-show="!isLoading">Valider le vote</span>
-                                    <span x-show="isLoading">Validation...</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Étape 3 --}}
-                    <div x-cloak x-show="voteStep === 3" class="text-center py-6 px-4">
-                        <div x-cloak x-show="successMessage" class="space-y-5">
-                            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
-                                <div class="w-16 h-16 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-8 h-8 sm:w-7 sm:h-7 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </div>
-                                <div class="text-center sm:text-left">
-                                    <h3 class="text-xl sm:text-2xl font-semibold text-white mb-1">Vote enregistré</h3>
-                                    <p class="text-sm text-gray-400" x-text="successMessage"></p>
-                                </div>
-                            </div>
-
-                            <div class="pt-4 pb-2 border-t border-gray-800">
-                                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-lg mx-auto">
-                                    <div class="text-center sm:text-left flex-1">
-                                        <h4 class="text-base font-medium text-white mb-1">Grande Finale</h4>
-                                        <p class="text-xs text-gray-400">Réservez votre place dès maintenant</p>
-                                    </div>
-                                    <a href="https://reservation.govathon.sn" target="_blank"
-                                       class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-medium text-sm rounded-lg transition-all duration-200 shadow-lg hover:shadow-yellow-500/20 flex-shrink-0">
-                                        <span>Réserver</span>
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
-                                        </svg>
-                                    </a>
-                                </div>
-                            </div>
-
-                            <button @click="showVoteModal = false" class="text-sm text-gray-500 hover:text-gray-300 underline transition-colors">
-                                Fermer
-                            </button>
-                        </div>
-
-                        <div x-cloak x-show="errorMessage" class="space-y-4">
-                            <div class="flex items-center justify-center gap-4">
-                                <div class="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </div>
-                                <p class="text-base text-gray-300 text-left flex-1" x-text="errorMessage"></p>
-                            </div>
-                            <button @click="showVoteModal = false" class="text-sm text-gray-500 hover:text-gray-300 underline transition-colors">
-                                Fermer
-                            </button>
-                        </div>
-                    </div>
-
-                    {{-- Erreur inline étape 1/2 --}}
-                    <div x-cloak x-show="errorMessage && (voteStep === 1 || voteStep === 2)"
-                         class="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg relative mt-4" role="alert">
-                        <p x-text="errorMessage"></p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
     </div>
 </main>
 
 <x-footer />
 
-{{-- reCAPTCHA v3 (uniquement si key) --}}
+{{-- ====================== MODALE DETAILS ====================== --}}
+<div id="detailsModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-box">
+        <div class="modal-head">
+            <button type="button" class="btn-close" data-close="detailsModal">✕</button>
+            <h2 id="detailsTitle" class="text-xl sm:text-2xl font-bold text-yellow-400"></h2>
+            <p class="text-gray-300 mt-1">Équipe : <span id="detailsTeam" class="font-semibold text-white"></span></p>
+        </div>
+        <div class="modal-body space-y-4 text-gray-200">
+            <div>
+                <div class="text-gray-300 font-semibold">Résumé</div>
+                <div id="detailsResume" class="whitespace-pre-wrap text-sm mt-1"></div>
+            </div>
+            <div>
+                <div class="text-gray-300 font-semibold">Description</div>
+                <div id="detailsDesc" class="whitespace-pre-wrap text-sm mt-1"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ====================== MODALE VOTE ====================== --}}
+<div id="voteModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-box" style="max-width:640px;">
+        <div class="modal-head">
+            <button type="button" class="btn-close" data-close="voteModal">✕</button>
+            <h2 class="text-xl sm:text-2xl font-bold text-yellow-400">
+                Voter pour : <span id="voteTitle" class="text-white"></span>
+            </h2>
+            <p class="text-gray-300 mt-1">Équipe : <span id="voteTeam" class="font-semibold text-white"></span></p>
+            <div id="voteStepBadge" class="badge-step">Étape 1 sur 2</div>
+        </div>
+
+        <div class="modal-body space-y-4">
+
+            {{-- GPS PANEL (minimal) --}}
+            <div class="gps-card">
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <span class="gps-pill">
+                        <span id="gpsDot" class="gps-dot"></span>
+                        <span id="gpsStatusText">Localisation : non vérifiée</span>
+                    </span>
+
+                    <button type="button" id="btnRefreshGPS"
+                            class="text-xs px-3 py-1 rounded-full border border-gray-700 bg-gray-900/40 hover:bg-gray-900/70">
+                        Vérifier ma position
+                    </button>
+                </div>
+            </div>
+
+            <div id="voteError" class="hidden bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg"></div>
+            <div id="voteSuccess" class="hidden bg-emerald-900/30 border border-emerald-600/40 text-emerald-100 px-4 py-3 rounded-lg"></div>
+
+            {{-- Step 1 --}}
+            <div id="step1" class="space-y-4">
+                <div>
+                    <label class="block mb-2 text-sm font-medium text-gray-300">Votre nom (optionnel)</label>
+                    <input type="text" id="nom_votant"
+                           class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                           placeholder="Ex: Paul David Mbaye">
+                </div>
+
+                <div>
+                    <label class="block mb-2 text-sm font-medium text-gray-300">Votre numéro de téléphone</label>
+                    <div class="flex flex-row gap-0">
+                        <div class="flex-shrink-0 inline-flex items-center py-2.5 px-3 text-sm font-medium text-gray-200 bg-gray-800 border border-gray-600 rounded-l-lg">
+                            🇸🇳 +221
+                        </div>
+                        <div class="relative w-full">
+                            <input type="tel" id="telephone_display"
+                                   class="block p-2.5 w-full text-sm text-white bg-gray-700/50 rounded-r-lg border border-gray-600 border-l-0 focus:ring-2 focus:outline-none focus:ring-yellow-400"
+                                   placeholder="Ex: 77 123 45 67"
+                                   inputmode="numeric"
+                                   autocomplete="tel">
+                        </div>
+                    </div>
+                    <p class="mt-2 text-xs text-gray-400">Vous recevrez un code par SMS.</p>
+                </div>
+
+                <button type="button" id="btnSendOtp"
+                        class="w-full px-4 py-3 rounded-lg font-bold bg-yellow-500 hover:bg-yellow-600 text-black disabled:opacity-50 disabled:cursor-not-allowed">
+                    Recevoir le code
+                </button>
+            </div>
+
+            {{-- Step 2 --}}
+            <div id="step2" class="space-y-4 hidden">
+                <p class="text-center text-gray-300">Saisissez le code reçu par SMS.</p>
+
+                <div>
+                    <label class="block mb-2 text-sm font-medium text-gray-300">Code OTP (6 chiffres)</label>
+                    <input type="tel" id="code_otp"
+                           class="w-full bg-gray-700/50 border border-gray-600 rounded-lg py-2 px-3 text-white text-center text-2xl tracking-[1em]"
+                           placeholder="------"
+                           maxlength="6" inputmode="numeric"
+                           autocomplete="one-time-code">
+                </div>
+
+                <button type="button" id="btnVerifyOtp"
+                        class="w-full px-4 py-3 rounded-lg font-bold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                    Valider le vote
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @if(config('services.recaptcha.site_key'))
-<script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}"></script>
+    <script src="https://www.google.com/recaptcha/api.js?render={{ config('services.recaptcha.site_key') }}"></script>
 @endif
 
 <script>
-/**
- * Alpine component (version fiable GPS Gate)
- * ✅ Fix majeur: quand on clique "Voter", on stocke le projet en pending,
- * puis dès que le GPS est OK + dans le rayon => on ouvre automatiquement la modale vote.
- */
-function voteJourJComponent(cfg) {
-    return {
-        // UI
-        showModal: false,
-        showWelcomeModal: false,
-        modalProjet: null,
-
-        showVoteModal: false,
-        voteProjet: null,
-        voteStep: 1,
-        isLoading: false,
-        errorMessage: '',
-        successMessage: '',
-        descriptionExpanded: false,
-
-        // Vote status
-        isVoteActive: !!cfg.isVoteActive,
-        inactiveMessage: cfg.inactiveMessage || "Le vote Jour J n'est pas ouvert pour le moment.",
-
-        // category
-        selectedCategory: cfg.selectedCategory || 'all',
-        categoryMenuOpen: false,
-
-        // Event
-        hasEvent: !!cfg.hasEvent,
-        eventLat: cfg.event?.lat ?? null,
-        eventLon: cfg.event?.lon ?? null,
-        eventRadius: cfg.event?.radius ?? null,
-
-        // GPS
-        gpsStatus: 'idle', // idle | loading | success | error | denied | unavailable
-        gpsMessage: 'Veuillez activer la localisation pour voter.',
-        userLatitude: null,
-        userLongitude: null,
-        distanceToEvent: null,
-        isInRange: false,
-
-        // quick notice
-        inactiveNoticeVisible: false,
-
-        // OTP
-        nomVotant: '',
-        telephoneDisplay: '',
-        otpCode: '',
-
-        // urls / keys
-        recaptchaKey: cfg.recaptchaKey || '',
-        sendOtpUrl: cfg.sendOtpUrl,
-        verifyOtpUrl: cfg.verifyOtpUrl,
-
-        // ✅ Pending vote (quand on clique "Voter" avant que le GPS soit OK)
-        pendingVoteProjet: null,
-        pendingOpenVote: false,
-
-        // ---- Helpers
-        isSecureContextOk() {
-            const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-            return (window.location.protocol === 'https:' || isLocalhost) && !!window.isSecureContext;
-        },
-
-        isLikelyInAppBrowser() {
-            const ua = navigator.userAgent || '';
-            return /FBAN|FBAV|Instagram|Line|MicroMessenger|Twitter|Tiktok|Snapchat/i.test(ua);
-        },
-
-        init() {
-            const self = this;
-
-            // ✅ Expose pour le Gate
-            window.__voteJourJ = self;
-
-            // Toujours afficher l’accueil (donne un bouton => gesture iOS)
-            self.showWelcomeModal = true;
-
-            // Event actif ?
-            if (!self.hasEvent) {
-                self.gpsStatus = 'unavailable';
-                self.gpsMessage = 'Vote Jour J désactivé';
-            } else {
-                self.tryAutoGPS();
-            }
-
-            // Vote désactivé globalement
-            if (!self.isVoteActive) {
-                self.voteStep = 3;
-                self.errorMessage = self.inactiveMessage;
-            }
-
-            window.addEventListener('project-data', function(e) {
-                self.modalProjet = e.detail;
-                self.showModal = true;
-                self.descriptionExpanded = false;
-            });
-
-            window.addEventListener('project-for-vote', function(e) {
-                self.openVote(e.detail);
-            });
-        },
-
-        closeAll() {
-            this.showModal = false;
-            this.showVoteModal = false;
-            this.categoryMenuOpen = false;
-        },
-
-        showInactiveNotice() {
-            this.inactiveNoticeVisible = true;
-            setTimeout(() => { this.inactiveNoticeVisible = false }, 1200);
-        },
-
-        startFromWelcome() {
-            this.showWelcomeModal = false;
-            if (this.hasEvent) {
-                window.showGpsGate?.("Autorisez la localisation pour voter (sur place).");
-                this.captureGPS(true);
-            }
-        },
-
-        async tryAutoGPS() {
-            if (!navigator.geolocation) {
-                this.gpsStatus = 'unavailable';
-                this.gpsMessage = 'Votre navigateur ne supporte pas la géolocalisation.';
-                return;
-            }
-
-            if (!this.isSecureContextOk()) {
-                this.gpsStatus = 'unavailable';
-                this.gpsMessage = 'Géolocalisation indisponible (HTTPS requis).';
-                return;
-            }
-
-            // Permissions API pas fiable iOS -> on tente seulement si granted
-            if (navigator.permissions && navigator.permissions.query) {
-                try {
-                    const p = await navigator.permissions.query({ name: 'geolocation' });
-                    if (p.state === 'granted') {
-                        this.captureGPS(false);
-                        return;
-                    }
-                    if (p.state === 'denied') {
-                        this.gpsStatus = 'denied';
-                        this.gpsMessage = '✗ Permission GPS refusée. Autorisez la géolocalisation.';
-                        return;
-                    }
-                } catch (e) {}
-            }
-
-            this.gpsStatus = 'idle';
-            this.gpsMessage = 'Veuillez activer la localisation pour voter.';
-        },
-
-        calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371000;
-            const φ1 = lat1 * Math.PI / 180;
-            const φ2 = lat2 * Math.PI / 180;
-            const Δφ = (lat2 - lat1) * Math.PI / 180;
-            const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                Math.cos(φ1) * Math.cos(φ2) *
-                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
-        },
-
-        maybeOpenPendingVote() {
-            // ✅ ouverture auto de la modale vote si on attend un vote et que tout est OK
-            if (!this.pendingOpenVote) return;
-            if (!this.hasEvent) return;
-            if (!this.isVoteActive) return;
-            if (this.gpsStatus !== 'success' || !this.isInRange) return;
-            if (!this.pendingVoteProjet?.id) return;
-
-            this.voteProjet = this.pendingVoteProjet;
-            this.pendingVoteProjet = null;
-            this.pendingOpenVote = false;
-
-            this.resetVoteFlow();
-            this.showVoteModal = true;
-        },
-
-        resetVoteFlow() {
-            this.voteStep = 1;
-            this.isLoading = false;
-            this.errorMessage = '';
-            this.successMessage = '';
-            this.otpCode = '';
-            this.nomVotant = '';
-            this.telephoneDisplay = '';
-        },
-
-        captureGPS(forceHighAccuracy = false) {
-            if (!navigator.geolocation) {
-                this.gpsStatus = 'unavailable';
-                this.gpsMessage = 'Votre navigateur ne supporte pas la géolocalisation.';
-                return;
-            }
-
-            if (!this.isSecureContextOk()) {
-                this.gpsStatus = 'unavailable';
-                this.gpsMessage = 'Géolocalisation indisponible (HTTPS requis).';
-                return;
-            }
-
-            this.gpsStatus = 'loading';
-            this.gpsMessage = 'Recherche de votre position...';
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    this.userLatitude = position.coords.latitude;
-                    this.userLongitude = position.coords.longitude;
-
-                    if (this.hasEvent && this.eventLat != null && this.eventLon != null && this.eventRadius != null) {
-                        this.distanceToEvent = this.calculateDistance(
-                            this.userLatitude,
-                            this.userLongitude,
-                            this.eventLat,
-                            this.eventLon
-                        );
-
-                        this.isInRange = this.distanceToEvent <= this.eventRadius;
-
-                        if (this.isInRange) {
-                            this.gpsStatus = 'success';
-                            this.gpsMessage = `✓ Vous êtes dans la zone (${Math.round(this.distanceToEvent)}m)`;
-                            window.hideGpsGate?.();
-
-                            // ✅ si on attendait un vote, on ouvre maintenant
-                            this.maybeOpenPendingVote();
-                        } else {
-                            this.gpsStatus = 'error';
-                            this.gpsMessage = `❌ Vous n’êtes pas dans une zone autorisée (${Math.round(this.distanceToEvent)}m / ${this.eventRadius}m max)`;
-                            window.showGpsGate?.(this.gpsMessage);
-                        }
-                    } else {
-                        // fallback
-                        this.gpsStatus = 'success';
-                        this.gpsMessage = '✓ Position détectée';
-                        this.isInRange = true;
-                        window.hideGpsGate?.();
-                        this.maybeOpenPendingVote();
-                    }
-                },
-                (error) => {
-                    console.error('Erreur GPS:', error);
-
-                    if (error.code === error.PERMISSION_DENIED) {
-                        this.gpsStatus = 'denied';
-                        this.gpsMessage = '✗ Permission GPS refusée. Autorisez la géolocalisation.';
-                        window.showGpsGate?.(this.gpsMessage + " (icône 🔒 du navigateur)");
-                        return;
-                    }
-
-                    if (error.code === error.POSITION_UNAVAILABLE) {
-                        this.gpsStatus = this.isLikelyInAppBrowser() ? 'unavailable' : 'error';
-                        this.gpsMessage = this.isLikelyInAppBrowser()
-                            ? '⚠️ GPS bloqué dans ce navigateur (lecteur QR). Ouvrez le lien dans Safari/Chrome.'
-                            : '✗ Position GPS indisponible.';
-                        window.showGpsGate?.(this.gpsMessage);
-                        return;
-                    }
-
-                    if (error.code === error.TIMEOUT) {
-                        this.gpsStatus = 'error';
-                        this.gpsMessage = '✗ Délai de géolocalisation dépassé. Réessayez.';
-                        window.showGpsGate?.(this.gpsMessage);
-                        return;
-                    }
-
-                    this.gpsStatus = 'error';
-                    this.gpsMessage = '✗ Erreur de géolocalisation.';
-                    window.showGpsGate?.(this.gpsMessage);
-                },
-                {
-                    enableHighAccuracy: !!forceHighAccuracy,
-                    timeout: 12000,
-                    maximumAge: 0
-                }
-            );
-        },
-
-        openDetails(projet) {
-            this.modalProjet = projet;
-            this.showModal = true;
-            this.descriptionExpanded = false;
-        },
-
-        voteButtonDisabled() {
-            return (!this.hasEvent || !this.isVoteActive || !this.isInRange || this.gpsStatus !== 'success');
-        },
-
-        voteButtonClass() {
-            return {
-                'bg-green-400/75 text-gray-100 hover:bg-yellow-300 hover:text-black':
-                    this.hasEvent && this.isVoteActive && this.isInRange && this.gpsStatus === 'success',
-                'bg-gray-600 text-gray-300 cursor-not-allowed':
-                    this.voteButtonDisabled()
-            };
-        },
-
-        explainWhyVoteDisabled() {
-            if (!this.hasEvent) {
-                alert('❌ Le système de vote Jour J est désactivé. Aucun événement actif.');
-                return;
-            }
-            if (!this.isVoteActive) {
-                this.showInactiveNotice();
-                return;
-            }
-            if (!this.isSecureContextOk()) {
-                alert('⚠️ La géolocalisation nécessite HTTPS (ou localhost).');
-                return;
-            }
-            if (this.gpsStatus !== 'success') {
-                window.showGpsGate?.('Pour voter, activez la localisation puis réessayez.');
-                return;
-            }
-            if (!this.isInRange) {
-                alert('❌ Vous devez être sur place pour voter' + (this.distanceToEvent ? ' (distance: ' + Math.round(this.distanceToEvent) + 'm)' : ''));
-            }
-        },
-
-        openVote(projet) {
-            // Cas 1 : pas d’événement
-            if (!this.hasEvent) {
-                alert('❌ Aucun événement actif. Le vote Jour J est désactivé, mais la liste des projets reste visible.');
-                return;
-            }
-
-            // Cas 2 : vote fermé
-            if (!this.isVoteActive) {
-                this.showInactiveNotice();
-                return;
-            }
-
-            // ✅ Si GPS déjà OK + dans le rayon => ouvrir direct
-            if (this.gpsStatus === 'success' && this.isInRange) {
-                this.voteProjet = projet;
-                this.resetVoteFlow();
-                this.showVoteModal = true;
-                window.hideGpsGate?.();
-                return;
-            }
-
-            // Sinon on met en attente, et on déclenche GPS (gesture)
-            this.pendingVoteProjet = projet;
-            this.pendingOpenVote = true;
-
-            window.showGpsGate?.("Autorisez la localisation pour continuer.");
-            this.captureGPS(true);
-        },
-
-        normalizeSNPhone(raw) {
-            const digits = String(raw || '').replace(/\D+/g, '');
-            const last9 = digits.length >= 9 ? digits.slice(-9) : digits;
-            if (last9.length !== 9) return null;
-            return '+221' + last9;
-        },
-
-        csrfToken() {
-            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-        },
-
-        async sendOtp() {
-            this.errorMessage = '';
-            this.successMessage = '';
-
-            if (this.voteButtonDisabled()) {
-                window.showGpsGate?.("Activez la localisation avant d'envoyer le code.");
-                this.captureGPS(true);
-                this.explainWhyVoteDisabled();
-                return;
-            }
-
-            const phone = this.normalizeSNPhone(this.telephoneDisplay);
-            if (!phone) {
-                this.errorMessage = 'Numéro invalide. Exemple: 77 123 45 67';
-                return;
-            }
-
-            if (!this.voteProjet?.id) {
-                this.errorMessage = 'Projet invalide.';
-                return;
-            }
-
-            let recaptchaToken = '';
-            try {
-                if (this.recaptchaKey && window.grecaptcha && window.grecaptcha.execute) {
-                    recaptchaToken = await window.grecaptcha.execute(this.recaptchaKey, { action: 'vote_jourj' });
-                }
-            } catch (e) {}
-
-            this.isLoading = true;
-
-            try {
-                const res = await fetch(this.sendOtpUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.csrfToken(),
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        projet_id: this.voteProjet.id,
-                        telephone: phone,
-                        nom_votant: this.nomVotant || null,
-                        recaptcha_token: recaptchaToken || null
-                    })
-                });
-
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok || !data.success) {
-                    this.errorMessage = data.message || 'Erreur lors de l’envoi du code.';
-                    return;
-                }
-
-                this.voteStep = 2;
-                this.errorMessage = '';
-            } catch (err) {
-                console.error(err);
-                this.errorMessage = 'Erreur réseau. Veuillez réessayer.';
-            } finally {
-                this.isLoading = false;
-            }
-        },
-
-        async verifyOtp() {
-            this.errorMessage = '';
-            this.successMessage = '';
-
-            const code = String(this.otpCode || '').replace(/\D+/g, '');
-            if (code.length !== 6) {
-                this.errorMessage = 'Code OTP invalide (6 chiffres).';
-                return;
-            }
-
-            if (this.userLatitude == null || this.userLongitude == null) {
-                window.showGpsGate?.("Position GPS non disponible. Activez la localisation puis réessayez.");
-                this.captureGPS(true);
-                this.errorMessage = 'Position GPS non disponible. Activez la localisation puis réessayez.';
-                return;
-            }
-
-            this.isLoading = true;
-
-            try {
-                const res = await fetch(this.verifyOtpUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': this.csrfToken(),
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        code_otp: code,
-                        latitude: this.userLatitude,
-                        longitude: this.userLongitude
-                    })
-                });
-
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok || !data.success) {
-                    this.errorMessage = data.message || 'Validation OTP échouée.';
-                    return;
-                }
-
-                this.voteStep = 3;
-                this.successMessage = data.message || 'Vote enregistré avec succès !';
-                this.errorMessage = '';
-            } catch (err) {
-                console.error(err);
-                this.errorMessage = 'Erreur réseau. Veuillez réessayer.';
-            } finally {
-                this.isLoading = false;
-            }
-        },
-    };
-}
-</script>
-
-{{-- ✅ GPS Gate controller (hors Alpine, ultra fiable) --}}
-<script>
-(function () {
-    const gate  = document.getElementById('gpsGate');
-    const msg   = document.getElementById('gpsGateMsg');
-    const btn   = document.getElementById('gpsGateBtn');
-    const copy  = document.getElementById('gpsGateCopy');
-    const close = document.getElementById('gpsGateClose');
-
-    function showGate(text) {
-        if (text) msg.textContent = text;
-        gate.classList.add('is-open');
-    }
-    function hideGate() {
-        gate.classList.remove('is-open');
-    }
-
-    window.showGpsGate = showGate;
-    window.hideGpsGate = hideGate;
-
-    copy.addEventListener('click', async () => {
-        const url = window.location.href;
-        try {
-            await navigator.clipboard.writeText(url);
-            showGate("✅ Lien copié. Ouvrez-le dans Safari / Chrome si le GPS ne marche pas ici.");
-        } catch (e) {
-            prompt("Copiez ce lien :", url);
-        }
-    });
-
-    close.addEventListener('click', () => hideGate());
-
-    btn.addEventListener('click', () => {
-        const vm = window.__voteJourJ;
-        if (!vm) {
-            showGate("⚠️ Chargement… Rechargez la page si besoin.");
-            return;
-        }
-        vm.captureGPS(true);
-        showGate("Recherche de votre position… Autorisez la localisation.");
-    });
-
-    // ✅ Auto-hide dès que GPS OK + dans le rayon
-    const timer = setInterval(() => {
-        const vm = window.__voteJourJ;
-        if (!vm) return;
-
-        if (vm.hasEvent === false) {
-            showGate("❌ Vote Jour J désactivé (aucun événement actif).");
-            return;
-        }
-
-        if (vm.gpsStatus === 'success' && vm.isInRange) {
-            hideGate();
-            return;
-        }
-
-        if (vm.gpsStatus === 'denied') {
-            showGate("✗ Permission refusée. Autorisez la localisation (icône 🔒) puis réessayez.");
-            return;
-        }
-
-        if (vm.gpsStatus === 'unavailable') {
-            showGate("⚠️ GPS indisponible ici. Ouvrez dans Safari/Chrome puis réessayez.");
-            return;
-        }
-    }, 500);
-})();
-</script>
-
-{{-- Partage projet (✅ deep-link direct vote) --}}
-<script>
-window.shareProjectForProject = function (id, projectName) {
-    const urlObj = new URL(window.location.href);
-
-    // Nettoyage
-    urlObj.searchParams.delete('page');
-    urlObj.searchParams.delete('search');
-
-    // ✅ deep-link: ouvre directement la modale vote après fetch projet
-    urlObj.searchParams.set('vote', '1');
-    urlObj.searchParams.set('project_id', String(id));
-
-    const finalUrl = urlObj.toString();
-    const title = document.title || 'GovAthon – Vote Jour J';
-    const text  = 'Vote Jour J – découvrez ce projet et votez :';
-
-    if (typeof window.shareProject === 'function') {
-        window.shareProject(finalUrl);
-        return;
-    }
-
-    if (navigator.share) {
-        navigator.share({ title, text, url: finalUrl }).catch(() => {});
-        return;
-    }
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(finalUrl)
-            .then(() => alert('Lien copié dans le presse-papiers'))
-            .catch(() => prompt('Copiez ce lien :', finalUrl));
-        return;
-    }
-
-    prompt('Copiez ce lien :', finalUrl);
+/* ====================== CONFIG SERVEUR ====================== */
+const CFG = {
+    isVoteActive: @json((bool)$isVoteActive),
+    inactiveMessage: @json($inactiveMessage),
+    hasEvent: @json((bool)$hasEvent),
+    event: @json($eventPayload),
+    sendOtpUrl: @json(route('vote-jour-j.envoyerOtp')),
+    verifyOtpUrl: @json(route('vote-jour-j.verifierOtp')),
+    recaptchaKey: @json(config('services.recaptcha.site_key')),
 };
-</script>
 
-{{-- Deep link auto-vote --}}
-<script>
-(function () {
-    let voteDeepLinkHandled = false;
+/* ====================== UTIL ====================== */
+function $(id){ return document.getElementById(id); }
+function show(el){ if(el) el.classList.remove('hidden'); }
+function hide(el){ if(el) el.classList.add('hidden'); }
+function openModal(id){ const el=$(id); if(el) el.classList.add('open'); }
+function closeModal(id){ const el=$(id); if(el) el.classList.remove('open'); }
+function toast(msg){
+    const t = $('toast');
+    if(!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 1600);
+}
+function csrfToken(){
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+function normalizeSNPhone(raw){
+    const digits = String(raw||'').replace(/\D+/g,'');
+    const last9 = digits.length >= 9 ? digits.slice(-9) : digits;
+    if(last9.length !== 9) return null;
+    return '+221' + last9;
+}
+function isSecureContextOk(){
+    const isLocalhost = ['localhost','127.0.0.1'].includes(window.location.hostname);
+    return (window.location.protocol === 'https:' || isLocalhost) && !!window.isSecureContext;
+}
 
-    function openVoteFromUrl() {
-        if (voteDeepLinkHandled) return;
+/* ====================== STATE VOTE ====================== */
+let currentProject = null;
+let step = 1;
 
-        const params = new URLSearchParams(window.location.search);
-        const wantVote  = params.get('vote') === '1';
-        const projectId = params.get('project_id');
+/* ====================== GPS ====================== */
+const REQUIRE_GPS = true;
+let gpsWatchId = null;
+let gpsRequestPromise = null;
 
-        if (!wantVote || !projectId) return;
+let gps = {
+    status:'idle',
+    lat:null, lon:null,
+    accuracy:null,
+    inRange:false,
+    dist:null,
+    lastAt:null,
+    bearing:null
+};
 
-        voteDeepLinkHandled = true;
+// ✅ Freeze GPS approval (pour éviter re-blocage sur jitter)
+let gpsApproved = false;
+let gpsApprovedAt = null;
+function approveGps(){ gpsApproved = true; gpsApprovedAt = Date.now(); }
+function resetGpsApproval(){ gpsApproved = false; gpsApprovedAt = null; }
 
-        fetch('/vote/project/' + projectId + '/data')
-            .then(function (res) {
-                if (!res.ok) throw new Error('Impossible de charger le projet');
-                return res.json();
-            })
-            .then(function (data) {
-                window.dispatchEvent(new CustomEvent('project-for-vote', { detail: data }));
+function calcDistance(lat1, lon1, lat2, lon2){
+    const R = 6371000;
+    const φ1 = lat1*Math.PI/180, φ2 = lat2*Math.PI/180;
+    const Δφ = (lat2-lat1)*Math.PI/180, Δλ = (lon2-lon1)*Math.PI/180;
+    const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+    return R * (2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+function computeToleranceMeters(accuracy){
+    const acc = (accuracy != null && !isNaN(accuracy)) ? accuracy : 0;
+    return clamp(Math.round(acc), 15, 60);
+}
+function computeInRange(dist, radius, accuracy){
+    if(dist == null || radius == null) return true;
+    const tol = computeToleranceMeters(accuracy);
+    return dist <= (radius + tol);
+}
+function isGpsFresh(maxAgeMs = 15000){
+    return gps.lastAt && (Date.now() - gps.lastAt) <= maxAgeMs;
+}
+function setGpsDot(state){
+    const dot = $('gpsDot');
+    if(!dot) return;
+    dot.classList.remove('ok','bad','warn');
+    if(state === 'ok') dot.classList.add('ok');
+    else if(state === 'bad') dot.classList.add('bad');
+    else if(state === 'warn') dot.classList.add('warn');
+}
 
-                if (history && history.replaceState) {
-                    const cleanUrl = new URL(window.location);
-                    cleanUrl.searchParams.delete('vote');
-                    cleanUrl.searchParams.delete('project_id');
-                    history.replaceState({}, '', cleanUrl.toString());
-                }
+function updateGpsUI(){
+    const st = $('gpsStatusText');
+    if(!st) return;
 
-                window.showGpsGate?.("Pour voter, activez la localisation puis continuez.");
-                setTimeout(() => window.__voteJourJ?.captureGPS(true), 50);
-            })
-            .catch(function (err) {
-                console.error('❌ Erreur auto-vote / fetch projet :', err);
-            });
+    if(!REQUIRE_GPS){
+        setGpsDot('ok');
+        st.textContent = 'Localisation : non requise';
+        return;
     }
 
-    document.addEventListener('alpine:initialized', function () {
-        openVoteFromUrl();
+    if(!CFG.hasEvent){
+        setGpsDot('bad');
+        st.textContent = 'Localisation : événement non actif';
+        return;
+    }
+
+    if(gps.status === 'checking'){
+        setGpsDot('warn');
+        st.textContent = 'Localisation : vérification en cours…';
+        return;
+    }
+
+    if(gps.status === 'error'){
+        setGpsDot('bad');
+        st.textContent = 'Localisation : impossible (autorisez la localisation)';
+        return;
+    }
+
+    if(gps.status === 'success'){
+        if(gpsApproved || gps.inRange){
+            setGpsDot('ok');
+            st.textContent = 'Localisation : ✅ zone autorisée';
+        } else {
+            setGpsDot('bad');
+            st.textContent = 'Localisation : ❌ zone non autorisée';
+        }
+        return;
+    }
+
+    setGpsDot('');
+    st.textContent = 'Localisation : non vérifiée';
+}
+
+// ✅ Step 2: on ne rebloque pas côté front
+function lockButtonsByGPS(){
+    const sendBtn = $('btnSendOtp');
+    const verifyBtn = $('btnVerifyOtp');
+    if(!sendBtn || !verifyBtn) return;
+
+    if(step === 1){
+        if(!REQUIRE_GPS){
+            sendBtn.disabled = false;
+            verifyBtn.disabled = true;
+            return;
+        }
+        const ok = gpsApproved || (gps.status === 'success' && gps.inRange === true);
+        sendBtn.disabled = !ok;
+        verifyBtn.disabled = true;
+        return;
+    }
+
+    // step 2
+    sendBtn.disabled = true;
+    verifyBtn.disabled = false;
+}
+
+async function captureGPS(){
+    if(!REQUIRE_GPS) {
+        gps = {...gps, status:'success', inRange:true, lastAt: Date.now()};
+        approveGps();
+        updateGpsUI(); lockButtonsByGPS();
+        return true;
+    }
+    if(!CFG.hasEvent){
+        gps.status = 'error';
+        updateGpsUI(); lockButtonsByGPS();
+        toast('Vote Jour J désactivé (aucun événement).');
+        return false;
+    }
+    if(!navigator.geolocation){
+        gps.status = 'error';
+        updateGpsUI(); lockButtonsByGPS();
+        toast('GPS non supporté sur ce navigateur.');
+        return false;
+    }
+    if(!isSecureContextOk()){
+        gps.status = 'error';
+        updateGpsUI(); lockButtonsByGPS();
+        toast('GPS nécessite HTTPS (ou localhost).');
+        return false;
+    }
+
+    // ✅ si déjà approuvé, on ne refait pas de blocage
+    if(gpsApproved){
+        gps.status = gps.status === 'idle' ? 'success' : gps.status;
+        updateGpsUI(); lockButtonsByGPS();
+        return true;
+    }
+
+    // ✅ si déjà OK et frais
+    if(gps.status === 'success' && gps.inRange === true && isGpsFresh(20000)){
+        approveGps();
+        lockButtonsByGPS();
+        return true;
+    }
+
+    if(gpsRequestPromise) return gpsRequestPromise;
+
+    gps.status = 'checking';
+    updateGpsUI(); lockButtonsByGPS();
+
+    const getPos = (opts) => new Promise((resolve, reject)=>{
+        navigator.geolocation.getCurrentPosition(resolve, reject, opts);
     });
 
-    window.addEventListener('load', function () {
-        setTimeout(openVoteFromUrl, 400);
-    });
-})();
-</script>
+    const applyPos = (pos) => {
+        gps.lat = pos.coords.latitude;
+        gps.lon = pos.coords.longitude;
+        gps.accuracy = pos.coords.accuracy ?? null;
+        gps.lastAt = Date.now();
 
-{{-- Recherche auto --}}
-<script>
+        gps.dist = calcDistance(gps.lat, gps.lon, CFG.event.lat, CFG.event.lon);
+        gps.inRange = computeInRange(gps.dist, CFG.event.radius, gps.accuracy);
+        gps.status = 'success';
+
+        if(gps.inRange === true){
+            approveGps(); // ✅ on gèle l'autorisation
+        }
+
+        updateGpsUI(); lockButtonsByGPS();
+        return gps.inRange;
+    };
+
+    gpsRequestPromise = (async ()=>{
+        try{
+            const posFast = await getPos({ enableHighAccuracy:false, timeout:4000, maximumAge:30000 });
+            const okFast = applyPos(posFast);
+
+            if(okFast){
+                // amélioration silencieuse
+                getPos({ enableHighAccuracy:true, timeout:12000, maximumAge:0 }).then(applyPos).catch(()=>{});
+                return true;
+            }
+
+            const posHi = await getPos({ enableHighAccuracy:true, timeout:12000, maximumAge:0 });
+            return applyPos(posHi);
+        } catch(err){
+            console.error(err);
+            gps.status = 'error';
+            updateGpsUI(); lockButtonsByGPS();
+            toast('Impossible d’obtenir la position. Autorisez la localisation.');
+            return false;
+        } finally {
+            gpsRequestPromise = null;
+        }
+    })();
+
+    return gpsRequestPromise;
+}
+
+function startWatchGPS(){
+    if(!REQUIRE_GPS || !CFG.hasEvent) return;
+    if(!navigator.geolocation) return;
+    if(!isSecureContextOk()) return;
+
+    stopWatchGPS();
+
+    gpsWatchId = navigator.geolocation.watchPosition((pos)=>{
+        // ✅ si déjà approuvé, on n'essaie plus de recalculer inRange (évite jitter)
+        if(gpsApproved){
+            gps.lat = pos.coords.latitude;
+            gps.lon = pos.coords.longitude;
+            gps.accuracy = pos.coords.accuracy ?? null;
+            gps.lastAt = Date.now();
+            return;
+        }
+
+        gps.lat = pos.coords.latitude;
+        gps.lon = pos.coords.longitude;
+        gps.accuracy = pos.coords.accuracy ?? null;
+        gps.lastAt = Date.now();
+
+        gps.dist = calcDistance(gps.lat, gps.lon, CFG.event.lat, CFG.event.lon);
+        gps.inRange = computeInRange(gps.dist, CFG.event.radius, gps.accuracy);
+        gps.status = 'success';
+
+        if(gps.inRange === true){
+            approveGps();
+        }
+
+        updateGpsUI();
+        lockButtonsByGPS();
+    }, (err)=>{
+        console.warn(err);
+    }, { enableHighAccuracy:true, maximumAge:2000, timeout:12000 });
+}
+
+function stopWatchGPS(){
+    if(gpsWatchId != null && navigator.geolocation){
+        navigator.geolocation.clearWatch(gpsWatchId);
+    }
+    gpsWatchId = null;
+}
+
+/* ====================== VOTE UI ====================== */
+function resetVoteUI(){
+    step = 1;
+    resetGpsApproval();
+    gps = { status:'idle', lat:null, lon:null, accuracy:null, inRange:false, dist:null, lastAt:null, bearing:null };
+
+    if($('voteStepBadge')) $('voteStepBadge').textContent = 'Étape 1 sur 2';
+    if($('nom_votant')) $('nom_votant').value = '';
+    if($('telephone_display')) $('telephone_display').value = '';
+    if($('code_otp')) $('code_otp').value = '';
+
+    hide($('voteError'));
+    hide($('voteSuccess'));
+    show($('step1'));
+    hide($('step2'));
+
+    if($('btnSendOtp')) $('btnSendOtp').disabled = true;
+    if($('btnVerifyOtp')) $('btnVerifyOtp').disabled = true;
+
+    updateGpsUI();
+    lockButtonsByGPS();
+}
+
+function setVoteError(msg){
+    const el = $('voteError');
+    if(!el) return;
+    el.textContent = msg || 'Erreur';
+    show(el);
+}
+function setVoteSuccess(msg){
+    const el = $('voteSuccess');
+    if(!el) return;
+    el.textContent = msg || 'Succès';
+    show(el);
+}
+function goStep2(){
+    step = 2;
+    if($('voteStepBadge')) $('voteStepBadge').textContent = 'Étape 2 sur 2';
+    hide($('step1'));
+    show($('step2'));
+    lockButtonsByGPS();
+}
+
+/* ====================== MODALES / CLICK ====================== */
+document.addEventListener('click', async (e)=>{
+    const btn = e.target.closest('[data-action]');
+    if(!btn) return;
+
+    const action = btn.getAttribute('data-action');
+    const raw = btn.getAttribute('data-projet');
+    let projet = null;
+
+    try{ projet = JSON.parse(raw); } catch(err){ console.error(err); alert('Projet invalide'); return; }
+
+    if(action === 'details'){
+        if($('detailsTitle')) $('detailsTitle').textContent = projet.nom_projet || '';
+        if($('detailsTeam')) $('detailsTeam').textContent = projet.nom_equipe || '';
+        if($('detailsResume')) $('detailsResume').textContent = projet.resume || '';
+        if($('detailsDesc')) $('detailsDesc').textContent = projet.description || '';
+        openModal('detailsModal');
+        return;
+    }
+
+    if(action === 'vote'){
+        if(!CFG.hasEvent){ alert('❌ Vote Jour J désactivé (aucun événement actif).'); return; }
+        if(!CFG.isVoteActive){ toast(CFG.inactiveMessage || 'Vote fermé'); return; }
+
+        currentProject = projet;
+        if($('voteTitle')) $('voteTitle').textContent = projet.nom_projet || '';
+        if($('voteTeam')) $('voteTeam').textContent = projet.nom_equipe || '';
+
+        resetVoteUI();
+        openModal('voteModal');
+
+        const ok = await captureGPS();
+        startWatchGPS();
+
+        if(!ok){
+            setVoteError("Vous n'êtes pas dans la zone de vote autorisée.");
+        }
+        return;
+    }
+});
+
+// fermer modales
+document.addEventListener('click', (e)=>{
+    const closeBtn = e.target.closest('[data-close]');
+    if(closeBtn){
+        const id = closeBtn.getAttribute('data-close');
+        closeModal(id);
+        if(id === 'voteModal') stopWatchGPS();
+    }
+});
+document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape'){
+        closeModal('detailsModal');
+        closeModal('voteModal');
+        stopWatchGPS();
+    }
+});
+['detailsModal','voteModal'].forEach(id=>{
+    const el = $(id);
+    if(!el) return;
+    el.addEventListener('click', (e)=>{
+        if(e.target === el){
+            closeModal(id);
+            if(id === 'voteModal') stopWatchGPS();
+        }
+    });
+});
+
+/* ====================== GPS refresh ====================== */
+const btnRefresh = $('btnRefreshGPS');
+if(btnRefresh){
+    btnRefresh.addEventListener('click', async ()=>{
+        hide($('voteError'));
+        resetGpsApproval(); // l'utilisateur force une revérif
+        const ok = await captureGPS();
+        if(!ok){
+            setVoteError("Vous n'êtes pas dans la zone de vote autorisée.");
+        }else{
+            toast('✅ Zone autorisée');
+        }
+    });
+}
+
+/* ====================== OTP ====================== */
+async function getRecaptchaToken(){
+    try{
+        if(CFG.recaptchaKey && window.grecaptcha && window.grecaptcha.execute){
+            return await window.grecaptcha.execute(CFG.recaptchaKey, { action: 'vote_jourj' });
+        }
+    }catch(e){}
+    return '';
+}
+
+const btnSendOtp = $('btnSendOtp');
+if(btnSendOtp){
+    btnSendOtp.addEventListener('click', async ()=>{
+        hide($('voteError'));
+        hide($('voteSuccess'));
+
+        if(!currentProject?.id){ setVoteError('Projet invalide.'); return; }
+
+        // ✅ step1: on exige la zone, mais si approuvé => pas de re-check bloquant
+        if(REQUIRE_GPS && !gpsApproved){
+            const ok = await captureGPS();
+            if(!ok){
+                setVoteError("Vous n'êtes pas dans la zone de vote autorisée.");
+                return;
+            }
+        }
+
+        const phone = normalizeSNPhone($('telephone_display')?.value);
+        if(!phone){ setVoteError('Numéro invalide. Exemple: 77 123 45 67'); return; }
+
+        btnSendOtp.disabled = true;
+
+        const recaptchaToken = await getRecaptchaToken();
+
+        try{
+            const res = await fetch(CFG.sendOtpUrl, {
+                method:'POST',
+                headers:{
+                    'Content-Type':'application/json',
+                    'X-CSRF-TOKEN': csrfToken(),
+                    'Accept':'application/json'
+                },
+                body: JSON.stringify({
+                    projet_id: currentProject.id,
+                    telephone: phone,
+                    nom_votant: $('nom_votant')?.value || null,
+                    recaptcha_token: recaptchaToken || null
+                })
+            });
+
+            const data = await res.json().catch(()=>({}));
+            if(!res.ok || !data.success){
+                setVoteError(data.message || "Erreur lors de l’envoi du code.");
+                lockButtonsByGPS();
+                return;
+            }
+
+            goStep2();
+            stopWatchGPS(); // ✅ plus besoin du watch en step2
+            toast('📩 Code envoyé');
+
+        }catch(err){
+            console.error(err);
+            setVoteError('Erreur réseau. Réessayez.');
+            lockButtonsByGPS();
+        }
+    });
+}
+
+const btnVerifyOtp = $('btnVerifyOtp');
+if(btnVerifyOtp){
+    btnVerifyOtp.addEventListener('click', async ()=>{
+        hide($('voteError'));
+        hide($('voteSuccess'));
+
+        const code = String($('code_otp')?.value||'').replace(/\D+/g,'');
+        if(code.length !== 6){ setVoteError('Code OTP invalide (6 chiffres).'); return; }
+
+        // ✅ step2: on ne refait PAS de validation "inRange" côté front (évite jitter)
+        // On s'assure juste d'avoir des coordonnées
+        if(gps.lat == null || gps.lon == null){
+            try{
+                if(!navigator.geolocation){
+                    setVoteError("GPS non supporté sur ce navigateur.");
+                    return;
+                }
+                if(!isSecureContextOk()){
+                    setVoteError("GPS nécessite HTTPS (ou localhost).");
+                    return;
+                }
+                const pos = await new Promise((resolve, reject)=>{
+                    navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy:true, timeout:12000, maximumAge:0 });
+                });
+                gps.lat = pos.coords.latitude;
+                gps.lon = pos.coords.longitude;
+                gps.accuracy = pos.coords.accuracy ?? null;
+                gps.lastAt = Date.now();
+            }catch(e){
+                setVoteError("Activez la localisation pour valider le vote.");
+                return;
+            }
+        }
+
+        btnVerifyOtp.disabled = true;
+
+        try{
+            const res = await fetch(CFG.verifyOtpUrl, {
+                method:'POST',
+                headers:{
+                    'Content-Type':'application/json',
+                    'X-CSRF-TOKEN': csrfToken(),
+                    'Accept':'application/json'
+                },
+                body: JSON.stringify({
+                    code_otp: code,
+                    latitude: gps.lat,
+                    longitude: gps.lon
+                })
+            });
+
+            const data = await res.json().catch(()=>({}));
+            if(!res.ok || !data.success){
+                setVoteError(data.message || 'Validation OTP échouée.');
+                btnVerifyOtp.disabled = false;
+                lockButtonsByGPS();
+                return;
+            }
+
+            setVoteSuccess(data.message || 'Vote enregistré avec succès !');
+            toast('✅ Vote enregistré');
+
+        }catch(err){
+            console.error(err);
+            setVoteError('Erreur réseau. Réessayez.');
+            btnVerifyOtp.disabled = false;
+            lockButtonsByGPS();
+        }
+    });
+}
+
+/* ====================== INIT ====================== */
 document.addEventListener('DOMContentLoaded', function () {
-    const input = document.getElementById('search-input');
-    if (!input) return;
+    updateGpsUI();
+    lockButtonsByGPS();
+
+    const input = $('search-input');
+    if(!input) return;
 
     const form = input.closest('form');
-    if (!form) return;
+    if(!form) return;
 
     let timer = null;
     input.addEventListener('input', function () {
