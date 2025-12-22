@@ -188,27 +188,6 @@
                                     <!-- Mobile layout: icon row + full-width vote button -->
                                     <div class="vj-mobile-actions">
                                         <div class="vj-icon-row">
-                                            <button type="button"
-                                                    class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                    aria-label="Détails du projet"
-                                                    title="Détails"
-                                                    data-action="details"
-                                                    data-projet='@json($projetJs, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                            </button>
-                                            <!-- Share button -->
-                                            <button type="button"
-                                                    class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                    title="Partager ce projet"
-                                                    onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                                                </svg>
-                                            </button>
-
                                             @if($demoUrl)
                                                 <a href="{{ $demoUrl }}" target="_blank" rel="noopener noreferrer"
                                                    class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors" title="Voir la démonstration">
@@ -236,27 +215,6 @@
 
                                     <!-- Desktop layout: icon-only buttons + inline vote -->
                                     <div class="vj-desktop-actions">
-                                        <button type="button"
-                                                class="vj-icon-btn p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                aria-label="Détails du projet"
-                                                title="Détails"
-                                                data-action="details"
-                                                data-projet='@json($projetJs, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                        </button>
-
-                                        <button type="button"
-                                                class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-                                                title="Partager ce projet"
-                                                onclick="shareProjectForProject({{ $projet->id }}, @js($projet->nom_projet))">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                                            </svg>
-                                        </button>
-
                                         <button type="button" class="vj-vote-btn px-3 py-2 rounded-lg bg-green-500/80 hover:bg-yellow-400 hover:text-black text-white text-sm font-bold"
                                                 data-action="vote" data-projet='@json($projetJs, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
                                             Voter
