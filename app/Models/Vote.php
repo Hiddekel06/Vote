@@ -23,7 +23,11 @@ class Vote extends Model
      *
      * @var array<int, string>
      */
-    protected $fillable = ['projet_id', 'telephone', 'ip_address', 'user_agent'];
+    protected $fillable = ['projet_id', 'telephone', 'ip_address', 'user_agent', 'vote_event_id',
+    'latitude_user',
+    'longitude_user',
+    'distance_metres',
+    'validation_status'];
 
     /**
      * Relation avec l'audit VoteJourJ
@@ -40,4 +44,10 @@ class Vote extends Model
     {
         return $this->belongsTo(Projet::class);
     }
+    public function voteEvent()
+{
+    return $this->belongsTo(VoteEvent::class, 'vote_event_id');
 }
+}
+
+
