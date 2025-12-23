@@ -8,6 +8,8 @@ use App\Http\Controllers\Admin\VoteStatusController;
 use App\Http\Controllers\ProjetController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ClassementController;
+use App\Http\Controllers\ClassementLiveController;
+use App\Http\Controllers\VoteJourJController;
 use App\Helpers\FileChecker;
 use App\Http\Controllers\OrangeSmsController;
 
@@ -31,6 +33,9 @@ Route::get('/vote/recherche-ajax', [VoteController::class, 'rechercheAjax'])->na
 
 // 🔹 Page de classement des projets (Général et par catégorie)
 Route::get('/classement', [ClassementController::class, 'index'])->name('projets.classement');
+
+// API légère pour le classement en temps réel
+Route::get('/api/classement', [ClassementLiveController::class, 'index'])->name('api.classement');
 
 // Route pour le partage d'un projet
 // --- Section Administrateur ---

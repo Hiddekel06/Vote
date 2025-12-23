@@ -33,6 +33,25 @@
 
     <main class="flex-grow container mx-auto px-4 py-12">
         <div class="bg-black/70 backdrop-blur-sm border border-white/10 p-6 sm:p-8 rounded-xl shadow-2xl w-full max-w-5xl mx-auto">
+            <!-- Bloc live polling -->
+            <div class="flex items-center justify-between mb-6 gap-3">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/15 text-green-300 text-xs font-semibold uppercase tracking-wide">
+                        <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                        Live
+                    </div>
+                    <h2 class="text-lg sm:text-xl font-semibold mt-2">Classement en temps réel</h2>
+                </div>
+                <div class="text-right text-xs text-gray-400">
+                    <div id="live-updated-at">—</div>
+                    <div id="live-limit"></div>
+                </div>
+            </div>
+
+            <div id="live-classement" class="space-y-3 mb-10">
+                <div class="text-gray-500 text-sm">Chargement du classement…</div>
+            </div>
+
             <!-- Bouton Retour à l'accueil -->
             <div class="mb-4">
                 <a href="{{ route('vote.index') }}" class="inline-flex items-center gap-2 text-gray-400 hover:text-yellow-400 transition-colors text-sm">
@@ -69,8 +88,142 @@
                 @include('partials.classement-list')
         </div>
     </main>
-
     <x-footer />
-    
+
+    <script>
+        (() => {
+            const endpoint = '{{ route('api.classement') }}';
+            const container = document.getElementById('live-classement');
+            const updatedAtEl = document.getElementById('live-updated-at');
+            const limitEl = document.getElementById('live-limit');
+            
+            let previousData = [];
+
+            function formatDate(dateStr) {
+                const d = new Date(dateStr);
+                if (Number.isNaN(d.getTime())) return '—';
+                return d.toLocaleTimeString('fr-FR', { hour12: false });
+            }
+
+            function render(items) {
+                if (!container) return;
+                if (!items.length) {
+                    container.innerHTML = '<div class="text-gray-500 text-sm">Aucun vote pour le moment.</div>';
+                    previousData = [];
+                    return;
+                }
+
+                // Si premier rendu, créer toute la structure
+                if (!previousData.length) {
+                    const rows = items.map(item => `
+                        <div data-id="${item.id}" class="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <div class="rank w-9 h-9 rounded-full bg-yellow-400/20 text-yellow-300 font-bold flex items-center justify-center">${item.rank}</div>
+                                <div>
+                                    <div class="font-semibold text-white">${item.nom_projet ?? 'Projet'}</div>
+                                    <div class="text-xs text-gray-400">${item.nom_equipe ?? ''}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="votes text-lg font-bold text-yellow-300">${item.votes}</div>
+                                <div class="text-xs text-gray-500">votes</div>
+                            </div>
+                        </div>
+                    `).join('');
+                    container.innerHTML = rows;
+                    previousData = items;
+                    return;
+                }
+
+                // Comparaison et mise à jour sélective
+                items.forEach((item, index) => {
+                    const previous = previousData.find(p => p.id === item.id);
+                    let rowEl = container.querySelector(`[data-id="${item.id}"]`);
+
+                    // Nouveau projet, l'insérer à la bonne position
+                    if (!rowEl) {
+                        const newRow = document.createElement('div');
+                        newRow.setAttribute('data-id', item.id);
+                        newRow.className = 'flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/5 px-4 py-3';
+                        newRow.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <div class="rank w-9 h-9 rounded-full bg-yellow-400/20 text-yellow-300 font-bold flex items-center justify-center">${item.rank}</div>
+                                <div>
+                                    <div class="font-semibold text-white">${item.nom_projet ?? 'Projet'}</div>
+                                    <div class="text-xs text-gray-400">${item.nom_equipe ?? ''}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="votes text-lg font-bold text-yellow-300">${item.votes}</div>
+                                <div class="text-xs text-gray-500">votes</div>
+                            </div>
+                        `;
+                        if (index < container.children.length) {
+                            container.insertBefore(newRow, container.children[index]);
+                        } else {
+                            container.appendChild(newRow);
+                        }
+                        rowEl = newRow;
+                    }
+
+                    // Vérifier si changements (votes ou rank)
+                    if (previous && previous.votes !== item.votes) {
+                        const votesEl = rowEl.querySelector('.votes');
+                        if (votesEl) {
+                            votesEl.textContent = item.votes;
+                        }
+                    }
+
+                    if (previous && previous.rank !== item.rank) {
+                        const rankEl = rowEl.querySelector('.rank');
+                        if (rankEl) {
+                            rankEl.textContent = item.rank;
+                        }
+                    }
+
+                    // Vérifier la position dans le DOM
+                    const currentIndex = Array.from(container.children).indexOf(rowEl);
+                    if (currentIndex !== index) {
+                        if (index < container.children.length) {
+                            container.insertBefore(rowEl, container.children[index]);
+                        } else {
+                            container.appendChild(rowEl);
+                        }
+                    }
+                });
+
+                // Supprimer les projets qui ne sont plus dans le top
+                const currentIds = items.map(i => i.id);
+                previousData.forEach(prev => {
+                    if (!currentIds.includes(prev.id)) {
+                        const oldRow = container.querySelector(`[data-id="${prev.id}"]`);
+                        if (oldRow) oldRow.remove();
+                    }
+                });
+
+                previousData = items;
+            }
+
+            async function poll() {
+                try {
+                    const res = await fetch(endpoint, { headers: { 'Accept': 'application/json' } });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const json = await res.json();
+                    render(json.data || []);
+                    if (updatedAtEl) updatedAtEl.textContent = 'Mise à jour: ' + formatDate(json.fetched_at);
+                    if (limitEl) limitEl.textContent = json.limit ? `Top ${json.limit}` : '';
+                } catch (e) {
+                    console.warn('Live classement error', e);
+                    if (container && !previousData.length) {
+                        container.innerHTML = '<div class="text-red-300 text-sm">Impossible de rafraîchir le classement.</div>';
+                    }
+                }
+            }
+
+            poll();
+            setInterval(poll, 2000);
+        })();
+    </script>
+
 </body>
 </html>

@@ -65,6 +65,25 @@
         .gps-dot.bad{ background:#fb7185; }
         .gps-dot.warn{ background:#facc15; }
         .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+        
+        /* Dropdown catégorie stylé */
+        .category-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23facc15' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+            background-position: right 0.75rem center;
+            background-repeat: no-repeat;
+            background-size: 1.25em 1.25em;
+            padding-right: 2.5rem;
+            cursor: pointer;
+        }
+        .category-select:hover {
+            border-color: rgba(250, 204, 21, 0.5);
+        }
+        .category-select option {
+            background-color: #111827;
+            padding: 8px 12px;
+            font-size: 14px;
+        }
     </style>
 </head>
 
@@ -122,11 +141,19 @@
 
         {{-- Recherche --}}
         <div class="mb-8">
-            <form action="{{ route('vote-jour-j.show') }}" method="GET" class="w-full">
+            <form action="{{ route('vote-jour-j.show') }}" method="GET" class="w-full space-y-2">
                 <div class="flex flex-col sm:flex-row gap-2 w-full">
-                    @if(request('profile_type'))
-                        <input type="hidden" name="profile_type" value="{{ request('profile_type') }}">
-                    @endif
+                    <div class="sm:w-56">
+                        <select name="profile_type"
+                                class="category-select w-full bg-gray-900/50 border border-gray-700 rounded-lg py-2.5 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-colors"
+                                aria-label="Filtrer par catégorie"
+                                onchange="this.form.submit()">
+                            <option value="">🎯 Toutes catégories</option>
+                            <option value="etudiants" {{ request('profile_type') === 'etudiants' ? 'selected' : '' }}>🎓 Étudiants</option>
+                            <option value="startup" {{ request('profile_type') === 'startup' ? 'selected' : '' }}>🚀 Startup</option>
+                            <option value="porteurs" {{ request('profile_type') === 'porteurs' ? 'selected' : '' }}>💡 Porteurs de projets</option>
+                        </select>
+                    </div>
 
                     <div class="relative flex-1 min-w-0">
                         <input
@@ -206,7 +233,7 @@
                                             @endif
                                         </div>
 
-                                        <button type="button" class="vj-mobile-vote vj-vote-btn px-3 py-2 rounded-lg bg-green-500/80 hover:bg-yellow-400 hover:text-black text-white text-sm font-bold"
+                                        <button type="button" class="vj-mobile-vote vj-vote-btn px-3 py-2 rounded-lg bg-green-500/80 hover:bg-yellow-400 hover:text-black text-white text-sm font-bold w-full"
                                                 data-action="vote" data-projet='@json($projetJs, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)'>
                                             Voter
                                         </button>

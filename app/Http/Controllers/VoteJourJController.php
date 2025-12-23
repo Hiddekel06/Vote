@@ -24,7 +24,14 @@ class VoteJourJController extends Controller
     {
         $event = $this->getActiveEvent();
 
-        $profileType = $request->query('profile_type'); // 'student' | 'startup' | 'other' | null
+        // Normalise les valeurs du dropdown front -> valeurs attendues en base
+        $rawProfileType = $request->query('profile_type');
+        $profileType = match ($rawProfileType) {
+            'etudiants' => 'student',
+            'startup'   => 'startup',
+            'porteurs'  => 'other',
+            default     => null,
+        };
         $search      = trim((string) $request->query('search', ''));
 
         $preselectedProjectIds = DB::table('liste_preselectionnes')
