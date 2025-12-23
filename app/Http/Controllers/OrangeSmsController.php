@@ -32,9 +32,14 @@ class OrangeSmsController extends Controller
 
             Log::info('Orange - token response', [
                 'status' => $response->status(),
+                'body'   => $response->body(),
             ]);
 
             if ($response->failed()) {
+                Log::error('Orange - token failed', [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
+                ]);
                 return null;
             }
 
@@ -154,6 +159,7 @@ class OrangeSmsController extends Controller
 
         Log::info('Orange - SMS response', [
             'status' => $response->status(),
+            'body'   => $response->body(),
         ]);
 
         return [
@@ -241,6 +247,7 @@ class OrangeSmsController extends Controller
                 'success' => false,
                 'message' => 'Échec de l’envoi du SMS.',
                 'status'  => $result['status'],
+                'body'    => $result['body'],
             ], 500);
         }
 
